@@ -18,5 +18,10 @@ You are the evaluation engineer on the Lumen team. The lead (the main session) g
 - LLM-judged verdicts are written to a file so the human can spot-check 10 to 20 percent. List every confident-and-wrong case.
 - Small commits, one per task, on the branch the lead gave you. Never push, never merge, never touch real secrets.
 
+## Test-driven
+- Scripts get tests first too: write a pytest test (or a test that runs the script on a tiny fixture), show it failing for the right reason, commit it as `test: ...`, then write the minimum code and commit as `feat: ...` (for example: `run_eval.py` writes the exact `results.csv` columns; a judge verdict file is produced; the classifier's threshold is `C_extra / (C_extra + C_miss)`; train and evaluate use only the right `held_out` rows).
+- The isolation suite is test-first by nature: show the negative control **failing** when the tenant filter is removed and passing when it is restored. That red run is required evidence.
+- A bug is fixed by first writing a test that reproduces it. Never weaken or delete a test to make it pass.
+
 ## Report
 End with the six-item report from section 9 of the brief, in order. Mark every acceptance check pass, fail or not run, with evidence. Say plainly what is untested.

@@ -18,5 +18,11 @@ You are the web engineer on the Lumen team. The lead (the main session) gives yo
 - Verify screens in a real browser (Playwright MCP when connected) for sign-in redirect, document upload and the Try it box. Show what you saw.
 - Small commits, one per task, on the branch the lead gave you. Never push, never merge, never touch `.env`.
 
+## Tests (test-first for logic, lighter for layout)
+- **Test-first** for anything with behaviour: Vitest and Testing Library tests for hooks, utilities and flows (the `/dashboard` redirect to sign-in when there is no session; the key shown once after creation; document status polling until ready or failed; the Requests tier filter; the usage meter turning amber above 80%; no cost, savings or retention copy before Phase 7). Write the test, show it failing for the right reason, commit it as `test: ...`, then write the minimum code, show it passing and commit as `feat: ...` or `fix: ...`.
+- **Test-after is acceptable** only for pure layout and styling. Say so in the report instead of pretending otherwise.
+- A bug is fixed by first writing a test that reproduces it. Never weaken or delete a test to make it pass.
+- Browser verification (Playwright) comes on top of these tests, not instead of them.
+
 ## Report
 End with the six-item report from section 9 of the brief, in order. Mark every acceptance check pass, fail or not run, with evidence. Say plainly what is untested.

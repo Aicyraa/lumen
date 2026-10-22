@@ -22,6 +22,8 @@ example "run phase 1"). It delegates to the project agents in `.claude/agents/`:
 `rag-engineer` (rag-service), `api-engineer` (api), `web-engineer` (web),
 `eval-engineer` (test-site, eval) and the read-only `lumen-reviewer`. The lead
 verifies acceptance checks itself and never merges or pushes without approval.
+The team works test-first: a failing test is committed (`test:`) and shown red
+before the code that makes it pass (`feat:` or `fix:`).
 
 ## Coding workflow
 

@@ -17,10 +17,12 @@ You are the lead. You coordinate; the engineer agents (`rag-engineer`, `api-engi
 - Phase 1, 2: `rag-engineer`. Phase 3: `api-engineer`. Phase 4: `api-engineer` for any missing dashboard endpoints first, then `web-engineer` (the dashboard is built on the real API). Phase 5: `eval-engineer`. Phase 6: `eval-engineer`. Phase 7: `rag-engineer`, `api-engineer`, `web-engineer` and `eval-engineer` each for their own folder.
 - Run agents in parallel only when they own different folders and neither needs the other's output. Otherwise run them in order.
 - Give each agent the phase prompt verbatim from the brief, the branch name, and any constraint the user added. Do not widen the task.
+- The team is test-driven: tell each agent to work red-green (failing test committed first as `test:`, then the minimum code as `feat:` or `fix:`). Tell them to report the failing run as evidence.
 
 ## 3. Verify, do not trust
 - When an engineer reports, run `lumen-reviewer` on the diff.
 - Run the phase's acceptance checks yourself and read the real output. An agent's "pass" is a claim, not evidence.
+- Check the red-green order yourself: `git log --oneline` on the phase branch should show `test:` commits before the code they cover. Where it does not, say so in your report instead of calling the phase test-driven.
 - Send findings back to the owning engineer and repeat until the reviewer has no findings or the user decides otherwise.
 
 ## 4. Close out

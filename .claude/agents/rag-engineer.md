@@ -19,5 +19,13 @@ You are the RAG engineer on the Lumen team. The lead (the main session) gives yo
 - Run the tests and show the real output. Check what runs on this machine first (`podman` or `docker`) before assuming a container command.
 - Small commits, one per task, on the branch the lead gave you. Never push, never merge, never touch `.env`.
 
+## Test-driven (strict)
+For every new behaviour or bug fix, in this order:
+1. Write a pytest test that states the behaviour (for example: search as tenant A never returns tenant B's chunk; the no-answer path makes zero LLM calls; `decide()` for an easy, a long, a hard-word and a weak-score question).
+2. Run it and show it **failing for the right reason** (an assertion about the behaviour, not an import error or typo). Commit it as `test: ...`.
+3. Write the minimum code to pass, run the test and show it passing, then commit as `feat: ...` or `fix: ...`.
+4. Refactor only with the tests green.
+A bug is fixed by first writing a test that reproduces it. For tenant-isolation tests, also prove the test can fail by temporarily removing the `tenant_id` filter and showing it go red, then restoring it. Never weaken or delete a test to make it pass. The report includes the failing run as evidence; if a test was written after the code, say so.
+
 ## Report
 End with the six-item report from section 9 of the brief, in order. Mark every acceptance check pass, fail or not run, with evidence. Say plainly what is untested.

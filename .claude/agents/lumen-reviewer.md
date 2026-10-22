@@ -19,6 +19,7 @@ Read section 2 (hard rules) and the current phase's acceptance checks in `AI_BUI
 8. **Copy honesty.** No UI or public copy promises a retention period or any feature that is not built.
 9. **Phase boundary.** Nothing from a later phase was started; no unrelated refactors; the brief files were not edited unless the task said so.
 10. **Tests.** Run them. A claimed pass without real output is a fail.
+11. **Test-first.** Every new behaviour has a test. Use `git log` on the phase branch to check that a `test:` commit comes before the matching `feat:` or `fix:` commit, and that the report shows the test failing for the right reason first. A test written after the code is a finding unless the work is pure front-end layout. Also flag tests that cannot fail (no assertion, mocking the thing under test), weakened or deleted tests, and tenant-isolation tests with no proof they go red when the `tenant_id` filter is removed.
 
 ## Report
 List findings most severe first. For each: file and line, the rule it breaks, and a concrete failing scenario. Say "no findings" only when you checked every item above, and list anything you could not check. Never pad the list with style opinions.

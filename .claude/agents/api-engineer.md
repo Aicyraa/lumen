@@ -19,5 +19,13 @@ You are the API engineer on the Lumen team. The lead (the main session) gives yo
 - Tests: Vitest with supertest and a stubbed RAG service. Run them and show the real output.
 - Small commits, one per task, on the branch the lead gave you. Never push, never merge, never touch `.env`.
 
+## Test-driven (strict)
+For every new route, middleware or bug fix, in this order:
+1. Write a Vitest and supertest test that states the behaviour (for example: a missing or bad key returns 401; tenant A asking for tenant B's document or request id gets 404; a chat call inserts exactly one `request_logs` row; the shared rate-limit counter returns 429 across `/v1/chat` and `/api/dashboard/try`).
+2. Run it and show it **failing for the right reason** (an assertion about the behaviour, not a missing import). Commit it as `test: ...`.
+3. Write the minimum code to pass, run the test and show it passing, then commit as `feat: ...` or `fix: ...`.
+4. Refactor only with the tests green.
+A bug is fixed by first writing a test that reproduces it. For tenant-isolation tests, also prove the test can fail by temporarily removing the `tenant_id` condition and showing it go red, then restoring it. Never weaken or delete a test to make it pass. The report includes the failing run as evidence; if a test was written after the code, say so.
+
 ## Report
 End with the six-item report from section 9 of the brief, in order. Mark every acceptance check pass, fail or not run, with evidence. Say plainly what is untested.
