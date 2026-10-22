@@ -2,16 +2,23 @@ import pytest
 
 from app.extract import extract_text
 
-# smallest valid one-page PDF with the text "Hello PDF world"
-PDF = (
-    b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
-    b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
-    b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents 4 0 R"
-    b"/Resources<</Font<</F1 5 0 R>>>>>>endobj\n"
-    b"4 0 obj<</Length 44>>stream\nBT /F1 12 Tf 20 100 Td (Hello PDF world) Tj ET\nendstream endobj\n"
-    b"5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\n"
-    b"trailer<</Root 1 0 R/Size 6>>\n%%EOF\n"
-)
+def make_pdf(text: str) -> bytes:
+    """Smallest valid one-page PDF, with a real xref table so pypdf accepts it."""
+    stream = f"BT /F1 12 Tf 20 100 Td ({text}) Tj ET".encode()
+    objs = [
+        b"<</Type/Catalog/Pages 2 0 R>>",
+        b"<</Type/Pages/Kids[3 0 R]/Count 1>>",
+        b"<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>",
+        b"<</Length %d>>stream\n" % len(stream) + stream + b"\nendstream",
+        b"<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>",
+    ]
+    out, offsets = b"%PDF-1.4\n", []
+    for i, body in enumerate(objs, 1):
+        offsets.append(len(out))
+        out += b"%d 0 obj\n" % i + body + b"\nendobj\n"
+    xref = len(out)
+    out += b"xref\n0 6\n0000000000 65535 f \n" + b"".join(b"%010d 00000 n \n" % o for o in offsets)
+    return out + b"trailer<</Root 1 0 R/Size 6>>\nstartxref\n%d\n%%%%EOF\n" % xref
 
 
 @pytest.mark.parametrize("name", ["a.txt", "b.md"])
@@ -23,7 +30,7 @@ def test_plain_text_and_markdown(tmp_path, name):
 
 def test_pdf(tmp_path):
     f = tmp_path / "c.pdf"
-    f.write_bytes(PDF)
+    f.write_bytes(make_pdf("Hello PDF world"))
     assert "Hello PDF world" in extract_text(f)
 
 
