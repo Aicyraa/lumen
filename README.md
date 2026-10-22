@@ -1,0 +1,15 @@
+# Lumen
+
+Multi-tenant RAG gateway. See `AI_BUILD_BRIEF.md` for the full brief.
+
+## Database (Phase 0)
+
+```bash
+cp .env.example .env            # then set POSTGRES_PASSWORD in .env
+docker compose up -d db         # start Postgres 16 with pgvector
+docker compose exec -T db psql -U postgres -d lumen < infra/sql/001_app_tables.sql
+docker compose exec db psql -U postgres -d lumen -c '\dx'   # lists "vector"
+docker compose exec db psql -U postgres -d lumen -c '\dt'   # documents, chunks, request_logs
+```
+
+Stop with `docker compose down` (add `-v` to also delete the data volume).
