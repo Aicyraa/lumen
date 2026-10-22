@@ -12,4 +12,7 @@ docker compose exec db psql -U postgres -d lumen -c '\dx'   # lists "vector"
 docker compose exec db psql -U postgres -d lumen -c '\dt'   # documents, chunks, request_logs
 ```
 
+Host port is 5433 (5432 is often taken by a system Postgres); use `DATABASE_URL=postgresql://postgres:<password>@localhost:5433/lumen`.
+Without a compose provider (Podman), see `podman run` equivalent in NOTES.md.
+
 Stop with `docker compose down` (add `-v` to also delete the data volume).
