@@ -15,6 +15,14 @@ anywhere (API, logs, dashboard, home page, eval). `usage.cost_usd` and
 and latency are still recorded. Request, document and rate limits are not
 money and stay in scope, read from environment variables.
 
+## Agent team
+
+The main session is the lead. Run a phase with the `lumen-phase` skill (for
+example "run phase 1"). It delegates to the project agents in `.claude/agents/`:
+`rag-engineer` (rag-service), `api-engineer` (api), `web-engineer` (web),
+`eval-engineer` (test-site, eval) and the read-only `lumen-reviewer`. The lead
+verifies acceptance checks itself and never merges or pushes without approval.
+
 ## Coding workflow
 
 - Follow the project brief and current task; work one phase at a time.
