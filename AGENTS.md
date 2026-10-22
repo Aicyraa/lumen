@@ -1,9 +1,19 @@
 # Lumen project instructions
 
-Read `AI build brief.md` fully before application work. It is the authoritative
+Read `AI_BUILD_BRIEF.md` fully before application work. It is the authoritative
 product brief, including hard rules, stack, contracts, phase boundaries, and
-acceptance checks. Read `Project workflow.md` for supporting workflow context;
-the build brief wins if they disagree. Do not start a build phase unless asked.
+acceptance checks. Read `PROJECT_WORKFLOW.md` for supporting workflow context
+and `DESIGN.md` before building any screen; the build brief wins if they
+disagree. Do not start a build phase unless asked.
+
+## Money comes last
+
+Phase 7 (pricing) is the final phase. Before it, do not add prices, compute or
+store a cost, or show any cost, savings, calculator or pricing figure or copy
+anywhere (API, logs, dashboard, home page, eval). `usage.cost_usd` and
+`request_logs.cost_usd` stay null, and `config.yaml` has no prices. Token counts
+and latency are still recorded. Request, document and rate limits are not
+money and stay in scope, read from environment variables.
 
 ## Coding workflow
 
@@ -18,6 +28,32 @@ the build brief wins if they disagree. Do not start a build phase unless asked.
   output or a stateful Serena server across different worktrees.
 - A review does not authorize merge. Never merge without the user's approval.
 - Report behavior changes, checks actually run, and anything still unverified.
+
+## Available tools
+
+Use the connected tools instead of guessing or relying on memory. Prefer them
+over generic search or shell when they fit.
+
+- **Context7**: before writing or changing code that uses a library, framework,
+  SDK, API, or CLI, fetch current docs (`resolve-library-id`, then
+  `query-docs`). Do this even for well-known libraries; versions drift.
+- **Serena**: call `initial_instructions` first. Use it for symbol lookup,
+  references, and symbol-level edits and renames instead of grep and manual
+  edits.
+- **Graphify**: see the graphify section below. Query before grepping.
+- **Ponytail**: apply to every coding task (smallest complete change, reuse
+  existing helpers).
+- **Vercel MCP**: deployments, build and runtime logs, env vars, domains, and
+  project settings. Inspect build logs for failed deploys and runtime errors
+  for production issues. Never print secrets.
+- **Supabase MCP**: inspect tables, advisors, and logs before schema changes;
+  apply schema changes as migrations, not ad-hoc SQL. Load the `supabase` and
+  `supabase-postgres-best-practices` skills before database, auth, or RLS work.
+  Run security advisors after DDL changes.
+- Confirm with the user before destructive or outward-facing actions on
+  external services (deleting projects or branches, production deploys,
+  rollbacks, migrations against production data).
+- If a tool is unavailable or errors, say so and fall back to native tools.
 
 ## Setup-only verification
 
