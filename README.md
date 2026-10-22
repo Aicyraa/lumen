@@ -16,3 +16,10 @@ Host port is 5433 (5432 is often taken by a system Postgres); use `DATABASE_URL=
 Without a compose provider (Podman), see `podman run` equivalent in NOTES.md.
 
 Stop with `docker compose down` (add `-v` to also delete the data volume).
+
+## RAG core tests (Phase 1)
+
+```bash
+podman exec lumen-db psql -U postgres -c 'CREATE DATABASE lumen_test'   # once
+cd rag-service && python -m venv .venv && .venv/bin/pip install -r requirements.txt && .venv/bin/pytest
+```
