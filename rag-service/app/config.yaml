@@ -1,0 +1,2 @@
+embedding:
+  model: all-MiniLM-L6-v2   # 384 numbers; changing it means changing VECTOR(384) and re-embedding
