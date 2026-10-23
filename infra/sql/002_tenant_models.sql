@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS tenant_models (
   status            TEXT NOT NULL DEFAULT 'connected' CHECK (status IN ('connected', 'failing')),
   rate_limits       JSONB,                    -- provider-reported limits from response headers (e.g. x-ratelimit-limit-requests, remaining-tokens, reset); NULL when the provider reports none
   rate_limits_seen_at TIMESTAMPTZ,
+  input_price_per_1m  NUMERIC(12, 6),       -- tenant-entered, optional; their provider's price per 1M input tokens
+  output_price_per_1m NUMERIC(12, 6),       -- same for output tokens; NULL means no cost is estimated for this model
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (tenant_id, tier, position)
 );
@@ -31,6 +33,14 @@ CREATE TABLE IF NOT EXISTS model_calls (
   tokens_in       INTEGER,
   tokens_out      INTEGER,
   latency_ms      INTEGER,
+  cost_usd        NUMERIC(12, 6),             -- tenant's estimated provider cost for this attempt; NULL when unpriced
+  cost_source     TEXT CHECK (cost_source IN ('estimated', 'provider')),
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS model_calls_tenant_time_idx ON model_calls (tenant_id, created_at DESC);
+
+-- Databases created before the price columns existed.
+ALTER TABLE tenant_models ADD COLUMN IF NOT EXISTS input_price_per_1m NUMERIC(12, 6);
+ALTER TABLE tenant_models ADD COLUMN IF NOT EXISTS output_price_per_1m NUMERIC(12, 6);
+ALTER TABLE model_calls ADD COLUMN IF NOT EXISTS cost_usd NUMERIC(12, 6);
+ALTER TABLE model_calls ADD COLUMN IF NOT EXISTS cost_source TEXT CHECK (cost_source IN ('estimated', 'provider'));
