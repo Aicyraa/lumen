@@ -24,6 +24,7 @@ def test_bad_scheme_or_shape_is_refused(url):
 @pytest.mark.parametrize("address", [
     "127.0.0.1", "10.1.2.3", "172.16.0.5", "192.168.1.1", "169.254.169.254", "100.64.0.1", "0.0.0.0",
     "224.0.0.1", "::1", "fe80::1", "fc00::1", "::ffff:127.0.0.1", "::ffff:10.0.0.1", "64:ff9b::7f00:1",
+    "::127.0.0.1", "::10.0.0.1", "::a00:1", "fec0::1",  # IPv4-compatible (::/96) and site-local
 ])
 def test_private_loopback_link_local_and_metadata_addresses_are_refused(address):
     with pytest.raises(EndpointError):
@@ -62,3 +63,8 @@ def test_http_localhost_is_allowed_only_outside_production():
         assert_endpoint("http://localhost:11434/v1", production=True, resolve=resolver("127.0.0.1"))
     with pytest.raises(EndpointError):  # only the name localhost, not other loopback hosts
         assert_endpoint("http://127.0.0.1:11434/v1", production=False, resolve=resolver("127.0.0.1"))
+
+
+def test_resolver_answering_an_ipv4_compatible_address_is_refused():
+    with pytest.raises(EndpointError):
+        assert_endpoint("https://api.example.com/v1", production=False, resolve=lambda host: ["::127.0.0.1"])
