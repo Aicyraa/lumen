@@ -32,6 +32,14 @@ ever returned, and endpoint URLs go through `lib/endpointGuard.ts` (https only, 
 production, private/loopback/link-local/metadata addresses refused, checked again at connect time, no redirects).
 `/v1/chat` and `/api/dashboard/try` send the decrypted models to `/internal/query`, write one `model_calls` row per
 attempt, and return `usage.cost_usd` as the tenant's estimated provider cost (null when the model has no price).
+`usage.cost_usd` is only ever the tenant's estimate from the prices on their own models. The one exception is an
+attempt's optional `reported_cost_usd`, which Express accepts only when the attempt succeeded and the value is a finite
+number >= 0 (the provider's own bill for that call). **The Python service must never send a cost it derived from a
+price of its own**, and has no prices to derive one from. Before each request Express re-checks every model's endpoint
+host (cached for `endpointGuardCacheTtlMs`); a host that now resolves to a private address is dropped, its key is
+never sent, and the model is marked `failing`.
+Limits for this feature (attempt cap, stored rate-limit header cap, field lengths, Test & save token budget, response
+size cap, price ceiling) live in `config.json` and can be overridden by upper-snake env vars such as `MODEL_ATTEMPTS_MAX`.
 With no models: production answers `422 no_models_configured`, other environments let the Python service use its
 `LLM_*` default. The global LLM cap applies only to that shared default key.
 Apply `infra/sql/002_tenant_models.sql` to the dev database (`psql "$DATABASE_URL" -f infra/sql/002_tenant_models.sql`); tests apply it to `lumen_test` themselves.
