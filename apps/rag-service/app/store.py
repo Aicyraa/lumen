@@ -62,4 +62,11 @@ def delete_document(tenant_id: str, document_id: str) -> int:
 
 def filenames(tenant_id: str, document_ids: list[str]) -> dict[str, str]:
     """Filenames of this tenant's documents, {document_id: filename}; other tenants' ids are simply absent."""
-    return {}  # stub (red phase)
+    if not document_ids:
+        return {}
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT id, filename FROM documents WHERE tenant_id = %s AND id = ANY(%s::uuid[])",
+            (tenant_id, document_ids),
+        ).fetchall()
+    return {str(r[0]): r[1] for r in rows}

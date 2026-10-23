@@ -15,7 +15,7 @@ import type { Deps } from "./types/types.js";
 import { errorHandler, notFoundHandler } from "./lib/errors.js";
 
 // Everything is injected so tests can pass a test database and a stubbed RAG client.
-export function createApp({ config, pool, auth, rag, log }: Omit<Deps, "pending"> & { auth: Auth }) {
+export function createApp({ config, pool, auth, rag, log, resolveHost }: Omit<Deps, "pending"> & { auth: Auth }) {
   const app = express();
   const pending = new Set<Promise<void>>(); // background ingests still running
   app.locals.idle = () => Promise.allSettled([...pending]);
@@ -23,7 +23,7 @@ export function createApp({ config, pool, auth, rag, log }: Omit<Deps, "pending"
   app.all("/api/auth/*splat", toNodeHandler(auth)); // Express 5 syntax; must come before express.json() (rule 5)
   app.use(express.json());
   // Public API: every /v1 route needs a valid key, so unknown paths also answer 401 first.
-  const deps = { pool, rag, config, log, pending };
+  const deps = { pool, rag, config, log, pending, resolveHost };
   const limiters = createLimiters(config);
   const llm = [limiters.perTenant, loadTenantModels(deps), limiters.globalCap];
   app.locals.rateLimitUsed = limiters.used;

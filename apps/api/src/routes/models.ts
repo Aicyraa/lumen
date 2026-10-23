@@ -13,7 +13,7 @@ const PUBLIC = "id, tier, position, provider, model_id, endpoint_url, key_hint, 
 const RANGES: Record<string, string> = { "7d": "7 days", "30d": "30 days" };
 
 // Dashboard Models tab. Every statement filters by tenant_id; another tenant's id is a 404.
-export function modelsRouter({ pool, config }: Deps) {
+export function modelsRouter({ pool, config, resolveHost }: Deps) {
   const r = Router();
   // tenant-entered price per 1M tokens (their own provider's rate, used only for the estimated provider cost); NUMERIC(12, 6)
   const price = z.number().min(0).max(config.maxPricePerMillion);
@@ -72,9 +72,9 @@ export function modelsRouter({ pool, config }: Deps) {
     const parsed = addBody.safeParse(req.body);
     if (!parsed.success) throw new ApiError(422, "invalid_request", `Invalid request: ${parsed.error.issues[0].path.join(".") || "body"}.`);
     const m = parsed.data;
-    try { await assertEndpoint(m.endpoint_url, { production: config.production }); }
+    try { await assertEndpoint(m.endpoint_url, { production: config.production, resolve: resolveHost }); }
     catch (e) { if (e instanceof EndpointError) throw new ApiError(422, "invalid_endpoint", e.message); throw e; }
-    await testCompletion(m, config); // nothing is saved unless this succeeds
+    await testCompletion(m, config, resolveHost); // nothing is saved unless this succeeds
 
     const client = await pool.connect();
     try {
