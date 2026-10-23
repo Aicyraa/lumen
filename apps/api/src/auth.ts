@@ -1,20 +1,24 @@
 import { betterAuth } from "better-auth";
 import { organization } from "better-auth/plugins";
 import { apiKey } from "@better-auth/api-key";
+import type { Config } from "./config.js";
+import type { Pool } from "./db.js";
 
-export function createAuth({ pool, config }) {
+export type Auth = ReturnType<typeof createAuth>;
+
+export function createAuth({ pool, config }: { pool: Pool; config: Config }) {
   // A provider without credentials is skipped, so dev works with email + password only.
-  const socialProviders = {};
-  if (config.google.clientId && config.google.clientSecret) socialProviders.google = config.google;
-  if (config.github.clientId && config.github.clientSecret) socialProviders.github = config.github;
+  const socialProviders: Partial<Record<"google" | "github", { clientId: string; clientSecret: string }>> = {};
+  const { google, github } = config;
+  if (google.clientId && google.clientSecret) socialProviders.google = { clientId: google.clientId, clientSecret: google.clientSecret };
+  if (github.clientId && github.clientSecret) socialProviders.github = { clientId: github.clientId, clientSecret: github.clientSecret };
 
   // A signed-in user must always have a tenant: create the personal organization once, reuse it afterwards.
-  async function ensurePersonalOrg(userId, name) {
+  let createOrganization: (body: { name: string; slug: string; userId: string }) => Promise<{ id: string }>;
+  async function ensurePersonalOrg(userId: string, name?: string | null): Promise<string> {
     const found = await pool.query(`SELECT "organizationId" FROM member WHERE "userId" = $1 ORDER BY "createdAt" LIMIT 1`, [userId]);
     if (found.rows[0]) return found.rows[0].organizationId;
-    const org = await auth.api.createOrganization({
-      body: { name: `${name || "My"} workspace`, slug: `personal-${userId.toLowerCase()}`, userId },
-    });
+    const org = await createOrganization({ name: `${name || "My"} workspace`, slug: `personal-${userId.toLowerCase()}`, userId });
     return org.id;
   }
 
@@ -45,5 +49,6 @@ export function createAuth({ pool, config }) {
       apiKey({ references: "organization", rateLimit: { enabled: false } }),
     ],
   });
+  createOrganization = (body) => auth.api.createOrganization({ body }) as Promise<{ id: string }>;
   return auth;
 }

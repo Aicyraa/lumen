@@ -1,7 +1,10 @@
+import type { RequestHandler } from "express";
+import type { Auth } from "../auth.js";
 import { ApiError } from "../errors.js";
+import "../types.js";
 
 // /v1/*: the tenant is the organization that owns the key, never anything from the request body.
-export const requireApiKey = (auth) => async (req, res, next) => {
+export const requireApiKey = (auth: Auth): RequestHandler => async (req, _res, next) => {
   const invalid = new ApiError(401, "invalid_api_key", "Missing or invalid API key.");
   const key = req.get("x-api-key");
   if (!key) throw invalid;
