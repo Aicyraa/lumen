@@ -34,3 +34,54 @@ def test_db():
 def clean(test_db):
     with psycopg.connect(test_db, autocommit=True) as conn:
         conn.execute("TRUNCATE documents, chunks, request_logs RESTART IDENTITY CASCADE")
+
+
+# ---- fixtures for the FastAPI service: fake secrets and a fake LLM, never real values or calls ----
+SECRET = "test-secret"
+AUTH = {"X-Internal-Secret": SECRET}
+FAKE_ENV = {
+    "INTERNAL_SECRET": SECRET,
+    "LLM_BASE_URL": "http://127.0.0.1:9/v1",  # nothing listens here; the real client is replaced anyway
+    "LLM_API_KEY": "test-key-not-real",
+    "LLM_MODEL_CHEAP": "cheap-model",
+    "LLM_MODEL_EXPENSIVE": "expensive-model",
+}
+
+
+@pytest.fixture(autouse=True)
+def fake_env(monkeypatch):
+    for key, value in FAKE_ENV.items():
+        monkeypatch.setenv(key, value)
+
+
+class FakeLLM:
+    """Records every call; the no-answer tests assert it was never used."""
+
+    def __init__(self):
+        self.calls = []
+        self.error = None  # set to an exception to make the next call fail
+
+    def complete(self, tier, system, user):
+        from app.llm import LLMResult
+
+        self.calls.append({"tier": tier, "system": system, "user": user})
+        if self.error:
+            raise self.error
+        return LLMResult("Fake answer [1]", 100, 10)
+
+
+@pytest.fixture
+def llm():
+    return FakeLLM()
+
+
+@pytest.fixture
+def client(llm):
+    from fastapi.testclient import TestClient
+
+    from app.main import app, get_llm
+
+    app.dependency_overrides[get_llm] = lambda: llm
+    with TestClient(app) as c:  # the with-block runs startup, which checks the environment
+        yield c
+    app.dependency_overrides.clear()

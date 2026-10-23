@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import psycopg
 import pytest
@@ -52,3 +54,26 @@ def test_chunk_with_other_tenant_than_its_document_is_rejected():
     doc = store.add_document("tenant_a", "a.txt")
     with pytest.raises(psycopg.errors.ForeignKeyViolation):
         store.add_chunks("tenant_b", doc, ["x"], np.array([vec(0)]))
+
+
+def count_chunks(tenant, doc):
+    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+        return conn.execute(
+            "SELECT count(*) FROM chunks WHERE tenant_id = %s AND document_id = %s", (tenant, doc)
+        ).fetchone()[0]
+
+
+def test_add_chunks_for_an_existing_document_is_all_or_nothing():
+    # ingest relies on this: Express creates the documents row, Python writes the chunks
+    doc = store.add_document("t", "f.txt")
+    good, bad = vec(0), np.zeros(10, dtype=np.float32)  # wrong dimension fails on the second row
+    with pytest.raises(psycopg.Error):
+        store.add_chunks("t", doc, ["one", "two"], [good, bad])
+    assert count_chunks("t", doc) == 0
+
+
+def test_add_chunks_for_a_missing_document_writes_nothing():
+    missing = "00000000-0000-0000-0000-000000000000"
+    with pytest.raises(psycopg.errors.ForeignKeyViolation):
+        store.add_chunks("t", missing, ["x"], np.array([vec(0)]))
+    assert count_chunks("t", missing) == 0

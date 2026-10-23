@@ -24,6 +24,8 @@ def add_document(tenant_id: str, filename: str) -> str:
 def add_chunks(tenant_id: str, document_id: str, chunks: list[str], vectors: np.ndarray) -> None:
     # one transaction: a failure leaves no chunks. The composite FK rejects a document of another tenant.
     with _connect() as conn:
+        # re-ingesting the same document replaces its chunks instead of appending duplicates
+        conn.execute("DELETE FROM chunks WHERE tenant_id = %s AND document_id = %s", (tenant_id, document_id))
         with conn.cursor() as cur:
             cur.executemany(
                 "INSERT INTO chunks (tenant_id, document_id, content, embedding) VALUES (%s, %s, %s, %s)",
