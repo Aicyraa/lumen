@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { z } from "zod";
 
 const tunables = JSON.parse(readFileSync(new URL("../config.json", import.meta.url), "utf8"));
@@ -43,6 +44,7 @@ export function loadConfig(env = process.env, overrides = {}) {
     github: { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET },
     production: env.NODE_ENV === "production",
     ...t,
+    uploadDir: resolve(new URL("..", import.meta.url).pathname, t.uploadDir), // relative to apps/api
     ...overrides,
   };
 }

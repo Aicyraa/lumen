@@ -9,8 +9,9 @@ export function createRagClient(config) {
     let res;
     try {
       res = await fetch(config.ragUrl + path, { ...init, headers: { ...headers, ...init.headers }, signal: AbortSignal.timeout(timeoutMs) });
-    } catch {
-      throw new ApiError(502, "provider_error", "The answer service is unavailable. Try again shortly.");
+    } catch (err) {
+      const why = err?.name === "TimeoutError" ? "timed out" : "is unavailable";
+      throw new ApiError(502, "provider_error", `The answer service ${why}. Try again shortly.`);
     }
     const body = await res.json().catch(() => null);
     if (!res.ok) {

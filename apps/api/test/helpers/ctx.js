@@ -16,8 +16,7 @@ export async function makeCtx(overrides = {}) {
   const auth = createAuth({ pool, config });
   const log = pino({ level: "silent" });
   const rag = createRagClient(config);
-  const built = createApp({ config, pool, auth, rag, log });
-  const app = built.app ?? built;
+  const app = createApp({ config, pool, auth, rag, log });
   const tenants = [];
 
   // A real sign-up, then an organization-owned API key through the plugin.
@@ -37,9 +36,9 @@ export async function makeCtx(overrides = {}) {
       await pool.query("DELETE FROM documents WHERE tenant_id = $1", [t]);
     }
     stub.close();
-    await built.stop?.();
+    await app.locals.idle(); // background ingests must finish before the pool closes
     await pool.end();
   }
 
-  return { app, pool, auth, config, stub, createTenant, close, ...built };
+  return { app, pool, auth, config, stub, createTenant, close };
 }
