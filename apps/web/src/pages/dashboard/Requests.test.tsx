@@ -79,4 +79,14 @@ describe("Requests", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
+
+  it("does not claim 'no price set' for a request where no model was called", async () => {
+    const none = { ...detail, route: { tier: "none", k: 0, escalated: false, difficulty: 0, top_score: 0.07 }, usage: { tokens_in: 0, tokens_out: 0, latency_ms: 37, cost_usd: null }, sources: [] };
+    mockFetch((url) => (url.includes(`/requests/${ID1}`) ? none : { items: [item(ID1, "Who won the match?", "none")], next_cursor: null }));
+    renderWithProviders(<Requests />);
+    await userEvent.click(await screen.findByRole("button", { name: /Who won the match/ }));
+    const drawer = await screen.findByRole("dialog");
+    await within(drawer).findByText("No model called");
+    expect(within(drawer).queryByText("no price set")).not.toBeInTheDocument();
+  });
 });
