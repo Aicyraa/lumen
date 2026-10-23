@@ -3,6 +3,8 @@ import { z } from "zod";
 import { encryptSecret, maskKey } from "../lib/crypto.js";
 import { assertEndpoint, EndpointError } from "../lib/endpointGuard.js";
 import { ApiError } from "../lib/errors.js";
+import { parseRange, rangeStart } from "../lib/range.js";
+import { modelUsage } from "../services/modelUsage.js";
 import { testCompletion } from "../services/provider.js";
 import type { Deps } from "../types/types.js";
 import "../types/types.js";
@@ -10,7 +12,6 @@ import "../types/types.js";
 const TIERS = ["cheap", "expensive", "fallback"] as const;
 // Never select api_key_encrypted here: the list and every response are built from these columns only.
 const PUBLIC = "id, tier, position, provider, model_id, endpoint_url, key_hint, status, input_price_per_1m::float8 AS input_price_per_1m, output_price_per_1m::float8 AS output_price_per_1m";
-const RANGES: Record<string, string> = { "7d": "7 days", "30d": "30 days" };
 
 // Dashboard Models tab. Every statement filters by tenant_id; another tenant's id is a 404.
 export function modelsRouter({ pool, config, resolveHost }: Deps) {
@@ -36,36 +37,9 @@ export function modelsRouter({ pool, config, resolveHost }: Deps) {
     res.json({ models: await grouped(req.tenantId) });
   });
 
-  // Per-model usage for the range, from model_calls. Every table is filtered by tenant_id, including the
-  // subquery that finds earlier attempts of the same request.
   r.get("/usage", async (req, res) => {
-    const range = z.enum(["7d", "30d"]).default("7d").safeParse(req.query.range ?? undefined);
-    if (!range.success) throw new ApiError(422, "invalid_request", "range must be 7d or 30d.");
-    const interval = RANGES[range.data];
-    const { rows } = await pool.query(
-      `SELECT m.id, m.tier, m.position, m.provider, m.model_id, m.status, m.rate_limits, m.rate_limits_seen_at,
-              count(c.id)::int AS requests,
-              COALESCE(sum(c.tokens_in), 0)::int AS tokens_in, COALESCE(sum(c.tokens_out), 0)::int AS tokens_out,
-              count(c.id) FILTER (WHERE c.outcome = 'error')::int AS f_error,
-              count(c.id) FILTER (WHERE c.outcome = 'timeout')::int AS f_timeout,
-              count(c.id) FILTER (WHERE c.outcome = 'rate_limited')::int AS f_rate_limited,
-              count(c.id) FILTER (WHERE c.outcome = 'ok' AND c.tier <> 'fallback' AND EXISTS (
-                SELECT 1 FROM model_calls p WHERE p.tenant_id = $1 AND p.request_id = c.request_id AND p.id < c.id))::int AS backup_uses,
-              count(c.id) FILTER (WHERE c.outcome = 'ok' AND c.tier = 'fallback')::int AS fallback_uses,
-              round(percentile_cont(0.5) WITHIN GROUP (ORDER BY c.latency_ms))::int AS median_latency_ms,
-              sum(c.cost_usd)::float8 AS cost_usd
-       FROM tenant_models m
-       LEFT JOIN model_calls c ON c.tenant_model_id = m.id AND c.tenant_id = m.tenant_id AND c.created_at >= now() - $2::interval
-       WHERE m.tenant_id = $1
-       GROUP BY m.id
-       ORDER BY CASE m.tier WHEN 'cheap' THEN 0 WHEN 'expensive' THEN 1 ELSE 2 END, m.position`, [req.tenantId, interval]);
-    const { rows: [{ total }] } = await pool.query(
-      "SELECT sum(cost_usd)::float8 AS total FROM model_calls WHERE tenant_id = $1 AND created_at >= now() - $2::interval", [req.tenantId, interval]);
-    res.json({
-      range: range.data,
-      total_cost_usd: total, // estimated provider cost; null when nothing was priced
-      models: rows.map(({ f_error, f_timeout, f_rate_limited, ...m }) => ({ ...m, failures: { error: f_error, timeout: f_timeout, rate_limited: f_rate_limited } })),
-    });
+    const { range, days } = parseRange(req.query.range);
+    res.json({ range, ...(await modelUsage(pool, req.tenantId, rangeStart(days))) });
   });
 
   r.post("/", async (req, res) => {

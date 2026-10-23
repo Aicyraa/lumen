@@ -11,6 +11,7 @@ import { feedbackHandler } from "./routes/feedback.js";
 import { modelsRouter } from "./routes/models.js";
 import { usageHandler } from "./routes/usage.js";
 import { requestsRouter } from "./routes/requests.js";
+import { analyticsRouter } from "./routes/analytics.js";
 import { documentsRouter } from "./routes/documents.js";
 import type { Auth } from "./auth/auth.js";
 import type { Deps } from "./types/types.js";
@@ -45,6 +46,7 @@ export function createApp({ config, pool, auth, rag, log, resolveHost }: Omit<De
     res.json({ documents: rows.map((d: { id: string; filename: string; status: string; error: string | null; chunk_count: number; created_at: Date }) => ({ document_id: d.id, filename: d.filename, status: d.status, error: d.error, chunk_count: d.chunk_count, created_at: d.created_at })) });
   });
   dash.get("/usage", usageHandler(deps, limiters.used));
+  dash.use("/analytics", analyticsRouter(deps));
   dash.use("/requests", requestsRouter(deps));
   dash.use("/documents", documentsRouter(deps));
   dash.use("/models", modelsRouter(deps));
