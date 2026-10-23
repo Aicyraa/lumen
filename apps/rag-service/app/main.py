@@ -162,7 +162,7 @@ def query(req: QueryRequest, llm=Depends(get_llm)):
     # plain def: embedding and database calls block, so FastAPI runs this in its thread pool
     started = time.perf_counter()
     messages = load_config()["messages"]
-    none_route = {"model_tier": "none", "k": 0, "escalated": False, "difficulty": 0.0}
+    none_route = {"model_tier": "none", "k": 0, "escalated": False, "difficulty": 0.0, "top_score": None}
     qvec = embed([req.query])[0]
     probe = store.search(req.tenant_id, qvec, 1)  # best match only, to learn best_score
     if not probe:  # this tenant has no chunks at all
@@ -170,8 +170,8 @@ def query(req: QueryRequest, llm=Depends(get_llm)):
     best_score = probe[0][3]
     cfg = router_cfg()
     if best_score < cfg.no_answer_score:  # nothing relevant: do not spend a model call
-        return query_response(started, messages["not_found"], [], none_route)
-    route = decide(req.query, best_score, cfg)
+        return query_response(started, messages["not_found"], [], {**none_route, "top_score": best_score})
+    route = {**decide(req.query, best_score, cfg), "top_score": best_score}
     hits = store.search(req.tenant_id, qvec, route["k"])
     system, user = build_prompt(req.query, [content for _, _, content, _ in hits])
     try:
