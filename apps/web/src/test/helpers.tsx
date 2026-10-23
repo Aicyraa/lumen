@@ -14,7 +14,9 @@ export function renderWithProviders(ui: ReactElement, { route = "/" } = {}) {
 }
 
 type Handler = (url: string, init?: RequestInit) => unknown;
-export interface Reply { status?: number; body?: unknown }
+export interface Reply { __reply: true; status: number; body?: unknown }
+// Explicit non-200 reply (a plain body can have its own "status" field).
+export const reply = (status: number, body?: unknown): Reply => ({ __reply: true, status, body });
 
 // Stubs global fetch. A handler gets the path (without the API base) and returns a body or { status, body }.
 export function mockFetch(handler: Handler) {
@@ -23,8 +25,9 @@ export function mockFetch(handler: Handler) {
     const url = String(input);
     calls.push({ url, init });
     const out = handler(url, init) as Reply | undefined;
-    const status = out && typeof out === "object" && "status" in out ? (out.status ?? 200) : 200;
-    const body = out && typeof out === "object" && "status" in out ? out.body : out;
+    const isReply = !!out && typeof out === "object" && "__reply" in out;
+    const status = isReply ? (out as Reply).status : 200;
+    const body = isReply ? (out as Reply).body : out;
     return new Response(status === 204 ? null : JSON.stringify(body ?? {}), { status, headers: { "content-type": "application/json" } });
   });
   vi.stubGlobal("fetch", fn);

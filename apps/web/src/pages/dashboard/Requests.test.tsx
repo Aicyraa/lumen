@@ -74,7 +74,7 @@ describe("Requests", () => {
     expect(within(drawer).getByText("refund-policy.md")).toBeInTheDocument();
     expect(within(drawer).getByText(/Fall term: full refund/)).toBeInTheDocument();
     expect(within(drawer).getByText("deleted document")).toBeInTheDocument();
-    expect(within(drawer).getByText("0.71")).toBeInTheDocument();
+    expect(within(drawer).getAllByText("0.71")).toHaveLength(2); // top score and the source score
     expect(within(drawer).getByText("no price set")).toBeInTheDocument();
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());

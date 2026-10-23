@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { mockFetch, renderWithProviders } from "../../test/helpers";
+import { mockFetch, renderWithProviders, reply } from "../../test/helpers";
 import { Documents } from "./Documents";
 
 const doc = (over: object) => ({ document_id: "d1", filename: "handbook.md", status: "processing", error: null, chunk_count: 0, created_at: "2026-10-23T10:00:00Z", ...over });
@@ -45,7 +45,7 @@ describe("Documents", () => {
   it("lets the server decide: a rejected upload shows the API message", async () => {
     mockFetch((url, init) => {
       if (url.endsWith("/usage")) return usage;
-      if (init?.method === "POST") return { status: 415, body: { error: { code: "unsupported_type", message: "Only PDF, .txt and .md files are supported." } } };
+      if (init?.method === "POST") return reply(415, { error: { code: "unsupported_type", message: "Only PDF, .txt and .md files are supported." } });
       return { documents: [] };
     });
     renderWithProviders(<Documents pollMs={40} />);
@@ -69,7 +69,7 @@ describe("Documents", () => {
     let docs = [doc({ status: "ready", chunk_count: 3 })];
     const { calls } = mockFetch((url, init) => {
       if (url.endsWith("/usage")) return usage;
-      if (init?.method === "DELETE") { docs = []; return { status: 204 }; }
+      if (init?.method === "DELETE") { docs = []; return reply(204); }
       return { documents: docs };
     });
     renderWithProviders(<Documents pollMs={40} />);
