@@ -42,7 +42,7 @@ def test_auth_is_checked_before_the_request_body(client, method, path, kwargs):
 
 def test_non_ascii_secret_is_401_not_a_crash(client):
     resp = client.post("/internal/query", json={"tenant_id": "t", "query": "hi"},
-                       headers={"X-Internal-Secret": "café".encode("utf-8").decode("latin-1")})
+                       headers={"X-Internal-Secret": "café".encode("utf-8")})  # raw non-ASCII bytes
     assert_error(resp, 401, "unauthorized")
 
 
