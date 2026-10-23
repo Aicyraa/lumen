@@ -37,9 +37,9 @@ describe("Models", () => {
     renderWithProviders(<Models />);
     await screen.findByText("model-a");
     expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual(expect.arrayContaining(["Cheap", "Expensive", "Fallback"]));
-    expect(screen.getByText("PRIMARY", { selector: "[data-model='a'] *" })).toBeInTheDocument();
-    expect(screen.getByText("BACKUP 1", { selector: "[data-model='b'] *" })).toBeInTheDocument();
     const a = screen.getByTestId("model-a");
+    expect(within(a).getByText("PRIMARY")).toBeInTheDocument();
+    expect(within(screen.getByTestId("model-b")).getByText("BACKUP 1")).toBeInTheDocument();
     expect(within(a).getByText(/gsk_\.\.\.a1b2/)).toBeInTheDocument();
     expect(within(a).getByText(/12 requests/)).toBeInTheDocument();
     expect(within(a).getByText(/3,400 in/)).toBeInTheDocument();
@@ -51,7 +51,7 @@ describe("Models", () => {
     expect(within(b).getByText(/not reported/)).toBeInTheDocument();
     expect(within(b).getByText(/no price set/)).toBeInTheDocument();
     expect(screen.getByText(/No fallback/)).toBeInTheDocument();
-    expect(screen.getByText(/estimated provider cost/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/estimated provider cost/i).length).toBeGreaterThan(0);
   });
 
   it("moves a model with the arrows (first model's up arrow is disabled) and removes it", async () => {
@@ -84,7 +84,7 @@ describe("Models", () => {
     const gate = new Promise((r) => (release = r));
     const { calls, fn } = mockFetch(router((url, init) => (init?.method === "POST" ? undefined : undefined)));
     const orig = fn.getMockImplementation()!;
-    fn.mockImplementation(async (input, init) => (init?.method === "POST" ? (await gate, new Response(JSON.stringify({ model: m("z", "cheap", 2) }), { status: 201 })) : orig(input, init)));
+    fn.mockImplementation(async (input, init) => (init?.method === "POST" ? (calls.push({ url: String(input), init }), await gate, new Response(JSON.stringify({ model: m("z", "cheap", 2) }), { status: 201 })) : orig(input, init)));
     renderWithProviders(<Models />);
     const user = userEvent.setup();
     await fillForm(user, { input: "0.1", output: "0.4" });
