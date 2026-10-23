@@ -122,6 +122,8 @@ def ingest(tenant_id: Annotated[str, Form(min_length=1)], document_id: Annotated
             text = ""
         except ValueError:
             raise ApiError(415, "unsupported_type", "Only PDF, .txt and .md files are supported.")
+    if "\x00" in text:  # Postgres text cannot hold NUL; treat the file as unreadable text
+        text = ""
     chunks = chunk(text) if text.strip() else []
     if not chunks:
         raise ApiError(422, "no_text_extracted", "No text could be extracted from the file.")
