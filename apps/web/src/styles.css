@@ -2,7 +2,7 @@
 :root {
   --bg: #0c0c0b; --surface: #141413; --surface-active: #1c1c1a; --hover-row: #121211;
   --line-soft: #1f1f1d; --line: #262624; --line-strong: #33332f; --line-dashed: #44443f;
-  --text: #efeee9; --code-text: #d8d7d1; --text-2: #a9a8a2; --text-3: #8d8c86; --text-4: #6d6c67;
+  --text: #efeee9; --code-text: #d8d7d1; --text-2: #a9a8a2; --text-3: #8d8c86; --text-4: #807f7a;
   --lime: oklch(0.88 0.17 118); --lime-soft: oklch(0.8 0.12 118); --amber: oklch(0.84 0.12 80); --red: oklch(0.72 0.15 28);
   --sans: "Geist", system-ui, sans-serif; --mono: "Geist Mono", ui-monospace, monospace;
   --pad: clamp(20px, 4vw, 48px);

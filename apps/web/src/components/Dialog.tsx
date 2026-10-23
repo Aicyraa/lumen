@@ -9,13 +9,18 @@ export function Dialog({ title, label, onClose, dismissable = true, variant = "m
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  // Latest props live in refs so the focus effect below runs once per open, not on every parent render.
+  const closeRef = useRef(onClose);
+  const dismissRef = useRef(dismissable);
+  closeRef.current = onClose;
+  dismissRef.current = dismissable;
 
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     const el = ref.current!;
     (el.querySelector<HTMLElement>("[data-autofocus]") ?? el.querySelector<HTMLElement>(FOCUSABLE) ?? el).focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && dismissable) { e.stopPropagation(); onClose(); }
+      if (e.key === "Escape" && dismissRef.current) { e.stopPropagation(); closeRef.current(); }
       if (e.key !== "Tab") return;
       const items = Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE));
       if (!items.length) { e.preventDefault(); return; }
@@ -25,7 +30,7 @@ export function Dialog({ title, label, onClose, dismissable = true, variant = "m
     };
     document.addEventListener("keydown", onKey);
     return () => { document.removeEventListener("keydown", onKey); opener?.focus?.(); };
-  }, [dismissable, onClose]);
+  }, []);
 
   return (
     <div className={`overlay overlay-${variant}`} onMouseDown={(e) => { if (dismissable && e.target === e.currentTarget) onClose(); }}>

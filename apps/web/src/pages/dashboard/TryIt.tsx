@@ -70,7 +70,7 @@ export function TryIt() {
                   <div className="source" key={`${s.chunk_id}-${i}`}>
                     <span className="mono lime">[{i + 1}]</span>
                     <div className="grow"><div>{s.filename ?? "deleted document"}</div>{s.snippet && <div className="small muted-3">{s.snippet}</div>}</div>
-                    <div className="score"><div className="score-track"><div className="score-fill" style={{ width: `${Math.round(s.score * 100)}%` }} /></div><span className="mono small muted-2">{fmtScore(s.score)}</span></div>
+                    <div className="score"><div className="score-track"><div className="score-fill" style={{ width: `${Math.min(100, Math.max(0, Math.round(s.score * 100)))}%` }} /></div><span className="mono small muted-2">{fmtScore(s.score)}</span></div>
                   </div>
                 ))}
               </div>
