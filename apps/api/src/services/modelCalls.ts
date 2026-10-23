@@ -33,7 +33,8 @@ export function priceAttempts(raw: RawAttempt[], known: Map<string, KnownModel>)
     const m = id ? known.get(id)! : undefined;
     let cost: number | null = null;
     let source: Attempt["cost_source"] = null;
-    if (a.reported_cost_usd != null) { cost = round6(a.reported_cost_usd); source = "provider"; }
+    // a provider-reported cost counts only for a call that succeeded
+    if (a.outcome === "ok" && a.reported_cost_usd != null) { cost = round6(a.reported_cost_usd); source = "provider"; }
     else if (m && m.inputPrice != null && m.outputPrice != null && (a.tokens_in != null || a.tokens_out != null)) {
       cost = round6(((a.tokens_in ?? 0) / 1e6) * m.inputPrice + ((a.tokens_out ?? 0) / 1e6) * m.outputPrice);
       source = "estimated";
