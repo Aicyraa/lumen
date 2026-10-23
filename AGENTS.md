@@ -1,9 +1,9 @@
 # Lumen project instructions
 
-Read `AI_BUILD_BRIEF.md` fully before application work. It is the authoritative
+Read `docs/AI_BUILD_BRIEF.md` fully before application work. It is the authoritative
 product brief, including hard rules, stack, contracts, phase boundaries, and
-acceptance checks. Read `PROJECT_WORKFLOW.md` for supporting workflow context
-and `DESIGN.md` before building any screen; the build brief wins if they
+acceptance checks. Read `docs/PROJECT_WORKFLOW.md` for supporting workflow context
+and `docs/DESIGN.md` before building any screen; the build brief wins if they
 disagree. Do not start a build phase unless asked.
 
 ## Money comes last
@@ -19,8 +19,8 @@ money and stay in scope, read from environment variables.
 
 The main session is the lead. Run a phase with the `lumen-phase` skill (for
 example "run phase 1"). It delegates to the project agents in `.claude/agents/`:
-`rag-engineer` (rag-service), `api-engineer` (api), `web-engineer` (web),
-`eval-engineer` (test-site, eval) and the read-only `lumen-reviewer`. The lead
+`rag-engineer` (apps/rag-service), `api-engineer` (apps/api), `web-engineer` (apps/web),
+`eval-engineer` (tools/eval) and the read-only `lumen-reviewer`. The lead
 verifies acceptance checks itself and never merges or pushes without approval.
 The team works test-first: a failing test is committed (`test:`) and shown red
 before the code that makes it pass (`feat:` or `fix:`).

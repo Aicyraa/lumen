@@ -7,7 +7,7 @@ import pytest
 
 from app.env import load_env
 
-SCHEMA = Path(__file__).resolve().parents[2] / "infra" / "sql" / "001_app_tables.sql"
+SCHEMA = Path(__file__).resolve().parents[3] / "infra" / "sql" / "001_app_tables.sql"
 
 
 def _test_url() -> str:

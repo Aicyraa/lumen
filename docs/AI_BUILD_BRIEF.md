@@ -33,7 +33,7 @@ You can skip learning RAG in depth, but keep these five facts in mind so you can
 
 **Out of scope:** payments and billing, email or password login, teams, mobile apps, fine-tuning a language model, and a tenant-chosen retention period for logged queries (the dashboard and public copy must not promise one).
 
-**Design.** Every screen follows `DESIGN.md` (colors, type, layout, components, copy rules). If a design file and this brief disagree, this brief wins, and the differences are listed in section 9 under "Design versus brief".
+**Design.** Every screen follows `docs/DESIGN.md` (colors, type, layout, components, copy rules). If a design file and this brief disagree, this brief wins, and the differences are listed in section 9 under "Design versus brief".
 
 ## 2. Hard rules
 
@@ -54,32 +54,33 @@ These are never negotiable. If a task seems to require breaking one, stop and sa
 
 | Part | Choice | Notes |
 | --- | --- | --- |
-| Dashboard | React, Vite, React Router, TanStack Query, Better Auth React client | Folder `web/` |
-| Public API | Node.js LTS with ES modules, Express, `zod`, `multer`, `express-rate-limit`, `cors`, `pino` | Folder `api/` |
-| Auth, tenants, keys | `better-auth`, its `organization` plugin, `@better-auth/api-key`; Google and GitHub login only | Inside `api/` |
-| RAG service | Python 3.11 or newer, FastAPI, `uvicorn`, `sentence-transformers` with `all-MiniLM-L6-v2`, `pypdf`, `psycopg[binary]`, `pgvector`, `numpy`, `pydantic`, `pyyaml`, `pytest` | Folder `rag-service/` |
+| Dashboard | React, Vite, React Router, TanStack Query, Better Auth React client | Folder `apps/web/` |
+| Public API | Node.js LTS with ES modules, Express, `zod`, `multer`, `express-rate-limit`, `cors`, `pino` | Folder `apps/api/` |
+| Auth, tenants, keys | `better-auth`, its `organization` plugin, `@better-auth/api-key`; Google and GitHub login only | Inside `apps/api/` |
+| RAG service | Python 3.11 or newer, FastAPI, `uvicorn`, `sentence-transformers` with `all-MiniLM-L6-v2`, `pypdf`, `psycopg[binary]`, `pgvector`, `numpy`, `pydantic`, `pyyaml`, `pytest` | Folder `apps/rag-service/` |
 | Database | Postgres 16 with pgvector, Docker image `pgvector/pgvector:pg16` | One database shared by both services |
 | LLM calls | `openai` Python SDK against an OpenAI-compatible endpoint | Set by `LLM_BASE_URL` |
 | Tests | `pytest`, and Vitest with `supertest` | Required, see rule 8 |
 
 ```text
-lumen/
-  AGENTS.md                 # this brief
-  DESIGN.md                 # visual and copy rules for every screen
-  docker-compose.yml        # db first; api and rag-service added later
+lumen/                       # root: tooling and docs only, no application code
+  AGENTS.md  CLAUDE.md  README.md
+  package.json  pnpm-workspace.yaml  turbo.json     # Turborepo: dev, build, test, bootstrap
+  docker-compose.yml         # db first; api and rag-service added later
   .env.example
   infra/sql/001_app_tables.sql
-  api/                      # Express + Better Auth (ES modules)
-    src/ (auth.ts, server.ts, db.ts, routes/, middleware/)
-    test/
-  rag-service/
-    app/ (main.py, chunking.py, embeddings.py, store.py, router.py, llm.py, config.yaml)
-    scripts/ (ingest_sample.py, ask.py)
-    tests/
-  web/                      # React dashboard
-  test-site/                # fake customer (phase 5)
-  eval/                     # questions.csv, run_eval.py, results.csv
-  NOTES.md                  # dated notes: what was tried, what broke
+  docs/                      # AI_BUILD_BRIEF.md, PROJECT_WORKFLOW.md, DESIGN.md, NOTES.md
+  tools/eval/                # questions.csv, run_eval.py, results.csv (scripts, not an app)
+  apps/
+    api/                     # Node/Express + Better Auth (ES modules), own package.json
+      src/ (auth.ts, server.ts, db.ts, routes/, middleware/)
+      test/
+    web/                     # React + Vite dashboard, own package.json
+      src/ (lib/auth-client.ts, pages/, components/)
+    rag-service/             # Python/FastAPI; package.json only wraps pytest/uvicorn for Turborepo
+      app/ (main.py, chunking.py, embeddings.py, store.py, router.py, llm.py, config.yaml)
+      scripts/ (ingest_sample.py, ask.py)
+      tests/  requirements.txt  pytest.ini
 ```
 
 | Variable | Used by | Meaning |
@@ -104,7 +105,7 @@ No values are decided for the limits above. Leave them empty in `.env.example`, 
 **Models and hosting (decided; treat as part of the rules)**
 
 - Embeddings: `all-MiniLM-L6-v2` (384 numbers) inside `rag-service`. If the model ever changes, change `VECTOR(384)` and re-embed every chunk.
-- Chat models through Groq's OpenAI-compatible API: `LLM_BASE_URL=https://api.groq.com/openai/v1`, `LLM_MODEL_CHEAP=llama-3.1-8b-instant`, `LLM_MODEL_EXPENSIVE=llama-3.3-70b-versatile`. Confirm the names on Groq's models page before pinning them. Free-tier limits are low, so handle a `429` from the provider with one retry and then a `502 provider_error`.
+- Chat models through Groq's OpenAI-compatible API: `LLM_BASE_URL=https://api.groq.com/openai/v1`, `LLM_MODEL_CHEAP=openai/gpt-oss-20b`, `LLM_MODEL_EXPENSIVE=openai/gpt-oss-120b` (the earlier llama names returned model_not_found on 2026-10-23). Confirm the names on Groq's models page before pinning them. Free-tier limits are low, so handle a `429` from the provider with one retry and then a `502 provider_error`.
 - Database: Docker in development, Supabase Postgres in production. Enable the `vector` extension. From serverless code use the transaction pooler (port 6543). From long-running servers use the direct or session connection.
 - Supabase exposure: this project uses direct Postgres connections only. Turn the Data API off, or enable Row Level Security on every table including Better Auth's tables. Never use or ship a `service_role` key in a browser.
 - Vercel hosts the React dashboard only. Do not deploy the Python service to Vercel. If Express runs on Vercel, uploads over 4.5 MB fail with a 413, so lower the upload limit to 4 MB or upload straight to storage. The default plan is Express and Python together on one container host.
@@ -116,7 +117,7 @@ Taken from the official Better Auth docs on 2026-10-21 (docs listed version 1.7.
 
 **Install and migrate:** `npm install better-auth @better-auth/api-key`, then `npx auth@latest migrate` (re-run after adding a plugin). Better Auth creates its own tables, so do not hand-write them.
 
-**Server config** (`api/src/auth.ts`):
+**Server config** (`apps/api/src/auth.ts`):
 
 ```ts
 import { betterAuth } from "better-auth";
@@ -144,7 +145,7 @@ export const auth = betterAuth({
 });
 ```
 
-**Express mount** (`api/src/server.ts`). Order matters:
+**Express mount** (`apps/api/src/server.ts`). Order matters:
 
 ```ts
 import express from "express";
@@ -166,7 +167,7 @@ export async function requireSession(req: any, res: any, next: any) {
 }
 ```
 
-**Client** (`web/src/lib/auth-client.ts`):
+**Client** (`apps/web/src/lib/auth-client.ts`):
 
 ```ts
 import { createAuthClient } from "better-auth/react";
@@ -266,7 +267,7 @@ All errors use one shape: `{ "error": { "code": "<snake_case>", "message": "<hum
   "request_id": "3f0c...",
   "answer": "Enrollment closes on ...",
   "sources": [{ "document_id": "c1a2...", "chunk_id": 12, "score": 0.71 }],
-  "route": { "model_tier": "cheap", "k": 3, "escalated": false, "difficulty": 0.0 },
+  "route": { "model_tier": "cheap", "k": 3, "escalated": false, "difficulty": 0.0, "top_score": 0.71 },
   "usage": { "tokens_in": 812, "tokens_out": 96, "cost_usd": 0.0004, "latency_ms": 820 }
 }
 ```
@@ -312,7 +313,7 @@ Ingest is synchronous in Python. Express calls it in the background after answer
 4. Otherwise call `decide(...)` below to get the tier and `k`.
 5. Retrieve the final top-`k` chunks (filtered by `tenant_id`), build the prompt, call the chosen model, measure tokens and latency (cost is added in Phase 7), and return the response.
 
-**Config** (`rag-service/app/config.yaml`). All numbers are placeholders to calibrate on the evaluation set, not tuned values:
+**Config** (`apps/rag-service/app/config.yaml`). All numbers are placeholders to calibrate on the evaluation set, not tuned values:
 
 ```yaml
 router:
@@ -394,7 +395,7 @@ Do not write application code yet. Report using the format in section 9.
 ### Phase 1: RAG core
 
 ```text
-Do Phase 1 only. In rag-service/ build the RAG core as plain Python functions, following sections 1, 2, 5 and 7 of AGENTS.md.
+Do Phase 1 only. In apps/rag-service/ build the RAG core as plain Python functions, following sections 1, 2, 5 and 7 of AGENTS.md.
 - app/chunking.py: chunk(text, size_words=120, overlap_words=30) -> list[str]
 - app/embeddings.py: load all-MiniLM-L6-v2 once; embed(texts) -> numpy array of normalized vectors
 - app/store.py using psycopg and pgvector: add_document(tenant_id, filename) -> document_id; add_chunks(tenant_id, document_id, chunks, vectors); search(tenant_id, query_vector, k) -> list of (chunk_id, document_id, content, score); delete_document(tenant_id, document_id). Every SQL statement filters by tenant_id.
@@ -411,7 +412,7 @@ Use a separate test database or schema, never the dev data. Report using the for
 ### Phase 2: the Python service
 
 ```text
-Do Phase 2 only. Build the FastAPI service in rag-service/app/main.py per sections 6 and 7.
+Do Phase 2 only. Build the FastAPI service in apps/rag-service/app/main.py per sections 6 and 7.
 - Endpoints: /internal/ingest, /internal/query, DELETE /internal/documents/{document_id}, /internal/health, exactly as in the contract.
 - A dependency that requires X-Internal-Secret (use a constant-time comparison) on every endpoint except health.
 - Endpoints that embed text or use the database are plain `def`, not `async def`, so FastAPI runs them in its thread pool. A blocking embed call inside `async def` would stall every other request, including health checks, during an upload.
@@ -427,10 +428,14 @@ Do not call a real LLM in tests. Report using the format in section 9.
 - [ ] With a real key, one manual question is answered from the document with a `[1]`-style citation, and an unrelated question returns the not-found message
 - [ ] All tests pass
 
+### Phase R: folder structure refactor (extra phase, done between Phase 2 and Phase 3)
+
+Not part of the numbered workflow. Turborepo + pnpm workspaces monorepo: all applications live in `apps/` (`web`, `api`, `rag-service`), each with the conventional layout of its own runtime; the root holds only tooling (`package.json`, `pnpm-workspace.yaml`, `turbo.json`, `docker-compose.yml`, `.env.example`, `infra/`, `docs/`, `tools/`). Python is wrapped by a small `package.json` (scripts `bootstrap`, `dev`, `test`) so `pnpm test` runs every app's tests through Turborepo. Acceptance: `pnpm test` runs the 81 rag-service tests green from the root.
+
 ### Phase 3: Express API and Better Auth
 
 ```text
-Do Phase 3 only. Build the Express API in api/ (ES modules) per sections 2, 4, 5 and 6.
+Do Phase 3 only. Build the Express API in apps/api/ (ES modules) per sections 2, 4, 5 and 6.
 - Better Auth with Google and GitHub, the organization plugin and the API key plugin, as in section 4. Check every name marked VERIFY against the official docs for the installed version and list what you found in the report.
 - A user's first login creates a personal organization and makes it the active one.
 - Middleware: requireSession for /api/dashboard/*, requireApiKey for /v1/* (x-api-key header, tenant taken from the key's organization), and rate limiting. Limit per tenant, with one shared counter for /v1/chat and /api/dashboard/try, so the Try it box cannot bypass it. Add one global cap on LLM-calling routes just under the provider's limit (from config, never hardcoded). Both return 429 rate_limited. The per-tenant rate limit, document limit and monthly allowance come from `RATE_LIMIT_PER_MINUTE`, `MAX_DOCUMENTS_PER_TENANT` and `MAX_REQUESTS_PER_MONTH`. The chat route also stores the response's `sources` in request_logs.
@@ -452,9 +457,9 @@ Report using the format in section 9.
 ### Phase 4: dashboard
 
 ```text
-Do Phase 4 only. Build the React dashboard in web/ per sections 4 and 6.
-- Follow DESIGN.md for every screen.
-- A public home page (no login), sections in the order of DESIGN.md: hero with a Sign in button, how it works in three steps, a demo (easy, hard and no-answer example), Quickstart (cURL, Node and Python tabs with a Copy button, using the real `POST /v1/chat` contract), built-in features, Security, and an FAQ. Leave out the savings calculator (Phase 7) and make no cost, savings or pricing claims in any copy. Security and FAQ copy may only state what the product actually does. In particular, do not say tenants can choose a retention period.
+Do Phase 4 only. Build the React dashboard in apps/web/ per sections 4 and 6.
+- Follow docs/DESIGN.md for every screen.
+- A public home page (no login), sections in the order of docs/DESIGN.md: hero with a Sign in button, how it works in three steps, a demo (easy, hard and no-answer example), Quickstart (cURL, Node and Python tabs with a Copy button, using the real `POST /v1/chat` contract), built-in features, Security, and an FAQ. Leave out the savings calculator (Phase 7) and make no cost, savings or pricing claims in any copy. Security and FAQ copy may only state what the product actually does. In particular, do not say tenants can choose a retention period.
 - A sign-in page with Continue with Google and Continue with GitHub using authClient.signIn.social.
 - A protected dashboard shell that redirects to sign-in when there is no session.
 - An API keys page using the API key plugin's client methods: create (show the key once), list, revoke.
@@ -464,7 +469,7 @@ Do Phase 4 only. Build the React dashboard in web/ per sections 4 and 6.
 - A Requests page: the request log from GET /api/dashboard/requests with a tier filter, and a detail view per request from GET /api/dashboard/requests/:id showing route, usage and sources with filenames.
 - Usage meters in the sidebar (documents, requests per minute, requests this month) from GET /api/dashboard/usage. The limits come from config, never from the front end.
 Dashboard nav order: Documents, API keys, Try it, Analytics, Requests.
-Add any missing dashboard endpoints from section 6 to api/ (including the `sources` column on request_logs, written by the chat route), always filtered by tenant, with a supertest case that tenant A cannot read tenant B's request id (404).
+Add any missing dashboard endpoints from section 6 to apps/api/ (including the `sources` column on request_logs, written by the chat route), always filtered by tenant, with a supertest case that tenant A cannot read tenant B's request id (404).
 Use plain CSS or one small component library. Report using the format in section 9.
 ```
 
@@ -482,16 +487,17 @@ Use plain CSS or one small component library. Report using the format in section
 - Limits: 50 documents, 60 requests a minute and 50,000 a month are placeholders. The human chooses the real values.
 - Retention: the FAQ line "You choose a retention period" must be reworded, for example "Queries are logged for your analytics and never include full document text." Retention returns when it is built.
 
-### Phase 5: test website, isolation suite and evaluation
+### Phase 5: isolation suite and evaluation
+
+The fake customer test website is out of scope (outside work). The checks below call the public API directly.
 
 ```text
-Do Phase 5 only. Build the test customer and the checks described in the Test website tab of the guide.
-- test-site/: a small Express backend holding ROUTER_API_URL and ROUTER_API_KEY in its environment and forwarding POST /chat with the x-api-key header, plus a React chat page (messages, sources, thumbs up and down calling /feedback). The key must never reach the browser.
-- Run two instances for two tenants (campus FAQ and shop support) with separate .env files.
-- eval/questions.csv with the header: query,tenant,domain,type,expected_answer,source_doc,held_out,cheap_ok,expensive_ok. Do not invent expected answers; leave them for the human.
+Do Phase 5 only. Build the checks that prove tenant isolation and compare the router setups, calling the public API (x-api-key) directly. No test website.
+- Two tenants (campus FAQ and shop support), each with its own API key and documents the human supplies.
+- tools/eval/questions.csv with the header: query,tenant,domain,type,expected_answer,source_doc,held_out,cheap_ok,expensive_ok. Do not invent expected answers; leave them for the human.
 - Add an optional force_tier field to /internal/query (internal only, for evaluation).
-- eval/run_eval.py: run every question as always-cheap, always-expensive and the rule router; judge correctness with an LLM judge using expected_answer and write its verdicts to a file so the human can spot-check 10 to 20 percent; write eval/results.csv with the columns setup,split,accuracy,median_latency_ms,escalation_rate,unanswerable_handled (Phase 7 adds cost_per_query_usd).
-- An automated isolation suite: at least 50 cross-tenant questions plus the planted code-word checks from the Test website tab. It must include a negative control that fails when the tenant filter is removed.
+- tools/eval/run_eval.py: run every question as always-cheap, always-expensive and the rule router; judge correctness with an LLM judge using expected_answer and write its verdicts to a file so the human can spot-check 10 to 20 percent; write tools/eval/results.csv with the columns setup,split,accuracy,median_latency_ms,escalation_rate,unanswerable_handled (Phase 7 adds cost_per_query_usd).
+- An automated isolation suite: at least 50 cross-tenant questions plus planted code-word checks (a unique code word planted in each tenant's documents must never appear in the other tenant's answers or sources). It must include a negative control that fails when the tenant filter is removed.
 Report using the format in section 9.
 ```
 
@@ -501,14 +507,14 @@ Report using the format in section 9.
 
 ### Phase 6: classifier (only if needed)
 
-Do this only if `results.csv` shows the rule router misroutes many questions. Write your cost ratio (how much worse a missed escalation is than an unnecessary one) in `NOTES.md` before running anything.
+Do this only if `results.csv` shows the rule router misroutes many questions. Write your cost ratio (how much worse a missed escalation is than an unnecessary one) in `docs/NOTES.md` before running anything.
 
 ```text
-Do Phase 6 only. Using eval/questions.csv with cheap_ok and expensive_ok filled in, train a logistic regression on all-MiniLM-L6-v2 question embeddings. Label 1 means the cheap tier was not enough (cheap_ok false, expensive_ok true). Train only on rows where held_out is false and evaluate only on rows where held_out is true. Save the model file. Add router.mode: classifier to config.yaml, with the escalation threshold computed as C_extra / (C_extra + C_miss) from values in config.yaml, and keep the rules as a fallback when the model file is missing. Produce a table comparing classifier, rules and always-expensive on accuracy and escalation rate (Phase 7 adds cost per query), and list every case where the router was confident and wrong. Report using the format in section 9.
+Do Phase 6 only. Using tools/eval/questions.csv with cheap_ok and expensive_ok filled in, train a logistic regression on all-MiniLM-L6-v2 question embeddings. Label 1 means the cheap tier was not enough (cheap_ok false, expensive_ok true). Train only on rows where held_out is false and evaluate only on rows where held_out is true. Save the model file. Add router.mode: classifier to config.yaml, with the escalation threshold computed as C_extra / (C_extra + C_miss) from values in config.yaml, and keep the rules as a fallback when the model file is missing. Produce a table comparing classifier, rules and always-expensive on accuracy and escalation rate (Phase 7 adds cost per query), and list every case where the router was confident and wrong. Report using the format in section 9.
 ```
 
 - [ ] The comparison table uses only held-out rows
-- [ ] The cost ratio in `NOTES.md` is dated before the results
+- [ ] The cost ratio in `docs/NOTES.md` is dated before the results
 - [ ] The classifier beats the rules on held-out questions, or the report says plainly that it does not
 
 ### Phase 7: pricing (last, after everything else is tested)
@@ -519,10 +525,10 @@ Do this only when Phases 0 to 5 pass (and 6, if you did it). Before starting, th
 Do Phase 7 only. Add everything about money, following rule 9 of AGENTS.md.
 - rag-service: add models.price_per_1k_tokens to config.yaml (section 7) and compute cost_usd = tokens_in/1000 * input_price + tokens_out/1000 * output_price from the provider's token counts. At startup, refuse to run if either tier's input or output price is 0 or missing (tests may inject their own config). model_tier none costs 0.
 - api: store cost_usd in request_logs and return it in usage.
-- Analytics: add cost per day and estimated savings versus always using the expensive tier to GET /api/dashboard/analytics/summary and the Analytics page. Label savings as an estimate (DESIGN.md).
+- Analytics: add cost per day and estimated savings versus always using the expensive tier to GET /api/dashboard/analytics/summary and the Analytics page. Label savings as an estimate (docs/DESIGN.md).
 - Requests page: show cost in the list and in the detail Usage card.
-- Home page: add the savings calculator section (DESIGN.md order). Its example cost per request comes from VITE_CALC_PRICE_CHEAP and VITE_CALC_PRICE_EXPENSIVE and it is labelled as an illustration, not a quote. Add any pricing or cost copy to the FAQ only if it is true.
-- eval/run_eval.py and the Phase 6 comparison table: add cost_per_query_usd.
+- Home page: add the savings calculator section (docs/DESIGN.md order). Its example cost per request comes from VITE_CALC_PRICE_CHEAP and VITE_CALC_PRICE_EXPENSIVE and it is labelled as an illustration, not a quote. Add any pricing or cost copy to the FAQ only if it is true.
+- tools/eval/run_eval.py and the Phase 6 comparison table: add cost_per_query_usd.
 - Tests: cost arithmetic with a fake config, the startup refusal on a zero price, a request_logs row with cost_usd, and savings never negative-by-bug (savings equals the expensive-tier cost minus actual cost for the same tokens).
 Report using the format in section 9.
 ```
@@ -544,7 +550,7 @@ End each phase with these six items, in this order:
 3. Each acceptance check marked pass or fail, with the evidence.
 4. What is untested or assumed, including every VERIFY item and what you found in the docs.
 5. Any rule from section 2 you were tempted to bend, and what you did instead.
-6. A dated entry appended to `NOTES.md`: what you tried and what broke.
+6. A dated entry appended to `docs/NOTES.md`: what you tried and what broke.
 
 ## 10. Tools that help
 
