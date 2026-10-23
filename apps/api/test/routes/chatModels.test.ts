@@ -142,7 +142,7 @@ describe("model_calls and tenant_models bookkeeping", () => {
     const res = await chat(a);
     const rows = await calls(a.tenantId);
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ request_id: res.body.request_id, tenant_model_id: null, tier: "default", outcome: "ok", tokens_in: 812, tokens_out: 96, latency_ms: 300, cost_usd: null, cost_source: null });
+    expect(rows[0]).toMatchObject({ request_id: res.body.request_id, tenant_model_id: null, tier: "default", outcome: "ok", tokens_in: 812, tokens_out: 96, latency_ms: 700, cost_usd: null, cost_source: null });
     expect(await calls(b.tenantId)).toHaveLength(0);
   });
 

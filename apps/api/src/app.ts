@@ -3,6 +3,7 @@ import cors from "cors";
 import { toNodeHandler } from "better-auth/node";
 import { requireSession } from "./middleware/requireSession.js";
 import { createLimiters } from "./middleware/rateLimit.js";
+import { loadTenantModels } from "./middleware/tenantModels.js";
 import { requireApiKey } from "./middleware/requireApiKey.js";
 import { devRouter } from "./routes/dev.js";
 import { chatHandler } from "./routes/chat.js";
@@ -24,11 +25,12 @@ export function createApp({ config, pool, auth, rag, log }: Omit<Deps, "pending"
   // Public API: every /v1 route needs a valid key, so unknown paths also answer 401 first.
   const deps = { pool, rag, config, log, pending };
   const limiters = createLimiters(config);
+  const llm = [limiters.perTenant, loadTenantModels(deps), limiters.globalCap];
   app.locals.rateLimitUsed = limiters.used;
   const v1 = express.Router();
   v1.use(requireApiKey(auth));
   v1.use("/documents", documentsRouter(deps));
-  v1.post("/chat", ...limiters.llm, chatHandler(deps));
+  v1.post("/chat", ...llm, chatHandler(deps));
   v1.post("/feedback", feedbackHandler(deps));
   app.use("/v1", v1);
 
@@ -42,7 +44,7 @@ export function createApp({ config, pool, auth, rag, log }: Omit<Deps, "pending"
   });
   dash.use("/documents", documentsRouter(deps));
   dash.use("/models", modelsRouter(deps));
-  dash.post("/try", ...limiters.llm, chatHandler(deps)); // same limiter instance as /v1/chat: one shared counter
+  dash.post("/try", ...llm, chatHandler(deps, { tryIt: true })); // same limiter instance as /v1/chat: one shared counter
   app.use("/api/dashboard", dash);
 
   if (config.devRoutes) app.post("/dev/api-key", devRouter({ pool, auth, config }));

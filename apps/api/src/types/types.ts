@@ -5,6 +5,7 @@ declare global {
       tenantId: string;
       apiKeyId?: string;
       userId?: string;
+      tenantModels?: import("../middleware/tenantModels.js").TenantModels; // decrypted keys: never log
     }
   }
 }
