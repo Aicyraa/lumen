@@ -50,3 +50,4 @@
   6. Request ids: guide shows `req_...`, the service returns UUIDs.
   7. "Read the docs" and Docs/Privacy links on the home page: no docs or privacy page is specified anywhere.
   8. Global LLM cap (Phase 3) only protects the shared dev default key once tenants bring their own keys; per-tenant limits remain.
+- apps/api reorganized by responsibility (config, db, auth, middleware, routes, services, lib, types; tests mirror src). No behaviour change: 74 api + 81 rag-service tests pass (lead ran root pnpm test).

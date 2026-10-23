@@ -75,8 +75,8 @@ lumen/                       # root: tooling and docs only, no application code
   tools/eval/                # questions.csv, run_eval.py, results.csv (scripts, not an app)
   apps/
     api/                     # Node/Express + Better Auth (ES modules), own package.json
-      src/ (auth.ts, server.ts, db.ts, routes/, middleware/)
-      test/
+      src/ (server.ts, app.ts, config/, db/, auth/, middleware/, routes/, services/, lib/, types/)
+      test/ (mirrors src/: routes/, middleware/, services/, config/, auth/, helpers/)
     web/                     # React + Vite dashboard, own package.json
       src/ (lib/auth-client.ts, pages/, components/)
     rag-service/             # Python/FastAPI; package.json only wraps pytest/uvicorn for Turborepo
@@ -120,7 +120,7 @@ Taken from the official Better Auth docs on 2026-10-21 (docs listed version 1.7.
 
 **Install and migrate:** `npm install better-auth @better-auth/api-key`, then `npx auth@latest migrate` (re-run after adding a plugin). Better Auth creates its own tables, so do not hand-write them.
 
-**Server config** (`apps/api/src/auth.ts`):
+**Server config** (`apps/api/src/auth/auth.ts`):
 
 ```ts
 import { betterAuth } from "better-auth";
