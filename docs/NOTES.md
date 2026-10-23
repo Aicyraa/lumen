@@ -59,3 +59,8 @@
 - Request ids: UUIDs, as the service already returns.
 - /docs and /privacy pages: built with the website in Phase 4.
 - Still open (needs the human): Try it sources contract (guide item 3), Requests drawer passages (item 4), global LLM cap meaning (item 8).
+
+### Decisions 2026-10-23 (round 2)
+- Try it: live snippet (option B). Requests drawer: passage read live from chunks, tenant-scoped (option B). Global LLM cap: only for the shared default key.
+- Per-model usage, provider-reported limits and analytics for all models including fallback are in Phase 3B (data: model_calls table) and Phase 4 (UI). Token counts are recorded per attempt.
+- Total cost across models: requested by the human, but it needs per-model prices and contradicts the on-hold pricing decision. Open question: add price fields to tenant_models and build cost on top of model_calls (a pricing phase), or keep deferring.
