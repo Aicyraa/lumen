@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import pino from "pino";
+import type { Config } from "../../src/config.js";
 import { createAuth } from "../../src/auth.js";
 import { createApp } from "../../src/app.js";
 import { createPool } from "../../src/db.js";
@@ -8,7 +9,16 @@ import { testConfig } from "./env.js";
 import { startRagStub } from "./ragStub.js";
 
 // Builds the real app against lumen_test and a stubbed RAG service.
-export async function makeCtx(overrides = {}) {
+export interface Tenant {
+  email: string;
+  userId: string;
+  tenantId: string;
+  apiKey: string;
+  cookie: string;
+}
+export type Ctx = Awaited<ReturnType<typeof makeCtx>>;
+
+export async function makeCtx(overrides: Partial<Config> = {}) {
   const base = testConfig();
   const stub = await startRagStub(base.internalSecret);
   const config = { ...base, ragUrl: stub.url, ...overrides };
@@ -17,10 +27,10 @@ export async function makeCtx(overrides = {}) {
   const log = pino({ level: "silent" });
   const rag = createRagClient(config);
   const app = createApp({ config, pool, auth, rag, log });
-  const tenants = [];
+  const tenants: string[] = [];
 
   // A real sign-up, then an organization-owned API key through the plugin.
-  async function createTenant(label = "t") {
+  async function createTenant(label = "t"): Promise<Tenant> {
     const email = `${label}-${randomUUID()}@example.test`;
     const signUp = await auth.api.signUpEmail({ body: { email, password: "correct-horse-battery", name: label } });
     const { rows } = await pool.query(`SELECT "organizationId" AS org FROM member WHERE "userId" = $1`, [signUp.user.id]);

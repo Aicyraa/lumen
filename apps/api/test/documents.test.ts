@@ -1,9 +1,9 @@
 import { existsSync, readdirSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
-import { makeCtx } from "./helpers/ctx.js";
+import { makeCtx, type Ctx, type Tenant } from "./helpers/ctx.js";
 
-let ctx, a, b;
+let ctx: Ctx, a: Tenant, b: Tenant;
 beforeAll(async () => {
   ctx = await makeCtx({ maxDocuments: 3, uploadMaxBytes: 2048, ingestTimeoutMs: 400 });
   a = await ctx.createTenant("a");
@@ -11,13 +11,13 @@ beforeAll(async () => {
 });
 afterAll(async () => { await ctx.close(); });
 
-const upload = (tenant, name = "handbook.md", body = "# Handbook\nOpening hours are nine to five.", extra = {}) => {
+const upload = (tenant: Tenant, name = "handbook.md", body = "# Handbook\nOpening hours are nine to five.", extra: Record<string, string> = {}) => {
   let req = request(ctx.app).post("/v1/documents").set("x-api-key", tenant.apiKey);
   for (const [k, v] of Object.entries(extra)) req = req.field(k, v);
   return req.attach("file", Buffer.from(body), name);
 };
-const status = (tenant, id) => request(ctx.app).get(`/v1/documents/${id}`).set("x-api-key", tenant.apiKey);
-async function settle(tenant, id) {
+const status = (tenant: Tenant, id: string) => request(ctx.app).get(`/v1/documents/${id}`).set("x-api-key", tenant.apiKey);
+async function settle(tenant: Tenant, id: string) {
   for (let i = 0; i < 50; i++) {
     const res = await status(tenant, id);
     if (res.body.status !== "processing") return res.body;
@@ -38,8 +38,8 @@ describe("POST /v1/documents", () => {
     const final = await settle(a, res.body.document_id);
     expect(final).toMatchObject({ status: "ready", chunk_count: 3, error: null });
     const call = ctx.stub.calls.find((c) => c.name === "ingest");
-    expect(call.body).toMatchObject({ tenant_id: a.tenantId, document_id: res.body.document_id });
-    expect(call.file.buffer.toString()).toBe("hello world");
+    expect(call?.body).toMatchObject({ tenant_id: a.tenantId, document_id: res.body.document_id });
+    expect(call?.file?.buffer.toString()).toBe("hello world");
     const row = await ctx.pool.query("SELECT tenant_id, filename FROM documents WHERE id = $1", [res.body.document_id]);
     expect(row.rows[0]).toEqual({ tenant_id: a.tenantId, filename: "handbook.md" });
   });
@@ -110,7 +110,7 @@ describe("POST /v1/documents", () => {
 });
 
 describe("DELETE /v1/documents/:id", () => {
-  const insertDoc = async (tenantId) => (await ctx.pool.query(
+  const insertDoc = async (tenantId: string) => (await ctx.pool.query(
     "INSERT INTO documents (tenant_id, filename, status, chunk_count) VALUES ($1, 'x.md', 'ready', 1) RETURNING id", [tenantId])).rows[0].id;
   const zeroVector = `[${new Array(384).fill(0).join(",")}]`;
 

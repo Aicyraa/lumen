@@ -15,10 +15,10 @@ describe("loadConfig", () => {
   });
 
   it.each(Object.keys(good))("refuses to start when %s is missing, naming it but never printing a value", (name) => {
-    const env = { ...good };
+    const env: Record<string, string | undefined> = { ...good };
     delete env[name];
     expect(() => loadConfig(env)).toThrow(name);
-    try { loadConfig(env); } catch (e) { expect(e.message).not.toMatch(/internal-SECRET|pw-SECRET|s{32}/); }
+    try { loadConfig(env); } catch (e) { expect((e as Error).message).not.toMatch(/internal-SECRET|pw-SECRET|s{32}/); }
   });
 
   it.each(["MAX_DOCUMENTS_PER_TENANT", "RATE_LIMIT_PER_MINUTE", "MAX_REQUESTS_PER_MONTH"])("refuses an empty or non-positive %s", (name) => {

@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
-import { makeCtx } from "./helpers/ctx.js";
+import { makeCtx, type Ctx, type Tenant } from "./helpers/ctx.js";
 
-let ctx, a, b;
+let ctx: Ctx, a: Tenant, b: Tenant;
 beforeAll(async () => {
   ctx = await makeCtx({ ratePerMinute: 1000, globalLlmCapPerMinute: 1000, maxRequestsPerMonth: 5 });
   a = await ctx.createTenant("a");
@@ -12,8 +12,8 @@ beforeAll(async () => {
 afterAll(async () => { await ctx.close(); });
 afterEach(() => ctx.stub.reset());
 
-const chat = (tenant, body) => request(ctx.app).post("/v1/chat").set("x-api-key", tenant.apiKey).send(body);
-const logs = (tenantId) => ctx.pool.query("SELECT * FROM request_logs WHERE tenant_id = $1 ORDER BY created_at", [tenantId]);
+const chat = (tenant: Tenant, body: object) => request(ctx.app).post("/v1/chat").set("x-api-key", tenant.apiKey).send(body);
+const logs = (tenantId: string) => ctx.pool.query("SELECT * FROM request_logs WHERE tenant_id = $1 ORDER BY created_at", [tenantId]);
 const resetLogs = () => ctx.pool.query("DELETE FROM request_logs WHERE tenant_id = ANY($1)", [[a.tenantId, b.tenantId]]);
 
 describe("POST /v1/chat", () => {
@@ -28,7 +28,7 @@ describe("POST /v1/chat", () => {
       route: { model_tier: "cheap", k: 3, escalated: false, difficulty: 0, top_score: 0.71 },
       usage: { tokens_in: 812, tokens_out: 96, cost_usd: null, latency_ms: 820 },
     });
-    expect(ctx.stub.calls.find((c) => c.name === "query").body).toMatchObject({ tenant_id: a.tenantId, query: "When do you open?", session_id: "sess-1" });
+    expect(ctx.stub.calls.find((c) => c.name === "query")?.body).toMatchObject({ tenant_id: a.tenantId, query: "When do you open?", session_id: "sess-1" });
 
     const rows = (await logs(a.tenantId)).rows;
     expect(rows).toHaveLength(1);
@@ -107,9 +107,9 @@ describe("POST /v1/chat", () => {
 });
 
 describe("POST /v1/feedback", () => {
-  const insertRequest = async (tenantId) => (await ctx.pool.query(
+  const insertRequest = async (tenantId: string) => (await ctx.pool.query(
     "INSERT INTO request_logs (tenant_id, query) VALUES ($1, 'q') RETURNING id", [tenantId])).rows[0].id;
-  const feedback = (tenant, body) => request(ctx.app).post("/v1/feedback").set("x-api-key", tenant.apiKey).send(body);
+  const feedback = (tenant: Tenant, body: object) => request(ctx.app).post("/v1/feedback").set("x-api-key", tenant.apiKey).send(body);
 
   it("stores the rating on the tenant's own request and returns 204", async () => {
     const id = await insertRequest(a.tenantId);

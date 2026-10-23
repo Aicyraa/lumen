@@ -1,10 +1,10 @@
 import { existsSync, mkdirSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { makeCtx } from "./helpers/ctx.js";
+import { makeCtx, type Ctx, type Tenant } from "./helpers/ctx.js";
 import { sweepInterrupted } from "../src/sweep.js";
 
-let ctx, a, b;
+let ctx: Ctx, a: Tenant, b: Tenant;
 beforeAll(async () => {
   ctx = await makeCtx({ interruptedIngestAfterSeconds: 600 });
   a = await ctx.createTenant("a");
@@ -13,11 +13,11 @@ beforeAll(async () => {
 afterAll(async () => { await ctx.close(); });
 
 const zero = `[${new Array(384).fill(0).join(",")}]`;
-const insert = async (tenantId, status, ageMinutes) => (await ctx.pool.query(
+const insert = async (tenantId: string, status: string, ageMinutes: number) => (await ctx.pool.query(
   `INSERT INTO documents (tenant_id, filename, status, created_at) VALUES ($1, 'x.md', $2, now() - make_interval(mins => $3)) RETURNING id`,
   [tenantId, status, ageMinutes])).rows[0].id;
-const sweep = () => sweepInterrupted({ pool: ctx.pool, rag: ctx.rag, config: ctx.config, log: { info() {}, warn() {} } });
-const row = async (id) => (await ctx.pool.query("SELECT status, error FROM documents WHERE id = $1", [id])).rows[0];
+const sweep = () => sweepInterrupted({ pool: ctx.pool, config: ctx.config, log: { info() {}, warn() {} } });
+const row = async (id: string) => (await ctx.pool.query("SELECT status, error FROM documents WHERE id = $1", [id])).rows[0];
 
 describe("interrupted-ingest sweep", () => {
   it("marks processing rows older than the cutoff as failed 'ingest interrupted', for every tenant, and drops their chunks", async () => {

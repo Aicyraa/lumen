@@ -1,13 +1,14 @@
 import { afterEach, describe, expect, it } from "vitest";
 import request from "supertest";
-import { makeCtx } from "./helpers/ctx.js";
+import type { Config } from "../src/config.js";
+import { makeCtx, type Ctx, type Tenant } from "./helpers/ctx.js";
 
-async function withCtx(overrides, fn) {
+async function withCtx(overrides: Partial<Config>, fn: (ctx: Ctx) => Promise<void>) {
   const ctx = await makeCtx({ maxRequestsPerMonth: 100000, ...overrides });
   try { await fn(ctx); } finally { await ctx.close(); }
 }
-const chat = (ctx, t) => request(ctx.app).post("/v1/chat").set("x-api-key", t.apiKey).send({ query: "q" });
-const tryIt = (ctx, t) => request(ctx.app).post("/api/dashboard/try").set("cookie", t.cookie).send({ query: "q" });
+const chat = (ctx: Ctx, t: Tenant) => request(ctx.app).post("/v1/chat").set("x-api-key", t.apiKey).send({ query: "q" });
+const tryIt = (ctx: Ctx, t: Tenant) => request(ctx.app).post("/api/dashboard/try").set("cookie", t.cookie).send({ query: "q" });
 
 describe("requireSession on /api/dashboard/*", () => {
   it("rejects missing sessions with 401 unauthorized and lets a signed-in user list only their documents", async () => {
@@ -15,14 +16,15 @@ describe("requireSession on /api/dashboard/*", () => {
       const a = await ctx.createTenant("a");
       const b = await ctx.createTenant("b");
       await ctx.pool.query("INSERT INTO documents (tenant_id, filename, status) VALUES ($1, 'mine.md', 'ready'), ($2, 'theirs.md', 'ready')", [a.tenantId, b.tenantId]);
-      for (const [method, path] of [["get", "/api/dashboard/documents"], ["post", "/api/dashboard/documents"], ["post", "/api/dashboard/try"]]) {
+      const routes: ["get" | "post", string][] = [["get", "/api/dashboard/documents"], ["post", "/api/dashboard/documents"], ["post", "/api/dashboard/try"]];
+      for (const [method, path] of routes) {
         const res = await request(ctx.app)[method](path);
         expect(res.status).toBe(401);
         expect(res.body.error.code).toBe("unauthorized");
       }
       const list = await request(ctx.app).get("/api/dashboard/documents").set("cookie", a.cookie);
       expect(list.status).toBe(200);
-      expect(list.body.documents.map((d) => d.filename)).toEqual(["mine.md"]);
+      expect(list.body.documents.map((d: { filename: string }) => d.filename)).toEqual(["mine.md"]);
     });
   });
 

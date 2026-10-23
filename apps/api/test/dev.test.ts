@@ -1,16 +1,16 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { loadConfig } from "../src/config.js";
-import { makeCtx } from "./helpers/ctx.js";
+import { makeCtx, type Ctx, type Tenant } from "./helpers/ctx.js";
 
-let ctx, a;
+let ctx: Ctx, a: Tenant;
 beforeAll(async () => {
   ctx = await makeCtx({ devRoutes: true });
   a = await ctx.createTenant("a");
 });
 afterAll(async () => { await ctx.close(); });
 
-const devKey = (app, secret, body) => {
+const devKey = (app: Ctx["app"], secret: string | null, body: object) => {
   const req = request(app).post("/dev/api-key");
   if (secret) req.set("x-internal-secret", secret);
   return req.send(body);
@@ -18,8 +18,8 @@ const devKey = (app, secret, body) => {
 
 describe("dev-only API key route", () => {
   it.each([["development", true], ["production", false], ["test", false], ["staging", false], [undefined, false]])(
-    "NODE_ENV=%s mounts it: %s (explicit opt-in)", (nodeEnv, mounted) => {
-      const env = { ...process.env, DATABASE_URL: "postgresql://x/y", RAG_SERVICE_URL: "http://x" };
+    "NODE_ENV=%s mounts it: %s (explicit opt-in)", (nodeEnv: string | undefined, mounted: boolean) => {
+      const env: NodeJS.ProcessEnv = { ...process.env, DATABASE_URL: "postgresql://x/y", RAG_SERVICE_URL: "http://x" };
       if (nodeEnv) env.NODE_ENV = nodeEnv; else delete env.NODE_ENV;
       expect(loadConfig(env).devRoutes).toBe(mounted);
     });
