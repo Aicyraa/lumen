@@ -100,6 +100,8 @@ lumen/                       # root: tooling and docs only, no application code
 | `MAX_DOCUMENTS_PER_TENANT` | api | Document limit per tenant. Drives `429 document_limit` and the Documents usage meter |
 | `RATE_LIMIT_PER_MINUTE` | api | Requests per minute per tenant (shared by `/v1/chat` and `/api/dashboard/try`). Drives `429 rate_limited` and the Requests / min meter |
 | `MAX_REQUESTS_PER_MONTH` | api | Monthly request allowance per tenant. Drives the This month meter |
+| `MAX_PROJECTS_PER_USER` | api | Projects (organizations) one user may own. Drives `422 project_limit` |
+| `SMTP_URL`, `MAIL_FROM` | api | SMTP connection URL and sender for verification emails. Empty in development prints the link in the API log; required in production |
 | `MODEL_KEY_ENCRYPTION_SECRET` | api | 32 bytes (64 hex characters) used to encrypt tenants' provider API keys at rest (AES-256-GCM). Losing or changing it makes stored keys unreadable |
 | `VITE_CALC_PRICE_CHEAP`, `VITE_CALC_PRICE_EXPENSIVE` | web | **Phase 7 only.** Example cost per request used only by the home-page savings calculator (an illustration) |
 
@@ -582,6 +584,37 @@ Use plain CSS or one small component library. Report using the format in section
 - Docs and Privacy: no mockup exists; design them in the same style from the real contracts.
 - Limits: 50 documents, 60 requests a minute and 50,000 a month in the mockup are placeholders; the numbers come from the API (`GET /api/dashboard/usage`).
 - Retention: never mention a retention period anywhere.
+
+### Phase 4B: accounts, projects and website polish (extra phase, added 2026-10-24 after the first manual test)
+
+Two steps, one engineer at a time: 4B-1 `api-engineer`, then 4B-2 `web-engineer`. Stays on the `phase-4-dashboard` branch.
+
+**Decisions.** (1) Email + password accounts must verify their email before they can sign in. (2) No implicit account linking: signing in with a second provider that has the same email is rejected with `account_not_linked`; a signed-in user links Google or GitHub explicitly in Account settings. (3) A project is a Better Auth organization (the tenant); a user can have several and picks one after signing in. (4) `MAX_PROJECTS_PER_USER` (env, the human chose 5, adjustable) caps projects a user may own. (5) A new user gets one default project, "My project", renamable and deletable; a signed-in user is still never without a tenant at sign-in time. (6) Verification email goes through SMTP (`SMTP_URL`, `MAIL_FROM`); in development with `SMTP_URL` empty the link is printed in the API log (development only); in production a missing `SMTP_URL` stops the API from starting.
+
+```text
+Phase 4B-1 (api-engineer, apps/api): Do this only.
+- Email verification: emailAndPassword.requireEmailVerification true, emailVerification with sendOnSignUp and sendOnSignIn, sendVerificationEmail through nodemailer over SMTP_URL (check current Better Auth and nodemailer docs); the link goes to the API's verify endpoint and redirects to the dashboard origin /verify-email (status in the query). Rate-limit resend. Never log the link outside development, never log SMTP_URL.
+- Account linking: accountLinking with disableImplicitLinking true; explicit linking from a signed-in session via the client's linkSocial must work and be tested; a same-email social sign-in for an existing user returns account_not_linked (test it).
+- Projects (no new table; description lives in organization metadata): GET /api/dashboard/workspaces (every organization the session's user belongs to: id, name, slug, description, role, created_at, documents count, requests this month); POST (name 1-60 chars, optional description, slug generated unique; enforces MAX_PROJECTS_PER_USER owned projects, 422 project_limit); PATCH rename/description (owner/admin); DELETE (owner only, body must repeat the project name) which in ONE transaction removes all of the tenant's data (request_logs, model_calls, tenant_models, documents and chunks, api keys, uploaded files) and then the organization. Every statement filtered by tenant_id; another user's project id is 404. Activating a project uses the organization plugin's set-active; the API must refuse a session whose active organization the user is not a member of. Keep the auto-created default project on first sign-in.
+- Config: MAX_PROJECTS_PER_USER required at startup like the other limits; SMTP settings as above.
+- Tests: verification flow with a captured mail (unverified user cannot sign in, verified can, resend), no implicit linking, explicit linking, project CRUD and isolation (user A cannot list, rename, delete or activate B's project), the cap, full-data deletion, startup refusal without SMTP_URL in production.
+
+Phase 4B-2 (web-engineer, apps/web): Do this only, against the 4B-1 endpoints.
+- Routes: /projects (list as cards with name, description, role, created date, documents and requests counts; Create project dialog; empty and error states), /projects/:slug/{documents,keys,try,analytics,requests,models,settings} (entering a project activates it; the sidebar has a project switcher and a link back to Projects; settings: rename, description, delete with type-the-name confirmation), /account (email and verification state, linked sign-in methods with Link Google/GitHub, sign out), /verify-email (success, expired and error states with Resend), and /dashboard/* redirecting to /projects. After sign-in go to /projects.
+- Sign-in page: explain email_not_verified (resend) and account_not_linked ("sign in with your original method, then link this one in Account settings"); add icons (Google and GitHub marks, mail) using Animate UI icons (https://animate-ui.com/docs/icons; check its current install method and licence; keep the DESIGN.md palette).
+- Docs page: a structured layout (sticky table of contents with scroll-spy, a readable content column with a max width, grouped sections for Getting started, Authentication, Chat, Documents, Feedback, Errors, Limits, tables for error codes, copyable code blocks, responsive); reachable at /docs whether or not the user is signed in, and the public nav and the dashboard sidebar link to it; the public nav shows Projects (instead of Sign in and Get an API key) when signed in. Privacy page gets the same layout.
+- Home page: fix the oversized hero (headline at most about 5.5vw, capped so the headline, paragraph and buttons fit in one screen at 1355x700 and 1440x900); every home section is at least one full viewport (min-height 100dvh, content centred) and the home page uses CSS scroll-snap (proximity or mandatory on the root scroller, with a section taller than the viewport still scrolling normally); keyboard and reduced-motion friendly, mobile safe.
+- Animation: apply Animate UI and the motion library across the whole site (page and section transitions, staggered reveals, hover and press states, animated icons, drawer and dialog transitions, tab and list transitions, count-up numbers, chart bars), with the DESIGN.md palette and fonts unchanged, prefers-reduced-motion respected, no layout shift, nothing that hides content if scripts fail, and no animation that delays reading (under 600 ms for entrances). If Animate UI components need Tailwind or the shadcn CLI, say so and use the smallest setup that works without rewriting the existing CSS.
+Tests first for behaviour (route guards, project switch activates the organization and clears cache, create/delete flows, verification and linking error screens, docs reachable signed in and out); browser verification at 1355x700, 1440x900 and a phone width with screenshots (hero fits, one section per screen, snap works, docs layout). Report in the section 9 format.
+```
+
+- [ ] An unverified email + password user cannot sign in until they verify; the link works once; resend is rate limited
+- [ ] Signing in with a second provider that has the same email shows account_not_linked; linking from Account settings works and then either method signs in
+- [ ] A user can create projects up to MAX_PROJECTS_PER_USER (the next one returns 422 project_limit), open each, and the dashboard of one never shows another's documents, keys, models, requests or analytics
+- [ ] Deleting a project removes all its data (counts in every table are 0 for that tenant) and only the owner can do it
+- [ ] /docs is structured, readable on desktop and phone, and reachable signed in and signed out
+- [ ] The hero fits one screen at 1355x700, each home section fills a screen, and scroll snap works
+- [ ] Motion is present across the site, reduced-motion turns it off, and the site is fully usable with it off
 
 ### Phase 5: isolation suite and evaluation
 
