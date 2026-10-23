@@ -82,6 +82,9 @@ describe("claims the product can back up", () => {
     expect(text).toMatch(/sent to the model as data, not instructions/);
     expect(text).toMatch(/told to ignore instructions inside them/);
   });
+  it.each([["Home", <Home />], ["Docs", <Docs />], ["Privacy", <Privacy />], ["SignIn", <SignIn />]])("%s hard-codes no megabyte figure (the server enforces the upload limit)", (_n, ui) => {
+    expect(view(ui as React.ReactElement).textContent).not.toMatch(/\d+\s*MB/i);
+  });
   it("Docs does not promise a process for raising limits", () => {
     expect(view(<Docs />).textContent).not.toMatch(/higher limit/i);
   });
