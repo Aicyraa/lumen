@@ -207,3 +207,53 @@ describe("PATCH and DELETE /api/dashboard/models/:id", () => {
     expect((await del(a, id)).status).toBe(404);
   });
 });
+
+describe("optional prices per 1M tokens (tenant's own estimate inputs)", () => {
+  const patch = (t: Tenant, id: string, body: object) => request(ctx.app).patch(`/api/dashboard/models/${id}`).set("cookie", t.cookie).send(body);
+  const priceRow = async (id: string) => (await ctx.pool.query("SELECT input_price_per_1m AS i, output_price_per_1m AS o FROM tenant_models WHERE id = $1", [id])).rows[0];
+
+  it("POST stores and returns prices as numbers; omitted prices are null (unpriced)", async () => {
+    const priced = await as(a).post("/models", newModel({ model_id: "p", input_price_per_1m: 0.15, output_price_per_1m: 0.6 }));
+    expect(priced.status).toBe(201);
+    expect(priced.body.model).toMatchObject({ input_price_per_1m: 0.15, output_price_per_1m: 0.6 });
+    const bare = await as(a).post("/models", newModel({ model_id: "q" }));
+    expect(bare.body.model).toMatchObject({ input_price_per_1m: null, output_price_per_1m: null });
+    const list = await as(a).get("/models");
+    expect(list.body.models.cheap.map((m: { input_price_per_1m: number | null }) => m.input_price_per_1m)).toEqual([0.15, null]);
+  });
+
+  it.each([[{ input_price_per_1m: -1 }], [{ output_price_per_1m: -0.01 }], [{ input_price_per_1m: "free" }], [{ output_price_per_1m: Number.MAX_SAFE_INTEGER }]])(
+    "POST rejects invalid prices #%# with 422 and does not call the provider", async (over) => {
+      const res = await as(a).post("/models", newModel(over));
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe("invalid_request");
+      expect(provider.calls).toHaveLength(0);
+    });
+
+  it("PATCH sets, changes and clears prices without moving the model", async () => {
+    const id = (await as(a).post("/models", newModel())).body.model.id;
+    let res = await patch(a, id, { input_price_per_1m: 1.5, output_price_per_1m: 3 });
+    expect(res.status).toBe(200);
+    expect(res.body.models.cheap[0]).toMatchObject({ id, position: 0, input_price_per_1m: 1.5, output_price_per_1m: 3 });
+    expect(Number((await priceRow(id)).i)).toBe(1.5);
+    await patch(a, id, { output_price_per_1m: 4 });
+    expect(await priceRow(id)).toEqual({ i: "1.500000", o: "4.000000" }); // the untouched price is kept
+    await patch(a, id, { input_price_per_1m: null, output_price_per_1m: null });
+    expect(await priceRow(id)).toEqual({ i: null, o: null });
+    res = await patch(a, id, { input_price_per_1m: 2, direction: "down" });
+    expect(res.status).toBe(200);
+    expect(Number((await priceRow(id)).i)).toBe(2);
+  });
+
+  it.each([[{}], [{ input_price_per_1m: -3 }], [{ output_price_per_1m: "x" }]])("PATCH rejects invalid body #%# with 422", async (body) => {
+    const id = (await as(a).post("/models", newModel())).body.model.id;
+    expect((await patch(a, id, body)).status).toBe(422);
+  });
+
+  it("tenant B cannot change tenant A's prices: 404 and nothing changes", async () => {
+    const id = (await as(a).post("/models", newModel({ input_price_per_1m: 1, output_price_per_1m: 2 }))).body.model.id;
+    const res = await patch(b, id, { input_price_per_1m: 99 });
+    expect([res.status, res.body.error.code]).toEqual([404, "not_found"]);
+    expect(Number((await priceRow(id)).i)).toBe(1);
+  });
+});
