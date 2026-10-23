@@ -60,34 +60,42 @@ def public_dns(monkeypatch):
     monkeypatch.setattr("app.endpoint_guard._resolve", lambda host: ["93.184.216.34"])
 
 
-class FakeLLM:
-    """Records every call; the no-answer tests assert it was never used."""
+class FakeCaller:
+    """Stands in for llm.call_model. Records every call; `outcomes` maps a model_id to how that model behaves
+    (default ok). Answering models report 100 tokens in and 10 out unless `tokens` says otherwise."""
 
     def __init__(self):
         self.calls = []
-        self.error = None  # set to an exception to make the next call fail
+        self.outcomes = {}
+        self.tokens = {}
+        self.extra = {}  # model_id -> fields to set on its attempt (rate_limits, reported_cost_usd)
 
-    def complete(self, tier, system, user):
-        from app.llm import LLMResult
+    def __call__(self, m, tier, system, user):
+        from app.llm import Attempt
 
-        self.calls.append({"tier": tier, "system": system, "user": user})
-        if self.error:
-            raise self.error
-        return LLMResult("Fake answer [1]", 100, 10)
+        self.calls.append({"tier": tier, "model_id": m["model_id"], "model": m, "system": system, "user": user})
+        outcome = self.outcomes.get(m["model_id"], "ok")
+        a = Attempt(m["provider"], m["model_id"], m.get("tenant_model_id"), tier, outcome=outcome, latency_ms=5)
+        if outcome == "ok":
+            a.text = "Fake answer [1]"
+            a.tokens_in, a.tokens_out = self.tokens.get(m["model_id"], (100, 10))
+        for k, v in self.extra.get(m["model_id"], {}).items():
+            setattr(a, k, v)
+        return a
 
 
 @pytest.fixture
 def llm():
-    return FakeLLM()
+    return FakeCaller()
 
 
 @pytest.fixture
 def client(llm):
     from fastapi.testclient import TestClient
 
-    from app.main import app, get_llm
+    from app.main import app, get_caller
 
-    app.dependency_overrides[get_llm] = lambda: llm
+    app.dependency_overrides[get_caller] = lambda: llm
     with TestClient(app) as c:  # the with-block runs startup, which checks the environment
         yield c
     app.dependency_overrides.clear()

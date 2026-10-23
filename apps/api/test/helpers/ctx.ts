@@ -29,7 +29,14 @@ export async function makeCtx(overrides: Partial<Config> = {}) {
   const logLines: string[] = []; // everything the app logs, so tests can prove no key or snippet is in it
   const log = createLogger(new Writable({ write(chunk, _enc, cb) { logLines.push(String(chunk)); cb(); } }), "debug");
   const rag = createRagClient(config);
-  const app = createApp({ config, pool, auth, rag, log });
+  // Fake DNS: every name is public except `localhost` (the provider stub) and names a test points elsewhere.
+  const dns = new Map<string, string>();
+  const dnsCalls: string[] = [];
+  const resolveHost = async (host: string) => {
+    dnsCalls.push(host);
+    return [{ address: dns.get(host) ?? (host === "localhost" ? "127.0.0.1" : "93.184.216.34"), family: 4 }];
+  };
+  const app = createApp({ config, pool, auth, rag, log, resolveHost });
   const tenants: string[] = [];
 
   // A real sign-up, then an organization-owned API key through the plugin.
@@ -67,5 +74,5 @@ export async function makeCtx(overrides: Partial<Config> = {}) {
     await pool.end();
   }
 
-  return { app, pool, auth, config, stub, rag, logLines, seedModel, createTenant, close };
+  return { app, pool, auth, config, stub, rag, logLines, dns, dnsCalls, seedModel, createTenant, close };
 }

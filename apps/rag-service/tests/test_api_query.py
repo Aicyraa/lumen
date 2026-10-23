@@ -6,7 +6,7 @@ import pytest
 
 from app import store
 from app.config import load_config
-from app.llm import SYSTEM_PROMPT, ProviderError
+from app.llm import SYSTEM_PROMPT
 from tests.conftest import AUTH
 
 MESSAGES = load_config()["messages"]
@@ -46,7 +46,7 @@ def test_answered_response_matches_the_contract_shape(client, llm, best_score):
     resp = ask(client, session_id="s1")
     assert resp.status_code == 200
     body = resp.json()
-    assert set(body) == {"request_id", "answer", "sources", "route", "usage"}
+    assert set(body) == {"request_id", "answer", "sources", "route", "usage", "attempts"}
     uuid.UUID(body["request_id"])  # a real uuid
     assert body["answer"] == "Fake answer [1]"
     assert len(body["sources"]) == 2
@@ -69,7 +69,7 @@ def test_cheap_route_retrieves_k_cheap_chunks_and_calls_the_model_once(client, l
     best_score(0.6)
     body = ask(client).json()
     assert len(body["sources"]) == 3
-    assert [c["tier"] for c in llm.calls] == ["cheap"]
+    assert [c["model_id"] for c in llm.calls] == ["cheap-model"]
 
 
 def test_weak_match_goes_to_the_expensive_tier_with_more_chunks(client, llm, best_score):
@@ -80,7 +80,7 @@ def test_weak_match_goes_to_the_expensive_tier_with_more_chunks(client, llm, bes
     assert route.pop("top_score") == pytest.approx(0.20, abs=1e-4)
     assert route == {"model_tier": "expensive", "k": 8, "escalated": False, "difficulty": 0.5}
     assert len(body["sources"]) == 8
-    assert [c["tier"] for c in llm.calls] == ["expensive"]
+    assert [c["model_id"] for c in llm.calls] == ["expensive-model"]
 
 
 def test_hard_word_escalates_out_of_caution(client, llm, best_score):
@@ -133,10 +133,11 @@ def test_query_only_sees_the_callers_tenant(client, llm, best_score):
 def test_provider_failure_is_502_provider_error(client, llm, best_score):
     add_doc("tenant_a", ["x"])
     best_score(0.6)
-    llm.error = ProviderError("provider call failed: RateLimitError")
+    llm.outcomes = {"cheap-model": "rate_limited"}
     resp = ask(client)
     assert resp.status_code == 502
     assert resp.json()["error"]["code"] == "provider_error"
+    assert [a["outcome"] for a in resp.json()["attempts"]] == ["rate_limited"]
 
 
 @pytest.mark.parametrize("payload", [{"tenant_id": "t"}, {"query": "hi"}, {"tenant_id": "t", "query": ""}])

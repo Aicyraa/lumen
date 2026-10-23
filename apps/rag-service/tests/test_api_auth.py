@@ -59,7 +59,7 @@ def test_invalid_body_uses_the_error_shape(client):
     assert_error(client.post("/internal/query", json={"tenant_id": "t"}, headers=AUTH), 422, "invalid_request")
 
 
-@pytest.mark.parametrize("missing", sorted(FAKE_ENV) + ["DATABASE_URL"])
+@pytest.mark.parametrize("missing", ["INTERNAL_SECRET", "DATABASE_URL"])
 def test_service_refuses_to_start_without_required_env(monkeypatch, missing):
     monkeypatch.delenv(missing)
     with pytest.raises(RuntimeError) as exc:
@@ -67,6 +67,13 @@ def test_service_refuses_to_start_without_required_env(monkeypatch, missing):
             pass
     assert missing in str(exc.value)
     assert not any(v in str(exc.value) for v in FAKE_ENV.values())  # names only, never values
+
+
+@pytest.mark.parametrize("missing", ["LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL_CHEAP", "LLM_MODEL_EXPENSIVE"])
+def test_llm_env_is_optional_at_startup(monkeypatch, missing):
+    monkeypatch.delenv(missing)  # only a dev/test default now
+    with TestClient(main.app) as c:
+        assert c.get("/internal/health").status_code == 200
 
 
 @pytest.mark.parametrize("name", ["ingest", "query", "delete_document"])

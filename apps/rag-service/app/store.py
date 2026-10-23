@@ -58,3 +58,8 @@ def delete_document(tenant_id: str, document_id: str) -> int:
         ).fetchone()[0]
         conn.execute("DELETE FROM documents WHERE tenant_id = %s AND id = %s", (tenant_id, document_id))
     return count
+
+
+def filenames(tenant_id: str, document_ids: list[str]) -> dict[str, str]:
+    """Filenames of this tenant's documents, {document_id: filename}; other tenants' ids are simply absent."""
+    return {}  # stub (red phase)
