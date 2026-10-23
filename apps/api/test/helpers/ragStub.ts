@@ -13,22 +13,40 @@ export interface StubCall {
   params: Record<string, string>;
   file?: Express.Multer.File;
 }
+interface Attempt { provider: string; model_id: string; tenant_model_id?: string | null; endpoint_url?: string; api_key?: string }
 type Handler = (call: StubCall) => { status: number; body: unknown } | Promise<{ status: number; body: unknown }>;
 
 export async function startRagStub(secret: string) {
   const calls: StubCall[] = [];
   const handlers: Record<StubCall["name"], Handler> = {
     ingest: () => ({ status: 200, body: { chunk_count: 3 } }),
-    query: () => ({
-      status: 200,
-      body: {
-        request_id: randomUUID(),
-        answer: "Stub answer [1]",
-        sources: [{ document_id: randomUUID(), chunk_id: 12, score: 0.71 }],
-        route: { model_tier: "cheap", k: 3, escalated: false, difficulty: 0.0, top_score: 0.71 },
-        usage: { tokens_in: 812, tokens_out: 96, cost_usd: null, latency_ms: 820 },
-      },
-    }),
+    // Mirrors the contract the Python service must follow (see the Phase 3B report): with `models` it answers
+    // from the first model of the cheap tier (else expensive, else fallback) and reports one attempt;
+    // without `models` it reports the dev default model (tier 'default'); with include_snippets each source
+    // carries filename and snippet. `attempts` and per-attempt `rate_limits` are internal: Express strips them.
+    query: ({ body }) => {
+      const models = body.models as Record<string, Attempt[]> | undefined;
+      const tiers = ["cheap", "expensive", "fallback"] as const;
+      const tier = tiers.find((t) => models?.[t]?.length);
+      const m = tier ? models![tier][0] : undefined;
+      const sources: Record<string, unknown>[] = [{ document_id: randomUUID(), chunk_id: 12, score: 0.71 }];
+      if (body.include_snippets) for (const src of sources) Object.assign(src, { filename: "stub-from-python.txt", snippet: "A short passage from the document." });
+      return {
+        status: 200,
+        body: {
+          request_id: randomUUID(),
+          answer: "Stub answer [1]",
+          sources,
+          route: { model_tier: "cheap", k: 3, escalated: false, difficulty: 0.0, top_score: 0.71 },
+          usage: { tokens_in: 812, tokens_out: 96, cost_usd: null, latency_ms: 820 },
+          attempts: [{
+            provider: m?.provider ?? "openai_compatible", model_id: m?.model_id ?? "env-default",
+            tenant_model_id: m?.tenant_model_id ?? null, tier: tier ?? "default",
+            outcome: "ok", tokens_in: 812, tokens_out: 96, latency_ms: 700, rate_limits: null,
+          }],
+        },
+      };
+    },
     delete: () => ({ status: 200, body: { deleted_chunks: 3 } }),
   };
   const defaults = { ...handlers };

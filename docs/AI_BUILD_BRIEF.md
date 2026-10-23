@@ -234,7 +234,7 @@ CREATE TABLE request_logs (
   top_score   REAL,
   tokens_in   INTEGER,
   tokens_out  INTEGER,
-  cost_usd    NUMERIC(12, 6),                 -- stays NULL until Phase 7
+  cost_usd    NUMERIC(12, 6),                 -- sum of the request's model_calls cost; NULL when no attempted model has a price
   latency_ms  INTEGER,
   status      TEXT NOT NULL DEFAULT 'ok',
   feedback    SMALLINT CHECK (feedback IN (-1, 1))
@@ -253,10 +253,33 @@ CREATE TABLE tenant_models (
   api_key_encrypted TEXT NOT NULL,            -- AES-256-GCM, never returned
   key_hint          TEXT NOT NULL,            -- masked display such as 'sk-...a1b2'
   status            TEXT NOT NULL DEFAULT 'connected' CHECK (status IN ('connected', 'failing')),
+  input_price_per_1m  NUMERIC(12, 6),         -- tenant-entered, optional; their provider's price per 1M input tokens
+  output_price_per_1m NUMERIC(12, 6),         -- same for output tokens; NULL means no cost is estimated for this model
+  rate_limits       JSONB,                    -- provider-reported limits from response headers (e.g. x-ratelimit-limit-requests, remaining-tokens, reset); NULL when the provider reports none
+  rate_limits_seen_at TIMESTAMPTZ,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (tenant_id, tier, position)
 );
 CREATE INDEX tenant_models_tenant_idx ON tenant_models (tenant_id, tier, position);
+
+-- One row per model attempt (a request that falls back writes several), for per-model usage and analytics.
+CREATE TABLE model_calls (
+  id              BIGSERIAL PRIMARY KEY,
+  tenant_id       TEXT NOT NULL,
+  request_id      UUID NOT NULL,              -- request_logs.id
+  tenant_model_id UUID,                       -- NULL for the dev/test default model or a since-deleted model
+  provider        TEXT NOT NULL,              -- snapshot, survives deleting the model
+  model_id        TEXT NOT NULL,              -- snapshot
+  tier            TEXT NOT NULL CHECK (tier IN ('cheap', 'expensive', 'fallback', 'default')),
+  outcome         TEXT NOT NULL CHECK (outcome IN ('ok', 'error', 'timeout', 'rate_limited')),
+  tokens_in       INTEGER,
+  tokens_out      INTEGER,
+  latency_ms      INTEGER,
+  cost_usd        NUMERIC(12, 6),             -- tenant's estimated provider cost for this attempt; NULL when unpriced
+  cost_source     TEXT CHECK (cost_source IN ('estimated', 'provider')),
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX model_calls_tenant_time_idx ON model_calls (tenant_id, created_at DESC);
 ```
 
 Notes for the agent:
@@ -293,7 +316,7 @@ All errors use one shape: `{ "error": { "code": "<snake_case>", "message": "<hum
 }
 ```
 
-Until Phase 7, `usage.cost_usd` is `null` (the example value shows the final shape).
+`usage.cost_usd` is the tenant's estimated provider cost for the request (sum over its model attempts, from tenant-entered per-model prices, or the provider-reported cost when the response has one). It is `null` when the model that answered has no price. It is not a Lumen charge.
 
 `model_tier` is `cheap`, `expensive` or `none` (no model was called because nothing matched).
 
@@ -306,12 +329,14 @@ Until Phase 7, `usage.cost_usd` is `null` (the example value shows the final sha
 | `DELETE /api/dashboard/documents/:id` | Delete a document and its chunks |
 | `GET /api/dashboard/analytics/summary?range=7d` | Requests, route mix, latency (`range` is `7d` or `30d`). Phase 7 adds cost and estimated savings |
 | `GET /api/dashboard/analytics/unanswered?range=7d` | Questions with a low best-match score |
-| `POST /api/dashboard/try` | The "Try it" box, same as `/v1/chat` without an API key |
+| `POST /api/dashboard/try` | The "Try it" box, same as `/v1/chat` without an API key, except each source also carries `filename` and a `snippet` (about 200 characters of the chunk). Snippets are returned live to the owner and are never stored or logged; `/v1/chat` keeps ids and scores only |
 | `GET /api/dashboard/requests?range=7d&tier=all&limit=...&cursor=...` | The request log, newest first. `range` is `7d` or `30d`, `tier` is `all`, `cheap`, `expensive` or `none`. Page size and its maximum come from config |
 | `GET /api/dashboard/requests/:id` | One request: query, route, usage, feedback and sources (with `filename` joined from `documents`). Another tenant's id returns `404 not_found` |
+| `GET /api/dashboard/requests/:id` (sources) | Each source carries `filename` and a passage of about 300 characters read live from `chunks` with a tenant-scoped join when the drawer opens. Nothing is stored in `request_logs`. If the document or chunk is gone (deleted or re-ingested), show the filename only, or "deleted document" |
 | `GET /api/dashboard/usage` | `{ documents: { used, max }, requests_per_minute: { used, max }, requests_this_month: { used, max } }`. The `max` values come from `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE` and `MAX_REQUESTS_PER_MONTH`, and `requests_per_minute.used` reads the same counter the rate limiter uses |
 | `GET /api/dashboard/models` | The tenant's models grouped by tier (cheap, expensive, fallback), in order, with provider, model id, endpoint, masked key and status. Never the key itself |
 | `POST /api/dashboard/models` | Add a model `{ provider, model_id, endpoint_url, api_key, tier }`. Tests the connection first ("Test & save"); on failure nothing is saved and the error says why. New models go to the end of the tier |
+| `GET /api/dashboard/models/usage?range=7d` | Per model (all tiers, fallback included): requests, tokens in and out, failures by outcome, how often it served as a backup or fallback, median latency, current status, and the provider-reported limits last seen (`rate_limits`, `rate_limits_seen_at`, or null when the provider reports none). Computed from `model_calls`, always filtered by `tenant_id`. Includes the tenant's estimated provider cost per model and in total (null for unpriced models) |
 | `PATCH /api/dashboard/models/:id` | Move up or down within its tier (`{ direction: "up" \| "down" }`) |
 | `DELETE /api/dashboard/models/:id` | Remove a model and close the gap in the order |
 
@@ -344,7 +369,8 @@ Ingest is synchronous in Python. Express calls it in the background after answer
 - If every model in the chosen tier fails, the `fallback` group is tried in order. If that also fails, return `502 provider_error`.
 - If the tenant has no model for the chosen tier, use the other tier's models; if it has none at all, return `422 no_models_configured` with a message telling the user to add a model in the Models tab. The `LLM_*` environment variables are a dev/test default used only when `models` is absent and the service runs outside production.
 - Provider adapters: `openai` and `openai_compatible` use the OpenAI SDK with the stored endpoint; `anthropic` and `google` use their OpenAI-compatible endpoints or native SDKs (check current docs). The response `route` still reports only `model_tier`; do not return which key was used.
-- The global LLM cap in `apps/api/config.json` protects the shared dev default key only and does not apply to tenants' own keys; the per-tenant limits still do.
+- The global LLM cap in `apps/api/config.json` applies only to calls that use the shared dev/test default key (`LLM_*`), never to a tenant's own keys. The per-tenant limits still apply to every request. A provider 429 on a tenant's key gets one retry, then the next model in the tier, then the fallback group, then `502 provider_error`.
+- The service returns an internal `attempts` list (provider, model id, tenant_model_id, tier, outcome, tokens, latency per attempt) and, when the provider sends them, the rate-limit headers of the last call per model. Express strips both from the public response, writes one `model_calls` row per attempt (tenant-scoped) and updates `tenant_models.rate_limits`. `/internal/query` also accepts `include_snippets` (Try it only), which adds `filename` and `snippet` to each source.
 
 **Config** (`apps/rag-service/app/config.yaml`). All numbers are placeholders to calibrate on the evaluation set, not tuned values:
 
@@ -407,7 +433,7 @@ Passages:
 Question: <query>
 ```
 
-**Cost (Phase 7 only; before that `cost_usd` is null):** `cost_usd = tokens_in/1000 * input_price + tokens_out/1000 * output_price`, using the tier's prices from config. Read token counts from the provider's response, never estimate them.
+**Cost (tenant's estimated provider cost; decided 2026-10-23):** per model attempt, `cost_usd = tokens_in/1e6 * input_price_per_1m + tokens_out/1e6 * output_price_per_1m`, using the prices on that tenant model and the provider's token counts (never estimated tokens); skip the attempt (NULL) when the model has no price; use the provider's own reported cost when the response includes it (`cost_source = 'provider'`). Express computes it and writes `model_calls.cost_usd`; `request_logs.cost_usd` is the sum. Prices live in `tenant_models`, never in code or `config.yaml`. Lumen's own pricing and savings (Phase 7) are on hold.
 
 ## 8. Phases 0 to 3
 
@@ -496,6 +522,8 @@ Do Phase 3B only. Implement the backend for the Models tab per sections 5, 6 and
 - infra/sql/002_tenant_models.sql with the tenant_models table exactly as in section 5 (apply it to the dev and test databases).
 - api: AES-256-GCM encrypt/decrypt helper using MODEL_KEY_ENCRYPTION_SECRET (refuse to start when missing or not 32 bytes); the four /api/dashboard/models endpoints, always filtered by tenant_id, session-protected; "Test & save" makes one tiny completion call through the same adapter the Python service uses, with timeouts, and saves only on success; an endpoint-URL guard (https only, refuse private/loopback/link-local/metadata addresses, no redirects); keys never in responses or logs; /v1/chat and /api/dashboard/try load the tenant's models and send them in /internal/query.
 - rag-service: /internal/query accepts models, picks within the tier top to bottom, falls back to the fallback group, returns 422 no_models_configured or 502 provider_error, uses env LLM_* only as the dev/test default; never logs a key; the same endpoint guard applies to the endpoints it calls.
+- Cost: tenant_models has optional input_price_per_1m and output_price_per_1m (POST and PATCH accept them; zod: non-negative numbers); Express computes model_calls.cost_usd per attempt and request_logs.cost_usd as the sum (null when unpriced), returns usage.cost_usd in /v1/chat and Try it, and GET /api/dashboard/models/usage includes cost per model and a total. Labelled as an estimate in every UI/API description. No prices in code or config.
+- Usage and limits: infra/sql/002 also creates model_calls and the two rate_limits columns; the Python service returns attempts and the last seen rate-limit headers; Express writes model_calls (one row per attempt, tenant-scoped), updates rate_limits, and serves GET /api/dashboard/models/usage. Try it returns filename and snippet via include_snippets; GET /api/dashboard/requests/:id returns passages read live from chunks (tenant-scoped join). The global LLM cap applies only to default-key calls.
 - Tests: encryption round trip and tamper failure; tenant A cannot list, change or delete tenant B's model (404); the key is never in any response or log line; SSRF guard cases (127.0.0.1, 10.x, 169.254.169.254, redirects); model order, backup and fallback behaviour with fake clients; no-models path makes zero LLM calls.
 Report using the format in section 9.
 ```
@@ -505,7 +533,12 @@ Report using the format in section 9.
 - [ ] With the primary model failing, the backup answers; with the whole tier failing, the fallback answers; with none working, the client gets `502 provider_error`
 - [ ] A tenant with no models gets `422 no_models_configured`, and the model is never called
 - [ ] Endpoint URLs pointing at private or metadata addresses are refused
-- [ ] Tenant A cannot see or change tenant B's models, and all tests pass
+- [ ] With prices set on a model, a chat call returns usage.cost_usd equal to the hand calculation from its token counts; unpriced models give null; the usage endpoint totals match the sum of model_calls
+- [ ] A request that falls back leaves one `model_calls` row per attempt, and `GET /api/dashboard/models/usage` shows requests, tokens, failures and fallback use per model, including fallback models
+- [ ] `rate_limits` is filled from provider headers when present and null otherwise
+- [ ] Try it sources carry a snippet that is never written to request_logs or logs; the Requests detail passages come from a tenant-scoped live read
+- [ ] The global cap does not throttle calls made with a tenant's own key
+- [ ] Tenant A cannot see or change tenant B's models or usage, and all tests pass
 
 ### Phase 4: dashboard
 
@@ -522,7 +555,7 @@ Do Phase 4 only. Build the React dashboard in apps/web/ per sections 4 and 6.
 - A Requests page: the request log from GET /api/dashboard/requests with a tier filter, and a detail view per request from GET /api/dashboard/requests/:id showing route, usage and sources with filenames.
 - Usage meters in the sidebar (documents, requests per minute, requests this month) from GET /api/dashboard/usage. The limits come from config, never from the front end.
 - - A public Docs page at /docs (quickstart, authentication with the x-api-key header, the POST /v1/chat and document endpoints with request and response examples, error codes) and a Privacy page at /privacy, both linked from the home page hero ("Read the docs") and footer, in the same design. Write them from the real contracts in section 6; the Privacy page may only state what the product does (queries are logged for analytics, full document text is never logged, provider keys are stored encrypted) and must not promise a retention period.
-- A Models page (Phase 3B endpoints): Cheap, Expensive and Fallback groups, models in order with provider, endpoint, masked key and status, reorder arrows, Remove, and an Add model form (provider, model id, endpoint URL, API key, tier) with Test & save. The key field is write-only. See docs/WEBSITE_GUIDE.md section 06.
+- A Models page (Phase 3B endpoints): Cheap, Expensive and Fallback groups, models in order with provider, endpoint, masked key and status, reorder arrows, Remove, and an Add model form (provider, model id, endpoint URL, API key, tier) with Test & save. The key field is write-only. Each model row also shows its usage for the range (requests, tokens, failures, fallback use) and the provider-reported limits when known ("not reported" otherwise), from GET /api/dashboard/models/usage. Analytics gets a By model section (requests, tokens, failures, fallback use per model, fallback models included). Cost is shown as "estimated provider cost" from the tenant-entered prices (Models form has optional input and output price per 1M tokens): per model on the Models page, per request in the Requests list and detail and Try it usage, and cost per day plus total on Analytics (by model, fallback models included). Show "no price set" for unpriced models. No savings figure and no Lumen pricing. See docs/WEBSITE_GUIDE.md section 06.
 Dashboard nav order: Documents, API keys, Try it, Analytics, Requests, Models.
 Add any missing dashboard endpoints from section 6 to apps/api/ (including the `sources` column on request_logs, written by the chat route), always filtered by tenant, with a supertest case that tenant A cannot read tenant B's request id (404).
 Use plain CSS or one small component library. Report using the format in section 9.

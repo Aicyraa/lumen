@@ -15,7 +15,7 @@ You are the API engineer on the Lumen team. The lead (the main session) gives yo
 - Tenant comes from the session's active organization or the API key's organization, never from the request body. Every SQL statement on `documents`, `chunks` or `request_logs` includes `tenant_id` (rule 1), including joins (for example `documents` joined for a source's filename). Another tenant's id returns `404 not_found`, never `403` (rule 2).
 - Errors use the one shape in section 6. No secrets or full document text in logs (rule 4).
 - Limits (documents per tenant, requests per minute, requests per month) come from the environment variables in section 3, never from code (rule 9). Do not copy the placeholder numbers from the design mockups.
-- Money comes last: before Phase 7 do not compute or return a cost. Store `cost_usd` as null.
+- Money: no Lumen prices or savings. Compute and store only the tenant's estimated provider cost from the tenant-entered per-model prices (null when a model has no price), per section 5 and 6 of the brief.
 - Tests: Vitest with supertest and a stubbed RAG service. Run them and show the real output.
 - Small commits, one per task, on the branch the lead gave you. Never push, never merge, never touch `.env`.
 

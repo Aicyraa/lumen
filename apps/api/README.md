@@ -13,7 +13,7 @@ pnpm test                               # tsc --noEmit, then Vitest + supertest,
 ```
 
 The server refuses to start while `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `DASHBOARD_ORIGIN`,
-`INTERNAL_SECRET`, `RAG_SERVICE_URL`, `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE` or `MAX_REQUESTS_PER_MONTH`
+`INTERNAL_SECRET`, `RAG_SERVICE_URL`, `MODEL_KEY_ENCRYPTION_SECRET` (exactly 64 hex characters; changing it makes stored model keys unreadable), `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE` or `MAX_REQUESTS_PER_MONTH`
 is missing. Google/GitHub sign-in is skipped while its client id/secret are empty; email + password always works.
 
 Other tunables live in `config.json` (ingest timeout, interrupted-ingest cutoff, global LLM cap per minute, upload
@@ -22,6 +22,27 @@ limit, page sizes). Each can be overridden by an upper-snake env var, for exampl
 `globalLlmCapPerMinute` defaults to 8 (`GLOBAL_LLM_CAP_PER_MINUTE`). Groq documents base limits of 30 requests per
 minute and 8K tokens per minute for `openai/gpt-oss-20b` and `openai/gpt-oss-120b`. One chat call uses roughly
 700-1500 tokens, so tokens per minute, not requests, is the binding limit.
+
+## Tenant models (Phase 3B)
+
+`/api/dashboard/models` (session) manages a tenant's own provider models: list, add (Test & save makes one tiny
+completion first and saves nothing on failure), move up/down within a tier, remove, optional per-1M-token prices,
+and `/models/usage?range=7d|30d`. Keys are AES-256-GCM encrypted (bound to the tenant id), only a masked hint is
+ever returned, and endpoint URLs go through `lib/endpointGuard.ts` (https only, `http://localhost` outside
+production, private/loopback/link-local/metadata addresses refused, checked again at connect time, no redirects).
+`/v1/chat` and `/api/dashboard/try` send the decrypted models to `/internal/query`, write one `model_calls` row per
+attempt, and return `usage.cost_usd` as the tenant's estimated provider cost (null when the model has no price).
+`usage.cost_usd` is only ever the tenant's estimate from the prices on their own models. The one exception is an
+attempt's optional `reported_cost_usd`, which Express accepts only when the attempt succeeded and the value is a finite
+number >= 0 (the provider's own bill for that call). **The Python service must never send a cost it derived from a
+price of its own**, and has no prices to derive one from. Before each request Express re-checks every model's endpoint
+host (cached for `endpointGuardCacheTtlMs`); a host that now resolves to a private address is dropped, its key is
+never sent, and the model is marked `failing`.
+Limits for this feature (attempt cap, stored rate-limit header cap, field lengths, Test & save token budget, response
+size cap, price ceiling) live in `config.json` and can be overridden by upper-snake env vars such as `MODEL_ATTEMPTS_MAX`.
+With no models: production answers `422 no_models_configured`, other environments let the Python service use its
+`LLM_*` default. The global LLM cap applies only to that shared default key.
+Apply `infra/sql/002_tenant_models.sql` to the dev database (`psql "$DATABASE_URL" -f infra/sql/002_tenant_models.sql`); tests apply it to `lumen_test` themselves.
 
 ## Dev-only API key
 
@@ -47,10 +68,10 @@ src/
   config/            config.ts (env + config.json -> Config), env.ts (loads the repo-root .env)
   db/                pool.ts, the pg pool
   auth/              auth.ts, Better Auth setup (organizations, API keys)
-  middleware/        rateLimit, requireApiKey, requireSession
-  routes/            HTTP handlers: chat, documents, feedback, dev
-  services/          non-HTTP logic: rag.ts (rag-service client), sweep.ts (interrupted-ingest sweep)
-  lib/               errors.ts, the shared error shape and handlers
+  middleware/        rateLimit, requireApiKey, requireSession, tenantModels
+  routes/            HTTP handlers: chat, documents, feedback, models, dev
+  services/          non-HTTP logic: rag.ts (rag-service client), provider.ts (Test & save call), modelCalls.ts (attempts, cost), sweep.ts
+  lib/               errors.ts (error shape), crypto.ts (AES-256-GCM), endpointGuard.ts (SSRF guard), logger.ts (key redaction)
   types/             types.ts, shared types (Deps)
 test/                mirrors src: auth, config, middleware, routes, services; helpers/ and global-setup.ts
 ```

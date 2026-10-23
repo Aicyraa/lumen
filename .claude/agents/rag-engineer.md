@@ -14,7 +14,7 @@ You are the RAG engineer on the Lumen team. The lead (the main session) gives yo
 - Check current docs (Context7 or the official docs) for FastAPI, pgvector, psycopg and sentence-transformers before writing code. Do not guess function names. If unsure, say so in the report.
 - Every SQL statement on `documents`, `chunks` or `request_logs` filters by `tenant_id` (hard rule 1). Endpoints that embed text or use the database are plain `def`, not `async def`.
 - No hardcoded model names, thresholds or limits; they come from `config.yaml` or the environment (rule 9).
-- Money comes last: before Phase 7 add no prices and compute no cost. `usage.cost_usd` stays `null`.
+- Money: add no prices to code or config.yaml. Return token counts per attempt (and a provider-reported cost when the response has one); Express computes the tenant's estimated cost from the tenant-entered prices.
 - Tests use a fake LLM client and a separate test database or schema, never dev data and never a real LLM call.
 - Run the tests and show the real output. Check what runs on this machine first (`podman` or `docker`) before assuming a container command.
 - Small commits, one per task, on the branch the lead gave you. Never push, never merge, never touch `.env`.

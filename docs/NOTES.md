@@ -59,3 +59,18 @@
 - Request ids: UUIDs, as the service already returns.
 - /docs and /privacy pages: built with the website in Phase 4.
 - Still open (needs the human): Try it sources contract (guide item 3), Requests drawer passages (item 4), global LLM cap meaning (item 8).
+
+### Decisions 2026-10-23 (round 2)
+- Try it: live snippet (option B). Requests drawer: passage read live from chunks, tenant-scoped (option B). Global LLM cap: only for the shared default key.
+- Per-model usage, provider-reported limits and analytics for all models including fallback are in Phase 3B (data: model_calls table) and Phase 4 (UI). Token counts are recorded per attempt.
+- Total cost across models: requested by the human, but it needs per-model prices and contradicts the on-hold pricing decision. Open question: add price fields to tenant_models and build cost on top of model_calls (a pricing phase), or keep deferring.
+
+- Cost decision: show the tenant's estimated provider cost (their own spend), from per-model prices they enter in the Models tab; provider-reported cost preferred when present. Ships with Phase 3B (data, API) and Phase 4 (UI). AGENTS.md money rule reworded: Lumen itself still has no pricing, savings or calculator.
+
+## 2026-10-23 Phase 3B (tenant models)
+
+- API half (api-engineer) and Python half (rag-engineer) on `phase-3b-tenant-models`. Tests: api 230 (tsc + vitest), rag-service 149; lead ran root `pnpm test` (api and rag-service share lumen_test, so root runs them one at a time; during parallel work rag-service used `lumen_rag_test` via TEST_DATABASE_URL).
+- Built: `infra/sql/002_tenant_models.sql` (tenant_models with optional per-model prices, model_calls per attempt with cost), AES-256-GCM key storage bound to tenant id, SSRF guard in both services (re-checked before each use; Python re-resolves before each call), models CRUD + usage endpoints, per-attempt model_calls, estimated provider cost (tokens x tenant-entered price per 1M; provider-reported cost preferred), Try it filename + snippet, global LLM cap only for the shared default key, tier/backup/fallback in /internal/query with `attempts`.
+- Lead e2e (both services, real Groq test key, tenant model added through the API): chat and Try it answered through the tenant's model; cost 0.0000734 for 559 in / 105 out at 0.075/0.30 per 1M matches the hand calculation; usage endpoint totals match model_calls; Groq limits captured from headers (8000 TPM); bad key and 169.254.169.254 endpoint refused with nothing stored; no key in logs; dev DB cleaned. Fallback path through both services is covered by tests plus the Python engineer's direct Groq run (wrong primary, good backup), not run live through Express.
+- Reviewer: no blockers on either half. Fixed: limits moved to config.json, endpoint re-check at use time, deep/case-insensitive log redaction, reported cost only from ok attempts, IPv6 ::/96 and fec0::/10 in the Python guard. Known: DNS rebinding between the Python check and connect (flagged in code), worst-case latency with many slow models vs Express timeout not checked, Anthropic/Google compatible endpoints read from docs only, Requests-detail passages deferred to Phase 4.
+- Process caveat: both engineers committed on the same branch concurrently, so some Python tests and code landed inside API commits; test-before-code holds by content, not in git. Do not run two engineers in one working tree again.

@@ -15,7 +15,7 @@ Read section 2 (hard rules) and the current phase's acceptance checks in `docs/A
 4. **Secrets (rule 4).** No key, token or secret in code, logs or git. `.env` is ignored and was never committed (check history too).
 5. **Mounting order (rule 5).** The Better Auth handler is mounted before `express.json()`.
 6. **No hardcoding (rule 9).** No model names, prices, thresholds or limits in code. The placeholder limits (50, 60, 50,000) must not appear.
-7. **Money comes last.** Before Phase 7: no prices, no computed cost, no cost, savings, calculator or pricing figure or copy anywhere.
+7. **Money.** No Lumen prices, savings, calculator or pricing copy anywhere, and no prices in code or config.yaml. The only allowed cost is the tenant's own estimated provider cost from tenant-entered per-model prices (labelled as an estimate), stored per tenant model in the database.
 8. **Copy honesty.** No UI or public copy promises a retention period or any feature that is not built.
 9. **Phase boundary.** Nothing from a later phase was started; no unrelated refactors; the brief files were not edited unless the task said so.
 10. **Tests.** Run them. A claimed pass without real output is a fail.

@@ -8,12 +8,16 @@ disagree. Do not start a build phase unless asked.
 
 ## Money comes last
 
-Phase 7 (pricing) is the final phase. Before it, do not add prices, compute or
-store a cost, or show any cost, savings, calculator or pricing figure or copy
-anywhere (API, logs, dashboard, home page, eval). `usage.cost_usd` and
-`request_logs.cost_usd` stay null, and `config.yaml` has no prices. Token counts
-and latency are still recorded. Request, document and rate limits are not
-money and stay in scope, read from environment variables.
+Lumen has no pricing of its own: no Lumen prices, savings figures, calculator,
+pricing page or pricing copy anywhere, and `config.yaml` has no prices (Phase 7,
+Lumen pricing, is on hold: reconsidering). The one exception, decided 2026-10-23:
+the tenant's own provider spend. A tenant may enter the input and output price per
+1M tokens of each of their own models in the Models tab; Lumen then stores and shows
+an estimated provider cost per request, per model and in total, always labelled
+"estimated provider cost" (a provider-reported cost is used when its response has
+one). Those prices live in the database per tenant model, never in code or config.
+Token counts, latency, and request, document and rate limits stay in scope, read
+from environment variables.
 
 ## Agent team
 

@@ -32,5 +32,5 @@ You are the lead. You coordinate; the engineer agents (`rag-engineer`, `api-engi
 
 ## Rules that never bend
 - Tenant isolation, internal-only Python service, no secrets in code or logs, no hardcoded prices, limits or model names: section 2 of the brief.
-- Money comes last. Before Phase 7 nothing computes, stores or shows a cost.
+- Money: no Lumen pricing, savings or calculator (Phase 7 on hold). Only the tenant's estimated provider cost from tenant-entered per-model prices is allowed.
 - Confirm with the user before any destructive or outward-facing action (deleting data, deploys, schema changes on a hosted database, connecting Vercel or Supabase to production).

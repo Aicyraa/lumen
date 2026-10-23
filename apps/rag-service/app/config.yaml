@@ -12,13 +12,18 @@ router:
   escalate_at: 0.25       # low on purpose: a missed escalation costs more than an extra one
   hard_at: 0.50           # at or above this the question is clearly hard
 
-models: {}                # names come from LLM_MODEL_CHEAP / LLM_MODEL_EXPENSIVE
+# Model names, endpoints and keys come from the tenant (the request's `models`); LLM_* env is only a dev/test default. No prices here.
 
 llm:
-  timeout_seconds: 30
+  connect_timeout_seconds: 5
+  timeout_seconds: 30           # read timeout per call; a slow model counts as a timeout attempt
   max_output_tokens: 512
   temperature: 0
+  omit_temperature_providers: [openai, anthropic]   # their newer models reject a fixed temperature
   rate_limit_retry_seconds: 2   # wait before the single retry after a provider 429
+  max_rate_limit_headers: 30    # rate-limit response headers kept per attempt
+  max_header_value_chars: 200
+  snippet_chars: 200            # Try it only: length of the passage excerpt on a source
 
 messages:
   no_documents: No documents have been uploaded yet.

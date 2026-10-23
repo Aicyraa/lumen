@@ -5,6 +5,7 @@ declare global {
       tenantId: string;
       apiKeyId?: string;
       userId?: string;
+      tenantModels?: import("../middleware/tenantModels.js").TenantModels; // decrypted keys: never log
     }
   }
 }
@@ -20,5 +21,6 @@ export interface Deps {
   config: Config;
   log: Logger;
   pending: Set<Promise<void>>; // background ingests still running
+  resolveHost?: import("../lib/endpointGuard.js").GuardOptions["resolve"]; // tests inject DNS answers; default is the OS resolver
 }
 
