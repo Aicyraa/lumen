@@ -71,7 +71,7 @@ Everything that shows money (savings calculator, cost and savings stats, cost co
 01 Hero → image slot (560px, striped placeholder) → 02 How it works (3 steps) → 03 Demo (Easy / Hard / No answer request-response pair) → 04 Quickstart (cURL / Node / Python tabs + Copy) → 05 Savings calculator → 06 Built in (feature rows) → 07 Security (4 columns) → 08 FAQ (accordion) → closing CTA → footer.
 
 ### Dashboard nav
-01 Documents · 02 API keys · 03 Try it · 04 Analytics · 05 Requests. Sidebar bottom: USAGE meters (Documents, Requests / min, This month), then workspace + email.
+01 Documents · 02 API keys · 03 Try it · 04 Analytics · 05 Requests · 06 Models. Sidebar bottom: USAGE meters (Documents, Requests / min, This month), then workspace + email.
 
 ## 5. Components
 

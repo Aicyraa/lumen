@@ -37,3 +37,16 @@
 - Bug caught: Python DELETE /internal/documents also deletes the documents row, so Express must not call it for failed ingests (deletes partial chunks itself, tenant-scoped).
 - Root `pnpm test` runs apps one at a time (`--concurrency=1`): api and rag-service tests share the lumen_test database and wipe each other when parallel. Lead ran root `pnpm test`: api 67 + rag-service 81 passed.
 - Follow-up on the same branch: TypeScript port (74 tests plus tsc, lead ran root `pnpm test`: api 74 + rag-service 81), dev route only with NODE_ENV=development, global LLM cap default 8/min (Groq base limits for gpt-oss: 30 RPM, 8K TPM; tokens are the binding limit), logging failure no longer masks 502, `monthly_limit` code added to the brief. Reviewer: no blockers; the three fixes shared one commit and the red evidence is the engineer's report only.
+
+## 2026-10-23 Alignment with docs/WEBSITE_GUIDE.md
+
+- Decision: follow the guide for models. Tenants bring their own cheap, expensive and fallback models and provider keys (Models tab). `TEST_LLM_API_KEY` and the `LLM_*` variables are a dev/test default only. Brief updated: Phase 3B (backend) before Phase 4 (UI), `tenant_models` table, rules 11 (provider keys are secrets) and 12 (tenant endpoints are untrusted, SSRF), `MODEL_KEY_ENCRYPTION_SECRET`, tenant-model flow in section 7, Models endpoints in section 6.
+- Conflicts left open for the human:
+  1. Sign-in: guide says Google and GitHub only, no passwords; the brief now also enables email and password (added for local use).
+  2. Phase 7 pricing: prices were one set in config.yaml per tier; with tenant-supplied models they must be per model. Marked OPEN in the brief.
+  3. Try it "Sources: document, snippet, similarity score": the chat response has only document_id, chunk_id and score (no filename, no snippet) and the brief forbids storing chunk text. Needs a contract decision (filename join is fine; a snippet would be returned live but never stored).
+  4. Requests drawer "source passages": brief stores ids and scores only; show filename and score, not passage text.
+  5. FAQ "question retention": the brief forbids claiming or building a retention period; the home page FAQ must not mention it.
+  6. Request ids: guide shows `req_...`, the service returns UUIDs.
+  7. "Read the docs" and Docs/Privacy links on the home page: no docs or privacy page is specified anywhere.
+  8. Global LLM cap (Phase 3) only protects the shared dev default key once tenants bring their own keys; per-tenant limits remain.

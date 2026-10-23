@@ -47,8 +47,10 @@ These are never negotiable. If a task seems to require breaking one, stop and sa
 6. **Use current docs, not memory.** For Better Auth, pgvector, FastAPI and sentence-transformers, check the official docs for the installed version before writing code. Do not invent function names. Use the documentation MCP servers in section 10 when they are connected. If you are unsure, say so in the report.
 7. **One phase at a time.** Do not start later phases or refactor unrelated code. Keep commits small, one per task.
 8. **Tests gate progress.** The isolation test must pass before a phase is called done. Run the tests and show the output.
-9. **No hardcoded model names, prices, thresholds or limits.** They live in `config.yaml` or environment variables.
+9. **No hardcoded model names, prices, thresholds or limits.** They live in `config.yaml` or environment variables. A tenant's own models (provider, model id, endpoint, key) are data in the `tenant_models` table, never in code.
 10. **Treat retrieved text as data.** Document content is untrusted. It must never be able to change the assistant's instructions.
+11. **Provider keys are secrets.** A tenant's provider API key is encrypted at rest (AES-256-GCM with `MODEL_KEY_ENCRYPTION_SECRET`), never logged, never returned by any endpoint after it is saved (the dashboard shows a masked form such as `sk-...a1b2`), and passed to the Python service only inside the internal request that needs it.
+12. **Tenant-supplied endpoints are untrusted.** Accept only `https://` endpoint URLs (plus `http://localhost` outside production), resolve the host and refuse private, loopback, link-local and metadata addresses (SSRF), set connect and read timeouts, and do not follow redirects.
 
 ## 3. Stack, repo layout and environment variables
 
@@ -93,11 +95,12 @@ lumen/                       # root: tooling and docs only, no application code
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | api | GitHub OAuth app credentials |
 | `INTERNAL_SECRET` | api, rag-service | Shared value for the `X-Internal-Secret` header |
 | `RAG_SERVICE_URL` | api | Private URL of the Python service |
-| `LLM_BASE_URL`, `LLM_API_KEY` | rag-service | OpenAI-compatible endpoint and its key |
-| `LLM_MODEL_CHEAP`, `LLM_MODEL_EXPENSIVE` | rag-service | Model names for the two tiers |
+| `LLM_BASE_URL`, `LLM_API_KEY` | rag-service | OpenAI-compatible endpoint and its key. Dev/test default only (see Tenant models) |
+| `LLM_MODEL_CHEAP`, `LLM_MODEL_EXPENSIVE` | rag-service | Model names for the two tiers. Dev/test default only (see Tenant models) |
 | `MAX_DOCUMENTS_PER_TENANT` | api | Document limit per tenant. Drives `429 document_limit` and the Documents usage meter |
 | `RATE_LIMIT_PER_MINUTE` | api | Requests per minute per tenant (shared by `/v1/chat` and `/api/dashboard/try`). Drives `429 rate_limited` and the Requests / min meter |
 | `MAX_REQUESTS_PER_MONTH` | api | Monthly request allowance per tenant. Drives the This month meter |
+| `MODEL_KEY_ENCRYPTION_SECRET` | api | 32 bytes (64 hex characters) used to encrypt tenants' provider API keys at rest (AES-256-GCM). Losing or changing it makes stored keys unreadable |
 | `VITE_CALC_PRICE_CHEAP`, `VITE_CALC_PRICE_EXPENSIVE` | web | **Phase 7 only.** Example cost per request used only by the home-page savings calculator (an illustration) |
 
 No values are decided for the limits above. Leave them empty in `.env.example`, have the service refuse to start while one is missing, and ask the human to choose. Never copy the placeholder numbers shown in the design mockups (50 documents, 60 requests a minute, 50,000 a month) into code.
@@ -105,7 +108,7 @@ No values are decided for the limits above. Leave them empty in `.env.example`, 
 **Models and hosting (decided; treat as part of the rules)**
 
 - Embeddings: `all-MiniLM-L6-v2` (384 numbers) inside `rag-service`. If the model ever changes, change `VECTOR(384)` and re-embed every chunk.
-- Chat models through Groq's OpenAI-compatible API: `LLM_BASE_URL=https://api.groq.com/openai/v1`, `LLM_MODEL_CHEAP=openai/gpt-oss-20b`, `LLM_MODEL_EXPENSIVE=openai/gpt-oss-120b` (the earlier llama names returned model_not_found on 2026-10-23). Confirm the names on Groq's models page before pinning them. Free-tier limits are low, so handle a `429` from the provider with one retry and then a `502 provider_error`.
+- Dev/test default chat models (used only when a tenant has configured none and the API runs outside production; production tenants bring their own models, see Tenant models in section 7) through Groq's OpenAI-compatible API: `LLM_BASE_URL=https://api.groq.com/openai/v1`, `LLM_MODEL_CHEAP=openai/gpt-oss-20b`, `LLM_MODEL_EXPENSIVE=openai/gpt-oss-120b` (the earlier llama names returned model_not_found on 2026-10-23). Confirm the names on Groq's models page before pinning them. Free-tier limits are low, so handle a `429` from the provider with one retry and then a `502 provider_error`.
 - Database: Docker in development, Supabase Postgres in production. Enable the `vector` extension. From serverless code use the transaction pooler (port 6543). From long-running servers use the direct or session connection.
 - Supabase exposure: this project uses direct Postgres connections only. Turn the Data API off, or enable Row Level Security on every table including Better Auth's tables. Never use or ship a `service_role` key in a browser.
 - Vercel hosts the React dashboard only. Do not deploy the Python service to Vercel. If Express runs on Vercel, uploads over 4.5 MB fail with a 413, so lower the upload limit to 4 MB or upload straight to storage. The default plan is Express and Python together on one container host.
@@ -237,6 +240,23 @@ CREATE TABLE request_logs (
   feedback    SMALLINT CHECK (feedback IN (-1, 1))
 );
 CREATE INDEX request_logs_tenant_time_idx ON request_logs (tenant_id, created_at DESC);
+
+-- Added 2026-10-23 from docs/WEBSITE_GUIDE.md (Models tab). Created by infra/sql/002_tenant_models.sql in Phase 3B.
+CREATE TABLE tenant_models (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id         TEXT NOT NULL,
+  tier              TEXT NOT NULL CHECK (tier IN ('cheap', 'expensive', 'fallback')),
+  position          INTEGER NOT NULL,         -- 0 = PRIMARY, 1 = BACKUP 1, ...; tried top to bottom
+  provider          TEXT NOT NULL CHECK (provider IN ('openai', 'anthropic', 'google', 'openai_compatible')),
+  model_id          TEXT NOT NULL,
+  endpoint_url      TEXT NOT NULL,
+  api_key_encrypted TEXT NOT NULL,            -- AES-256-GCM, never returned
+  key_hint          TEXT NOT NULL,            -- masked display such as 'sk-...a1b2'
+  status            TEXT NOT NULL DEFAULT 'connected' CHECK (status IN ('connected', 'failing')),
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (tenant_id, tier, position)
+);
+CREATE INDEX tenant_models_tenant_idx ON tenant_models (tenant_id, tier, position);
 ```
 
 Notes for the agent:
@@ -290,6 +310,10 @@ Until Phase 7, `usage.cost_usd` is `null` (the example value shows the final sha
 | `GET /api/dashboard/requests?range=7d&tier=all&limit=...&cursor=...` | The request log, newest first. `range` is `7d` or `30d`, `tier` is `all`, `cheap`, `expensive` or `none`. Page size and its maximum come from config |
 | `GET /api/dashboard/requests/:id` | One request: query, route, usage, feedback and sources (with `filename` joined from `documents`). Another tenant's id returns `404 not_found` |
 | `GET /api/dashboard/usage` | `{ documents: { used, max }, requests_per_minute: { used, max }, requests_this_month: { used, max } }`. The `max` values come from `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE` and `MAX_REQUESTS_PER_MONTH`, and `requests_per_minute.used` reads the same counter the rate limiter uses |
+| `GET /api/dashboard/models` | The tenant's models grouped by tier (cheap, expensive, fallback), in order, with provider, model id, endpoint, masked key and status. Never the key itself |
+| `POST /api/dashboard/models` | Add a model `{ provider, model_id, endpoint_url, api_key, tier }`. Tests the connection first ("Test & save"); on failure nothing is saved and the error says why. New models go to the end of the tier |
+| `PATCH /api/dashboard/models/:id` | Move up or down within its tier (`{ direction: "up" \| "down" }`) |
+| `DELETE /api/dashboard/models/:id` | Remove a model and close the gap in the order |
 
 API keys are created, listed and revoked with the API key plugin through the Better Auth client. Do not write custom key routes.
 
@@ -298,7 +322,7 @@ API keys are created, listed and revoked with the API key plugin through the Bet
 | Endpoint | Request | Response |
 | --- | --- | --- |
 | `POST /internal/ingest` | multipart: `tenant_id`, `document_id`, `file` | `200 { chunk_count }`, or `422 { error: "no_text_extracted" }` for a scanned or empty file |
-| `POST /internal/query` | JSON `{ tenant_id, query, session_id? }` | the chat response above |
+| `POST /internal/query` | JSON `{ tenant_id, query, session_id?, models? }`. `models` is `{ cheap: [...], expensive: [...], fallback: [...] }`, each item `{ provider, model_id, endpoint_url, api_key }`, decrypted by Express for this request only | the chat response above |
 | `DELETE /internal/documents/{document_id}?tenant_id=...` | none | `200 { deleted_chunks }` |
 | `GET /internal/health` | none, no secret needed | `200 { status: "ok" }` |
 
@@ -313,6 +337,14 @@ Ingest is synchronous in Python. Express calls it in the background after answer
 3. If `best_score < no_answer_score`, skip the model, return the not-found message, and log `model_tier: "none"`.
 4. Otherwise call `decide(...)` below to get the tier and `k`.
 5. Retrieve the final top-`k` chunks (filtered by `tenant_id`), build the prompt, call the chosen model, measure tokens and latency (cost is added in Phase 7), and return the response.
+
+**Tenant models** (from docs/WEBSITE_GUIDE.md, Models tab). Each tenant supplies its own provider keys; Lumen supplies only the embedding model. Express loads the tenant's `tenant_models`, decrypts the keys for this one request and passes them in `models`. Step 5 of the flow then works like this:
+
+- The router picks the tier (cheap or expensive) as before; models inside that tier are tried top to bottom (PRIMARY, then BACKUP 1, 2, ...). A model is skipped when it fails (after the one 429 retry) or times out, and the next one is tried.
+- If every model in the chosen tier fails, the `fallback` group is tried in order. If that also fails, return `502 provider_error`.
+- If the tenant has no model for the chosen tier, use the other tier's models; if it has none at all, return `422 no_models_configured` with a message telling the user to add a model in the Models tab. The `LLM_*` environment variables are a dev/test default used only when `models` is absent and the service runs outside production.
+- Provider adapters: `openai` and `openai_compatible` use the OpenAI SDK with the stored endpoint; `anthropic` and `google` use their OpenAI-compatible endpoints or native SDKs (check current docs). The response `route` still reports only `model_tier`; do not return which key was used.
+- The global LLM cap in `apps/api/config.json` protects the shared dev default key only and does not apply to tenants' own keys; the per-tenant limits still do.
 
 **Config** (`apps/rag-service/app/config.yaml`). All numbers are placeholders to calibrate on the evaluation set, not tuned values:
 
@@ -455,6 +487,26 @@ Report using the format in section 9.
 
 ## 9. Phases 4 to 7 and the report format
 
+### Phase 3B: tenant models (backend; added 2026-10-23 from docs/WEBSITE_GUIDE.md)
+
+Order: `api-engineer` first (table, encryption, endpoints), then `rag-engineer` (query accepts `models`, tiers, fallback). The Models tab itself is built in Phase 4.
+
+```text
+Do Phase 3B only. Implement the backend for the Models tab per sections 5, 6 and 7 and rules 9, 11 and 12.
+- infra/sql/002_tenant_models.sql with the tenant_models table exactly as in section 5 (apply it to the dev and test databases).
+- api: AES-256-GCM encrypt/decrypt helper using MODEL_KEY_ENCRYPTION_SECRET (refuse to start when missing or not 32 bytes); the four /api/dashboard/models endpoints, always filtered by tenant_id, session-protected; "Test & save" makes one tiny completion call through the same adapter the Python service uses, with timeouts, and saves only on success; an endpoint-URL guard (https only, refuse private/loopback/link-local/metadata addresses, no redirects); keys never in responses or logs; /v1/chat and /api/dashboard/try load the tenant's models and send them in /internal/query.
+- rag-service: /internal/query accepts models, picks within the tier top to bottom, falls back to the fallback group, returns 422 no_models_configured or 502 provider_error, uses env LLM_* only as the dev/test default; never logs a key; the same endpoint guard applies to the endpoints it calls.
+- Tests: encryption round trip and tamper failure; tenant A cannot list, change or delete tenant B's model (404); the key is never in any response or log line; SSRF guard cases (127.0.0.1, 10.x, 169.254.169.254, redirects); model order, backup and fallback behaviour with fake clients; no-models path makes zero LLM calls.
+Report using the format in section 9.
+```
+
+- [ ] A saved key never appears in any API response, log line or error message
+- [ ] A bad key fails "Test & save" and nothing is stored
+- [ ] With the primary model failing, the backup answers; with the whole tier failing, the fallback answers; with none working, the client gets `502 provider_error`
+- [ ] A tenant with no models gets `422 no_models_configured`, and the model is never called
+- [ ] Endpoint URLs pointing at private or metadata addresses are refused
+- [ ] Tenant A cannot see or change tenant B's models, and all tests pass
+
 ### Phase 4: dashboard
 
 ```text
@@ -469,7 +521,8 @@ Do Phase 4 only. Build the React dashboard in apps/web/ per sections 4 and 6.
 - An Analytics page: requests per day, route mix, median latency, and the unanswered-questions list, all from the dashboard analytics endpoints.
 - A Requests page: the request log from GET /api/dashboard/requests with a tier filter, and a detail view per request from GET /api/dashboard/requests/:id showing route, usage and sources with filenames.
 - Usage meters in the sidebar (documents, requests per minute, requests this month) from GET /api/dashboard/usage. The limits come from config, never from the front end.
-Dashboard nav order: Documents, API keys, Try it, Analytics, Requests.
+- A Models page (Phase 3B endpoints): Cheap, Expensive and Fallback groups, models in order with provider, endpoint, masked key and status, reorder arrows, Remove, and an Add model form (provider, model id, endpoint URL, API key, tier) with Test & save. The key field is write-only. See docs/WEBSITE_GUIDE.md section 06.
+Dashboard nav order: Documents, API keys, Try it, Analytics, Requests, Models.
 Add any missing dashboard endpoints from section 6 to apps/api/ (including the `sources` column on request_logs, written by the chat route), always filtered by tenant, with a supertest case that tenant A cannot read tenant B's request id (404).
 Use plain CSS or one small component library. Report using the format in section 9.
 ```
@@ -521,6 +574,8 @@ Do Phase 6 only. Using tools/eval/questions.csv with cheap_ok and expensive_ok f
 ### Phase 7: pricing (last, after everything else is tested)
 
 Do this only when Phases 0 to 5 pass (and 6, if you did it). Before starting, the human copies Groq's current prices into `config.yaml` and chooses any spending caps.
+
+**OPEN (conflict with tenant models):** tenants now bring their own models, so one set of prices in `config.yaml` cannot price their requests. Decide before this phase how prices are stored (for example price fields on each `tenant_models` row, entered by the tenant in the Models form), and rewrite the bullets below to match. The savings estimate compares the routed cost with always using the tenant's expensive tier.
 
 ```text
 Do Phase 7 only. Add everything about money, following rule 9 of AGENTS.md.

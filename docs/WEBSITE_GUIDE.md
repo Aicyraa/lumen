@@ -3,7 +3,7 @@
 What each page, tab and section of the Claude Design file `Lumen Website.dc.html`
 does. `support.js` in that project is only the design-canvas runtime and has no
 product content. Build rules live in `AI_BUILD_BRIEF.md` and `DESIGN.md`; if they
-disagree with this guide, the brief wins.
+disagree with this guide, the brief wins, except that the Models tab (06) is in scope: backend in Phase 3B, UI in Phase 4. The sign-in page lists Google and GitHub only; the brief also enables email and password (an open difference, see docs/NOTES.md).
 
 > **Money comes last.** The design shows cost, savings, a calculator and example
 > prices (Savings section, COST and EST. SAVINGS stats, cost columns, `cost_usd` in
@@ -92,4 +92,4 @@ Bring-your-own provider keys and tier ordering.
 ## Design notes
 - Dark editorial theme: near-black canvas, warm off-white type, one lime accent, mono uppercase labels, numbered sections.
 - Striped boxes are slots for real screenshots; marketing copy and sample data are placeholders.
-- The Models tab (06) goes beyond the Phase 4 scope listed in the design file; confirm which phase builds it.
+- The Models tab (06) is built as Phase 3B (backend) and Phase 4 (UI).

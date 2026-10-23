@@ -3,7 +3,7 @@
 Read `docs/AI_BUILD_BRIEF.md` fully before application work. It is the authoritative
 product brief, including hard rules, stack, contracts, phase boundaries, and
 acceptance checks. Read `docs/PROJECT_WORKFLOW.md` for supporting workflow context
-and `docs/DESIGN.md` before building any screen; the build brief wins if they
+`docs/WEBSITE_GUIDE.md` for what each page and tab does, and `docs/DESIGN.md` before building any screen; the build brief wins if they
 disagree. Do not start a build phase unless asked.
 
 ## Money comes last

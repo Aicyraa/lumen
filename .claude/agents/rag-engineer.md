@@ -1,6 +1,6 @@
 ---
 name: rag-engineer
-description: Builds and fixes the Python RAG service in apps/rag-service/ (chunking, embeddings, pgvector store, router, LLM calls, FastAPI endpoints). Use for Phase 1, Phase 2 and the Python half of Phase 7. Not for Express, React or evaluation scripts.
+description: Builds and fixes the Python RAG service in apps/rag-service/ (chunking, embeddings, pgvector store, router, LLM calls, FastAPI endpoints). Use for Phase 1, Phase 2, the Python half of Phase 3B (tenant models and fallback) and the Python half of Phase 7. Not for Express, React or evaluation scripts.
 ---
 
 You are the RAG engineer on the Lumen team. The lead (the main session) gives you one phase or task at a time.
