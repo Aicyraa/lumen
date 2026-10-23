@@ -141,3 +141,69 @@ describe("GET /api/dashboard/models", () => {
     expect(res.body.models.cheap.map((m: { model_id: string }) => m.model_id)).toEqual(["mine"]);
   });
 });
+
+describe("PATCH and DELETE /api/dashboard/models/:id", () => {
+  const seed = async (t: Tenant, tier: string, names: string[]) => {
+    const ids: string[] = [];
+    for (const model_id of names) ids.push((await as(t).post("/models", newModel({ tier, model_id }))).body.model.id);
+    return ids;
+  };
+  const patch = (t: Tenant, id: string, body: object) => request(ctx.app).patch(`/api/dashboard/models/${id}`).set("cookie", t.cookie).send(body);
+  const del = (t: Tenant, id: string) => request(ctx.app).delete(`/api/dashboard/models/${id}`).set("cookie", t.cookie);
+  const order = async (t: Tenant, tier: string) => (await rowsOf(t.tenantId)).filter((r) => r.tier === tier).map((r) => `${r.position}:${r.model_id}`);
+
+  it("moves a model down and up by swapping with its neighbour inside its tier, keeping positions unique", async () => {
+    const [m0, m1, m2] = await seed(a, "cheap", ["m0", "m1", "m2"]);
+    await seed(a, "expensive", ["e0"]);
+    let res = await patch(a, m0, { direction: "down" });
+    expect(res.status).toBe(200);
+    expect(await order(a, "cheap")).toEqual(["0:m1", "1:m0", "2:m2"]);
+    expect(res.body.models.cheap.map((m: { model_id: string }) => m.model_id)).toEqual(["m1", "m0", "m2"]);
+    res = await patch(a, m2, { direction: "up" });
+    expect(await order(a, "cheap")).toEqual(["0:m1", "1:m2", "2:m0"]);
+    expect(await order(a, "expensive")).toEqual(["0:e0"]);
+    expect(m1).toBeTruthy();
+  });
+
+  it("moving the first model up or the last model down changes nothing", async () => {
+    const [m0, m1] = await seed(a, "cheap", ["m0", "m1"]);
+    expect((await patch(a, m0, { direction: "up" })).status).toBe(200);
+    expect((await patch(a, m1, { direction: "down" })).status).toBe(200);
+    expect(await order(a, "cheap")).toEqual(["0:m0", "1:m1"]);
+  });
+
+  it.each([[{}], [{ direction: "sideways" }], [{ direction: 1 }]])("rejects invalid move body #%# with 422", async (body) => {
+    const [m0] = await seed(a, "cheap", ["m0"]);
+    expect((await patch(a, m0, body)).status).toBe(422);
+  });
+
+  it("deletes a model and closes the gap in the order", async () => {
+    const [, m1] = await seed(a, "cheap", ["m0", "m1", "m2", "m3"]);
+    expect((await del(a, m1)).status).toBe(204);
+    expect(await order(a, "cheap")).toEqual(["0:m0", "1:m2", "2:m3"]);
+  });
+
+  it("tenant B gets 404 not_found for tenant A's model id on PATCH and DELETE, and nothing changes", async () => {
+    const [m0, m1] = await seed(a, "cheap", ["m0", "m1"]);
+    const before = await order(a, "cheap");
+    for (const res of [await patch(b, m0, { direction: "down" }), await del(b, m1)]) {
+      expect(res.status).toBe(404);
+      expect(res.body.error.code).toBe("not_found");
+    }
+    expect(await order(a, "cheap")).toEqual(before);
+    expect((await patch(a, m0, { direction: "down" })).status).toBe(200); // the owner still can
+  });
+
+  it("a deletion by tenant B does not shift tenant A's positions in the same tier name", async () => {
+    await seed(a, "cheap", ["a0", "a1"]);
+    const [b0] = await seed(b, "cheap", ["b0", "b1"]);
+    await del(b, b0);
+    expect(await order(a, "cheap")).toEqual(["0:a0", "1:a1"]);
+    expect(await order(b, "cheap")).toEqual(["0:b1"]);
+  });
+
+  it.each(["not-a-uuid", "00000000-0000-0000-0000-000000000000"])("an unknown or malformed id (%s) is 404", async (id) => {
+    expect((await patch(a, id, { direction: "up" })).status).toBe(404);
+    expect((await del(a, id)).status).toBe(404);
+  });
+});
