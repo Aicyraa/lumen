@@ -8,5 +8,7 @@
   "requestsPageSizeDefault": 50,
   "requestsPageSizeMax": 200,
   "queryTimeoutMs": 60000,
-  "ragDeleteTimeoutMs": 30000
+  "ragDeleteTimeoutMs": 30000,
+  "modelTestTimeoutMs": 15000,
+  "snippetMaxChars": 200
 }
