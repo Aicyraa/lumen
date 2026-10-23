@@ -4,7 +4,7 @@ from pathlib import Path
 
 def load_env() -> None:
     """Load KEY=VALUE lines from the repo-root .env into os.environ (existing vars win)."""
-    path = Path(__file__).resolve().parents[2] / ".env"
+    path = Path(__file__).resolve().parents[3] / ".env"
     if not path.exists():
         return
     for line in path.read_text().splitlines():

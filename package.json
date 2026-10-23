@@ -1,15 +1,15 @@
 {
   "name": "lumen",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "packageManager": "pnpm@12.14.0",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "bootstrap": "turbo run bootstrap",
+    "db:up": "podman start lumen-db || docker compose up -d db"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "lucide-react": "^1.61.0"
+  "devDependencies": {
+    "turbo": "^2.11.10"
   }
 }

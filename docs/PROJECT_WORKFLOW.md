@@ -204,8 +204,8 @@ Each phase is one prompt in section 8 or 9 of the AI build brief.
 | 1 RAG core | Chunk, embed, store and search, with the tenant test | `pytest` passes and `ask.py` finds the right chunk |
 | 2 Python service | FastAPI endpoints, router, model calls | `curl` returns the full response shape and tests pass |
 | 3 Express and Better Auth | Login, organizations, keys, upload, chat, logs | Sign in, upload and chat work with an API key |
-| 4 Dashboard | Home page (steps, demo, quickstart, security, FAQ), sign-in, keys, documents, analytics, requests, usage meters. Follows `DESIGN.md` | A new account gets a working key in under 5 minutes |
-| 5 Test site and proof | Fake customer, isolation suite, three-way comparison | Zero leaks and a `results.csv` |
+| 4 Dashboard | Home page (steps, demo, quickstart, security, FAQ), sign-in, keys, documents, analytics, requests, usage meters. Follows `docs/DESIGN.md` | A new account gets a working key in under 5 minutes |
+| 5 Proof | Isolation suite, three-way comparison (no test website) | Zero leaks and a `results.csv` |
 | 6 Classifier | Train from labeled questions, only if the rules fall short | Beats the rules on held-out questions |
 | 7 Pricing (last) | Prices in `config.yaml`, cost per request, cost and estimated savings in analytics and Requests, savings calculator, cost column in `results.csv`, provider spending caps, cost-spike alert | Costs match a hand calculation, and all earlier tests still pass |
 

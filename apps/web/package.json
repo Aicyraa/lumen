@@ -1,0 +1,9 @@
+{
+  "name": "@lumen/web",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "lucide-react": "^1.61.0"
+  },
+  "scripts": {}
+}

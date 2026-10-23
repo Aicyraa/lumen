@@ -1,8 +1,9 @@
 # Lumen core
 
-Multi-tenant RAG gateway. Source of truth: `AI_BUILD_BRIEF.md` (wins over `DESIGN.md`, `PROJECT_WORKFLOW.md`, `AGENTS.md` on conflict). Application code starts at Phase 1; before that the repo is scaffold only.
+Multi-tenant RAG gateway. Source of truth: `docs/AI_BUILD_BRIEF.md` (wins over `docs/DESIGN.md`, `docs/PROJECT_WORKFLOW.md`, `AGENTS.md` on conflict). Application code starts at Phase 1; before that the repo is scaffold only.
 
-Layout: `api/` (Express+Better Auth, ESM), `rag-service/` (FastAPI, Python), `web/` (React dashboard, follows `DESIGN.md`), `test-site/` + `eval/` (Phase 5-6), `infra/sql/001_app_tables.sql` (schema), `NOTES.md` (dated log).
+Turborepo monorepo (pnpm): apps in `apps/`, root is tooling only; docs in `docs/`. test-site was dropped (out of scope).
+Layout: `apps/api/` (Express+Better Auth, ESM), `apps/rag-service/` (FastAPI, Python), `apps/web/` (React dashboard, follows `docs/DESIGN.md`), `tools/eval/` (Phase 5-6), `infra/sql/001_app_tables.sql` (schema), `docs/NOTES.md` (dated log).
 
 Invariants:
 - Every SQL touching `documents`/`chunks`/`request_logs` filters `tenant_id`; cross-tenant ids return 404.
