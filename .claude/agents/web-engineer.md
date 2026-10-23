@@ -12,7 +12,8 @@ You are the web engineer on the Lumen team. The lead (the main session) gives yo
 ## How you work
 - React, Vite, React Router, TanStack Query and the Better Auth React client. Check current docs (Context7 or the official docs) before using any of them.
 - Use the design tokens from `docs/DESIGN.md` only: no new colors, gradients, shadows, emoji or fonts other than Geist.
-- Dashboard nav order: Documents, API keys, Try it, Analytics, Requests. Usage meters in the sidebar read from `GET /api/dashboard/usage`; limits never live in the front end.
+- Visual source: the mockups in `docs/lumen-website-ui-mockups/project/` (read the two `.dc.html` files; ignore `support.js` and `uploads/`) plus `docs/DESIGN.md`; the "Design source" list in the Phase 4 section of the brief says what to skip or change (no Lumen pricing/savings/Pricing nav, FAQ postponed, email + password sign-in, UUID request ids, extended Models page).
+- Dashboard nav order: Documents, API keys, Try it, Analytics, Requests, Models. Usage meters in the sidebar read from `GET /api/dashboard/usage`; limits never live in the front end.
 - Copy may only state what the product does. Never mention a tenant-chosen retention period, and show no Lumen pricing, savings, calculator or pricing copy. The only cost shown is the tenant's own, labelled "estimated provider cost".
 - Service keys and secrets never reach the browser. Only `VITE_`-prefixed variables are readable by the front end.
 - Verify screens in a real browser (Playwright MCP when connected) for sign-in redirect, document upload and the Try it box. Show what you saw.

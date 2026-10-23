@@ -1,7 +1,7 @@
 # Lumen website guide
 
 What each page, tab and section of the Claude Design file `Lumen Website.dc.html`
-does. `support.js` in that project is only the design-canvas runtime and has no
+(in `docs/lumen-website-ui-mockups/project/`) does. `support.js` in that project is only the design-canvas runtime and has no
 product content. Build rules live in `AI_BUILD_BRIEF.md` and `DESIGN.md`; if they
 disagree with this guide, the brief wins, except that the Models tab (06) is in scope: backend in Phase 3B, UI in Phase 4. Sign-in also offers email and password (decided 2026-10-23, kept). Lumen pricing, the Savings section and the FAQ are on hold. Cost shown in the dashboard is the tenant's estimated provider cost from prices they enter per model (see docs/NOTES.md).
 

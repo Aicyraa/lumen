@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#1c1c1a;font-family:Geist,system-ui,sans-serif;color:#efeee9}a{color:#efeee9;text-decoration:none}a:hover{color:oklch(0.88 0.17 118)}.dv-turn{padding:48px 56px 40px;border-bottom:1px solid rgba(255,255,255,.08)}.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 24px}.dv-tid{font:600 10px 'Geist Mono',monospace;padding:3px 7px;background:#efeee9;color:#111;border-radius:4px}.dv-tname{font:500 14px Geist,sans-serif;color:#efeee9}.dv-opts{display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start}.dv-opt{flex:none;display:flex;flex-direction:column;gap:10px}.dv-oid{font:600 10.5px 'Geist Mono',monospace;padding:3px 7px;background:rgba(255,255,255,.1);color:#efeee9;border-radius:5px}.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 12px Geist,sans-serif;color:#8d8c86}.dv-card{background:#0c0c0b;border:1px solid rgba(255,255,255,.08);border-radius:10px;overflow:hidden}.dv-next{margin:28px 0 0;font:12px/1.5 Geist,sans-serif;color:#8d8c86}</style>
+</helmet>
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Updated to match the prototype — Quickstart, Savings, Security, FAQ, Request log, Usage meters</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2a"><div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Home (public) · v2</div>
+<div class="dv-card" data-screen-label="Home v2" style="width:1440px">
+<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:28px 48px">
+<div style="display:flex;gap:32px;font-size:14px;color:#a9a8a2"><a href="#2a">Product</a><a href="#2a">Docs</a><a href="#2a">Pricing</a></div>
+<div style="font:600 18px Geist,sans-serif;letter-spacing:-.02em;display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:oklch(0.88 0.17 118)"></span>lumen</div>
+<div style="display:flex;justify-content:flex-end;gap:12px;align-items:center"><a href="#1b" style="font-size:14px;color:#a9a8a2">Sign in</a><a href="#1b" style="font-size:13px;font-weight:500;padding:10px 18px;border-radius:999px;background:#efeee9;color:#0c0c0b">Get an API key</a></div>
+</div>
+<div style="padding:96px 48px 64px;display:flex;flex-direction:column;gap:40px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">RAG API FOR YOUR CHATBOT — 01</div>
+<h1 style="margin:0;font-weight:500;font-size:112px;line-height:.95;letter-spacing:-.05em;max-width:1200px;text-wrap:balance">Answers from your documents, at the cheapest model that gets them right.</h1>
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:48px">
+<p style="margin:0;max-width:520px;font-size:19px;line-height:1.5;color:#a9a8a2;text-wrap:pretty">Upload your files, get an API key, and point your chatbot at one endpoint. Lumen retrieves only your tenant's passages, routes easy questions to a small model, and escalates when it's unsure.</p>
+<div style="display:flex;gap:12px"><a href="#1b" style="font-size:15px;font-weight:500;padding:16px 28px;border-radius:999px;background:oklch(0.88 0.17 118);color:#0c0c0b">Sign in to start</a><a href="#2a" style="font-size:15px;padding:16px 28px;border-radius:999px;border:1px solid #33332f">Read the docs</a></div>
+</div>
+</div>
+<div style="margin:0 48px;height:560px;border-radius:14px;border:1px solid #262624;background:repeating-linear-gradient(135deg,#141413 0 14px,#111110 14px 28px);display:flex;align-items:center;justify-content:center;font:12px 'Geist Mono',monospace;color:#6d6c67">dashboard screenshot — analytics view</div>
+<div style="padding:140px 48px 0;display:grid;grid-template-columns:1fr 2fr;gap:48px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">HOW IT WORKS — 02</div>
+<h2 style="margin:0;font-weight:400;font-size:52px;line-height:1.05;letter-spacing:-.035em;text-wrap:balance">Three steps from a folder of PDFs to a chatbot that cites its sources.</h2>
+</div>
+<div style="padding:72px 48px 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr))">
+<sc-for list="{{ steps }}" as="s" hint-placeholder-count="3">
+<div style="border-top:1px solid #33332f;padding:28px 32px 0 0;display:flex;flex-direction:column;gap:16px"><div style="font:500 13px 'Geist Mono',monospace;color:oklch(0.88 0.17 118)">{{ s.n }}</div><div style="font-size:28px;font-weight:500;letter-spacing:-.02em">{{ s.title }}</div><div style="font-size:15px;line-height:1.55;color:#a9a8a2;max-width:360px">{{ s.body }}</div></div>
+</sc-for>
+</div>
+<div style="padding:140px 48px 0;display:grid;grid-template-columns:1fr 2fr;gap:48px">
+<div style="display:flex;flex-direction:column;gap:20px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">DEMO — 03</div><div style="display:flex;flex-wrap:wrap;gap:6px;font:12px 'Geist Mono',monospace"><span style="padding:8px 14px;border-radius:999px;background:#efeee9;color:#0c0c0b">EASY</span><span style="padding:8px 14px;border-radius:999px;border:1px solid #33332f;color:#a9a8a2">HARD</span><span style="padding:8px 14px;border-radius:999px;border:1px solid #33332f;color:#a9a8a2">NO ANSWER</span></div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+<div style="background:#141413;border:1px solid #262624;border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:16px"><div style="font:11px 'Geist Mono',monospace;color:#8d8c86">REQUEST</div><pre style="margin:0;font:13px/1.7 'Geist Mono',monospace;color:#d8d7d1;white-space:pre-wrap">POST /v1/chat
+x-api-key: lum_••••••••
+
+{ "query": "When does enrollment close?" }</pre></div>
+<div style="background:#141413;border:1px solid #262624;border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:16px"><div style="font:11px 'Geist Mono',monospace;color:#8d8c86">RESPONSE · 620 MS</div><pre style="margin:0;font:13px/1.7 'Geist Mono',monospace;color:#d8d7d1;white-space:pre-wrap">"answer": "Enrollment closes on 15 March. [1]",
+"route": {
+  "model_tier": <span style="color:oklch(0.88 0.17 118)">"cheap"</span>,
+  "k": 3, "escalated": false
+},
+"usage": { "cost_usd": 0.0001 }</pre></div>
+</div>
+</div>
+<div style="padding:140px 48px 0;display:grid;grid-template-columns:1fr 2fr;gap:48px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:20px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">QUICKSTART — 04</div><h2 style="margin:0;font-weight:400;font-size:52px;line-height:1.05;letter-spacing:-.035em;text-wrap:balance">Call it from your backend in a few lines.</h2><p style="margin:0;font-size:15px;line-height:1.55;color:#a9a8a2;max-width:420px">Keep the key on your server. Your chatbot's frontend talks to your backend, and your backend talks to Lumen.</p></div>
+<div style="background:#141413;border:1px solid #262624;border-radius:14px;overflow:hidden">
+<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #262624;padding:8px"><div style="display:flex;gap:4px;font:12px 'Geist Mono',monospace"><span style="padding:8px 14px;border-radius:999px;background:#efeee9;color:#0c0c0b">cURL</span><span style="padding:8px 14px;border-radius:999px;color:#a9a8a2">Node</span><span style="padding:8px 14px;border-radius:999px;color:#a9a8a2">Python</span></div><span style="font:12px 'Geist Mono',monospace;padding:8px 14px;border-radius:999px;border:1px solid #33332f;color:#a9a8a2">Copy</span></div>
+<pre style="margin:0;padding:24px;font:13px/1.75 'Geist Mono',monospace;color:#d8d7d1;white-space:pre">curl -X POST $LUMEN_URL/v1/chat \
+  -H "x-api-key: $LUMEN_API_KEY" \
+  -H "content-type: application/json" \
+  -d '{"query": "When does enrollment close?"}'</pre>
+</div>
+</div>
+<div style="padding:140px 48px 0;display:grid;grid-template-columns:1fr 2fr;gap:48px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:20px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">SAVINGS — 05</div><h2 style="margin:0;font-weight:400;font-size:52px;line-height:1.05;letter-spacing:-.035em;text-wrap:balance">See what routing could save you.</h2><p style="margin:0;font-size:15px;line-height:1.55;color:#a9a8a2;max-width:420px">Easy questions go to the small model. Move the sliders to match your traffic.</p></div>
+<div style="background:#141413;border:1px solid #262624;border-radius:14px;padding:32px;display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;flex-direction:column;gap:12px"><div style="display:flex;justify-content:space-between;font-size:14px;color:#a9a8a2"><span>Requests per month</span><span style="font-family:'Geist Mono',monospace;color:#efeee9">100,000</span></div><div style="height:4px;border-radius:2px;background:#33332f"><div style="width:10%;height:4px;border-radius:2px;background:oklch(0.88 0.17 118)"></div></div></div>
+<div style="display:flex;flex-direction:column;gap:12px"><div style="display:flex;justify-content:space-between;font-size:14px;color:#a9a8a2"><span>Share of easy questions</span><span style="font-family:'Geist Mono',monospace;color:#efeee9">75%</span></div><div style="height:4px;border-radius:2px;background:#33332f"><div style="width:64%;height:4px;border-radius:2px;background:oklch(0.88 0.17 118)"></div></div></div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;border-top:1px solid #262624;padding-top:24px">
+<div style="display:flex;flex-direction:column;gap:8px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.12em;color:#8d8c86">ALWAYS LARGE MODEL</div><div style="font-size:30px;font-weight:500;letter-spacing:-.03em;color:#a9a8a2">$120.00</div></div>
+<div style="display:flex;flex-direction:column;gap:8px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.12em;color:#8d8c86">WITH ROUTING</div><div style="font-size:30px;font-weight:500;letter-spacing:-.03em">$37.50</div></div>
+<div style="display:flex;flex-direction:column;gap:8px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.12em;color:oklch(0.88 0.17 118)">EST. SAVED · 69% LESS</div><div style="font-size:30px;font-weight:500;letter-spacing:-.03em;color:oklch(0.88 0.17 118)">$82.50</div></div>
+</div>
+<div style="font-size:12px;line-height:1.5;color:#8d8c86">Estimate per month, using example prices of $0.0012 per large-model request and $0.0001 per small-model request.</div>
+</div>
+</div>
+<div style="padding:140px 48px 0">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;margin-bottom:40px">BUILT IN — 06</div>
+<sc-for list="{{ features }}" as="f" hint-placeholder-count="3">
+<div style="display:grid;grid-template-columns:80px 1fr 1fr;gap:32px;align-items:baseline;border-top:1px solid #262624;padding:36px 0"><div style="font:13px 'Geist Mono',monospace;color:#8d8c86">{{ f.n }}</div><div style="font-size:44px;font-weight:400;letter-spacing:-.03em">{{ f.title }}</div><div style="font-size:15px;line-height:1.55;color:#a9a8a2;max-width:440px">{{ f.body }}</div></div>
+</sc-for>
+</div>
+<div style="padding:140px 48px 0;display:flex;flex-direction:column;gap:48px">
+<div style="display:grid;grid-template-columns:1fr 2fr;gap:48px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">SECURITY — 07</div><h2 style="margin:0;font-weight:400;font-size:52px;line-height:1.05;letter-spacing:-.035em">Your documents stay yours.</h2></div>
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:32px">
+<sc-for list="{{ security }}" as="sc" hint-placeholder-count="4">
+<div style="border-top:1px solid #33332f;padding-top:24px;display:flex;flex-direction:column;gap:12px"><div style="font:500 13px 'Geist Mono',monospace;color:oklch(0.88 0.17 118)">{{ sc.n }}</div><div style="font-size:21px;font-weight:500;letter-spacing:-.02em">{{ sc.title }}</div><div style="font-size:14px;line-height:1.55;color:#a9a8a2">{{ sc.body }}</div></div>
+</sc-for>
+</div>
+</div>
+<div style="padding:140px 48px 0;display:grid;grid-template-columns:1fr 2fr;gap:48px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:20px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">FAQ — 08</div><h2 style="margin:0;font-weight:400;font-size:52px;line-height:1.05;letter-spacing:-.035em">Questions</h2></div>
+<div>
+<sc-for list="{{ faqs }}" as="q" hint-placeholder-count="5">
+<div style="border-top:1px solid #262624;padding:24px 0"><div style="display:flex;justify-content:space-between;gap:24px;align-items:baseline"><div style="font-size:20px;letter-spacing:-.01em">{{ q.q }}</div><div style="font:18px 'Geist Mono',monospace;color:#8d8c86">{{ q.sign }}</div></div>
+<sc-if value="{{ q.open }}" hint-placeholder-val="{{ false }}"><div style="padding-top:12px;font-size:15px;line-height:1.6;color:#a9a8a2;max-width:620px">{{ q.a }}</div></sc-if></div>
+</sc-for>
+</div>
+</div>
+<div style="margin:120px 48px 0;padding:80px 0;border-top:1px solid #262624;display:flex;justify-content:space-between;align-items:flex-end;gap:40px">
+<h2 style="margin:0;font-weight:500;font-size:96px;line-height:.95;letter-spacing:-.05em">Ask your documents<br>anything.</h2>
+<a href="#1b" style="font-size:15px;font-weight:500;padding:18px 32px;border-radius:999px;background:#efeee9;color:#0c0c0b">Sign in</a>
+</div>
+<div style="padding:28px 48px;border-top:1px solid #262624;display:flex;justify-content:space-between;font-size:13px;color:#8d8c86"><span>© 2026 Lumen</span><div style="display:flex;gap:28px"><a href="#2a">Docs</a><a href="#2a">Pricing</a><a href="#2a">Privacy</a></div></div>
+</div></div>
+
+<div class="dv-opt" id="2b"><div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Dashboard · Request log + usage meters</div>
+<div class="dv-card" data-screen-label="Request log" style="width:1440px;height:1000px;display:grid;grid-template-columns:240px 1fr">
+<div style="border-right:1px solid #262624;padding:28px 20px;display:flex;flex-direction:column;gap:4px">
+<div style="font:600 17px Geist,sans-serif;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;padding:0 12px 28px"><span style="width:9px;height:9px;border-radius:50%;background:oklch(0.88 0.17 118)"></span>lumen</div>
+<a href="#1c" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">Documents<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">01</span></a>
+<a href="#1d" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">API keys<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">02</span></a>
+<a href="#1e" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">Try it<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">03</span></a>
+<a href="#1f" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">Analytics<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">04</span></a>
+<a href="#2b" style="padding:10px 12px;border-radius:8px;font-size:14px;background:#1c1c1a;display:flex;justify-content:space-between">Requests<span style="font:11px 'Geist Mono',monospace;color:#8d8c86">05</span></a>
+<a href="#2c" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">Models<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">06</span></a>
+<div style="margin-top:auto;padding:16px 12px;display:flex;flex-direction:column;gap:14px">
+<div style="font:500 10px 'Geist Mono',monospace;letter-spacing:.14em;color:#6d6c67">USAGE</div>
+<sc-for list="{{ usage }}" as="u" hint-placeholder-count="3">
+<div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#a9a8a2"><span>{{ u.label }}</span><span style="font:11px 'Geist Mono',monospace;color:{{ u.color }}">{{ u.value }}</span></div><div style="height:3px;border-radius:2px;background:#262624"><div style="height:3px;border-radius:2px;width:{{ u.pct }};background:{{ u.color }}"></div></div></div>
+</sc-for>
+</div>
+<div style="padding:12px;border-top:1px solid #262624;display:flex;gap:10px;align-items:center"><span style="width:28px;height:28px;border-radius:50%;background:#33332f"></span><div style="font-size:13px">Campus FAQ<div style="font-size:12px;color:#8d8c86">maya@campus.edu</div></div></div>
+</div>
+<div style="padding:40px 56px;display:flex;flex-direction:column;gap:32px;overflow:hidden">
+<div style="display:flex;justify-content:space-between;align-items:flex-end"><div><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;margin-bottom:10px">05 — REQUESTS</div><div style="font-size:48px;font-weight:500;letter-spacing:-.04em">Request log</div></div>
+<div style="display:flex;gap:4px;padding:4px;border:1px solid #33332f;border-radius:999px;font:12px 'Geist Mono',monospace"><span style="padding:8px 14px;border-radius:999px;background:#efeee9;color:#0c0c0b">ALL</span><span style="padding:8px 14px;color:#a9a8a2">CHEAP</span><span style="padding:8px 14px;color:#a9a8a2">EXPENSIVE</span><span style="padding:8px 14px;color:#a9a8a2">NO ANSWER</span></div></div>
+<div>
+<div style="display:grid;grid-template-columns:70px minmax(0,1fr) 110px 40px 80px 90px 24px;gap:12px;padding:0 0 12px;font:500 11px 'Geist Mono',monospace;letter-spacing:.1em;color:#6d6c67;border-bottom:1px solid #262624"><span>TIME</span><span>QUERY</span><span>ROUTE</span><span>K</span><span>COST</span><span>LATENCY</span><span></span></div>
+<sc-for list="{{ logRows }}" as="l" hint-placeholder-count="6">
+<div style="border-bottom:1px solid #1f1f1d">
+<div style="display:grid;grid-template-columns:70px minmax(0,1fr) 110px 40px 80px 90px 24px;gap:12px;align-items:center;padding:16px 0;font-size:14px">
+<span style="font:12px 'Geist Mono',monospace;color:#8d8c86">{{ l.time }}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ l.q }}</span><span style="display:flex;align-items:center;gap:8px;font:12px 'Geist Mono',monospace;color:{{ l.dot }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ l.dot }}"></span>{{ l.tier }}</span><span style="font:13px 'Geist Mono',monospace;color:#a9a8a2">{{ l.k }}</span><span style="font:13px 'Geist Mono',monospace;color:#a9a8a2">{{ l.cost }}</span><span style="font:13px 'Geist Mono',monospace;color:#a9a8a2">{{ l.latency }}</span><span style="font:16px 'Geist Mono',monospace;color:#8d8c86;text-align:right">{{ l.sign }}</span>
+</div>
+<sc-if value="{{ l.open }}" hint-placeholder-val="{{ false }}">
+<div style="padding:4px 0 24px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
+<div style="background:#141413;border:1px solid #262624;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">ROUTE</div><div style="font-size:20px;font-weight:500;color:oklch(0.88 0.17 118)">Expensive tier</div><div style="font-size:13px;line-height:1.5;color:#a9a8a2">Comparative question raised difficulty, so the router fetched more passages and used the larger model.</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font:13px 'Geist Mono',monospace;border-top:1px solid #262624;padding-top:12px"><div><div style="font-size:11px;color:#6d6c67">DIFFICULTY</div>0.25</div><div><div style="font-size:11px;color:#6d6c67">ESCALATED</div>true</div><div><div style="font-size:11px;color:#6d6c67">TOP SCORE</div>0.71</div><div><div style="font-size:11px;color:#6d6c67">K</div>8</div></div></div>
+<div style="background:#141413;border:1px solid #262624;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">USAGE</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font:13px 'Geist Mono',monospace"><div><div style="font-size:11px;color:#6d6c67">TOKENS IN</div>1,946</div><div><div style="font-size:11px;color:#6d6c67">TOKENS OUT</div>88</div><div><div style="font-size:11px;color:#6d6c67">COST</div>$0.0012</div><div><div style="font-size:11px;color:#6d6c67">LATENCY</div>1,240 ms</div></div><div style="display:flex;flex-direction:column;gap:6px;font:12px 'Geist Mono',monospace;color:#8d8c86;border-top:1px solid #262624;padding-top:12px"><span>req_8f21ac</span><span>key · Production chatbot</span></div></div>
+<div style="background:#141413;border:1px solid #262624;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">SOURCES</div><div style="display:flex;gap:10px;font-size:13px"><span style="font-family:'Geist Mono',monospace;color:oklch(0.88 0.17 118)">[1]</span><span style="flex:1">refund-policy.md</span><span style="font-family:'Geist Mono',monospace;color:#a9a8a2">0.71</span></div><div style="display:flex;gap:10px;font-size:13px"><span style="font-family:'Geist Mono',monospace;color:oklch(0.88 0.17 118)">[2]</span><span style="flex:1">refund-policy.md</span><span style="font-family:'Geist Mono',monospace;color:#a9a8a2">0.68</span></div><div style="display:flex;gap:10px;font-size:13px"><span style="font-family:'Geist Mono',monospace;color:oklch(0.88 0.17 118)">[3]</span><span style="flex:1">student-handbook-2026.pdf</span><span style="font-family:'Geist Mono',monospace;color:#a9a8a2">0.44</span></div></div>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="2c"><div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a>Dashboard · Models (bring your own key, tier order)</div>
+<div class="dv-card" data-screen-label="Models" style="width:1440px;height:1240px;display:grid;grid-template-columns:240px 1fr">
+<div style="border-right:1px solid #262624;padding:28px 20px;display:flex;flex-direction:column;gap:4px">
+<div style="font:600 17px Geist,sans-serif;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;padding:0 12px 28px"><span style="width:9px;height:9px;border-radius:50%;background:oklch(0.88 0.17 118)"></span>lumen</div>
+<a href="#1c" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">Documents<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">01</span></a>
+<a href="#1d" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">API keys<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">02</span></a>
+<a href="#1e" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">Try it<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">03</span></a>
+<a href="#1f" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">Analytics<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">04</span></a>
+<a href="#2b" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">Requests<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">05</span></a>
+<a href="#2c" style="padding:10px 12px;border-radius:8px;font-size:14px;background:#1c1c1a;display:flex;justify-content:space-between">Models<span style="font:11px 'Geist Mono',monospace;color:#8d8c86">06</span></a>
+<div style="margin-top:auto;padding:16px 12px;display:flex;flex-direction:column;gap:14px">
+<div style="font:500 10px 'Geist Mono',monospace;letter-spacing:.14em;color:#6d6c67">USAGE</div>
+<sc-for list="{{ usage }}" as="u" hint-placeholder-count="3">
+<div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#a9a8a2"><span>{{ u.label }}</span><span style="font:11px 'Geist Mono',monospace;color:{{ u.color }}">{{ u.value }}</span></div><div style="height:3px;border-radius:2px;background:#262624"><div style="height:3px;border-radius:2px;width:{{ u.pct }};background:{{ u.color }}"></div></div></div>
+</sc-for>
+</div>
+<div style="padding:12px;border-top:1px solid #262624;display:flex;gap:10px;align-items:center"><span style="width:28px;height:28px;border-radius:50%;background:#33332f"></span><div style="font-size:13px">Campus FAQ<div style="font-size:12px;color:#8d8c86">maya@campus.edu</div></div></div>
+</div>
+<div style="padding:40px 56px;display:flex;flex-direction:column;gap:32px;overflow:hidden">
+<div style="display:flex;justify-content:space-between;align-items:flex-end"><div><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;margin-bottom:10px">06 — MODELS</div><div style="font-size:48px;font-weight:500;letter-spacing:-.04em">Models</div></div><span style="font-size:14px;font-weight:500;padding:12px 22px;border-radius:999px;background:#efeee9;color:#0c0c0b">Add model</span></div>
+<div style="font-size:14px;color:#a9a8a2;max-width:680px;line-height:1.55">Connect your own provider keys. Easy questions go to the cheap tier and hard ones to the expensive tier. Each tier tries its models top to bottom; if all of them fail, the fallback answers.</div>
+<div style="background:#141413;border:1px solid #262624;border-radius:14px;padding:28px;display:flex;flex-direction:column;gap:24px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">ADD MODEL</div>
+<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:13px;color:#a9a8a2">Provider</div><div style="display:flex;gap:8px;font-size:13px"><span style="padding:9px 16px;border-radius:999px;border:1px solid #33332f;color:#a9a8a2">OpenAI</span><span style="padding:9px 16px;border-radius:999px;border:1px solid #efeee9;background:#efeee9;color:#0c0c0b">Anthropic</span><span style="padding:9px 16px;border-radius:999px;border:1px solid #33332f;color:#a9a8a2">Google</span><span style="padding:9px 16px;border-radius:999px;border:1px solid #33332f;color:#a9a8a2">OpenAI-compatible</span></div></div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+<div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:13px;color:#a9a8a2">Model ID</span><div style="background:#0c0c0b;border:1px solid #8d8c86;border-radius:10px;padding:12px 14px;font:14px 'Geist Mono',monospace">claude-haiku-4-5</div></div>
+<div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:13px;color:#a9a8a2">Endpoint URL</span><div style="background:#0c0c0b;border:1px solid #33332f;border-radius:10px;padding:12px 14px;font:14px 'Geist Mono',monospace">https://api.anthropic.com/v1</div></div>
+<div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:13px;color:#a9a8a2">API key</span><div style="background:#0c0c0b;border:1px solid #33332f;border-radius:10px;padding:12px 14px;font:14px 'Geist Mono',monospace;color:#a9a8a2">••••••••••••••••</div></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:13px;color:#a9a8a2">Use as</div><div style="display:flex;gap:12px;align-items:center"><div style="display:flex;gap:4px;padding:4px;border:1px solid #33332f;border-radius:999px;font:12px 'Geist Mono',monospace"><span style="padding:8px 14px;border-radius:999px;background:#efeee9;color:#0c0c0b">CHEAP</span><span style="padding:8px 14px;color:#a9a8a2">EXPENSIVE</span><span style="padding:8px 14px;color:#a9a8a2">FALLBACK</span></div><span style="font-size:13px;color:#8d8c86">Added to the end of the tier. Reorder it below.</span></div></div>
+<div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #262624;padding-top:20px"><span style="font-size:14px;padding:12px 22px;border-radius:999px;border:1px solid #33332f;color:#a9a8a2">Cancel</span><span style="font-size:14px;font-weight:500;padding:12px 22px;border-radius:999px;background:#efeee9;color:#0c0c0b">Test &amp; save</span></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:36px">
+<sc-for list="{{ modelGroups }}" as="g" hint-placeholder-count="3">
+<div style="display:flex;flex-direction:column">
+<div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:12px;border-bottom:1px solid #262624"><div style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;border-radius:50%;background:{{ g.dot }}"></span><span style="font-size:20px;font-weight:500;letter-spacing:-.02em">{{ g.title }}</span><span style="font:12px 'Geist Mono',monospace;color:#6d6c67">{{ g.count }}</span></div><div style="font-size:13px;color:#8d8c86">{{ g.note }}</div></div>
+<sc-for list="{{ g.rows }}" as="m" hint-placeholder-count="2">
+<div style="display:grid;grid-template-columns:90px minmax(0,1.2fr) minmax(0,1.6fr) minmax(0,1fr) 110px 70px 60px;gap:16px;align-items:center;padding:16px 0;border-bottom:1px solid #1f1f1d;font-size:14px">
+<span style="font:11px 'Geist Mono',monospace;letter-spacing:.1em;color:{{ m.rankColor }}">{{ m.rank }}</span>
+<div style="min-width:0"><div style="font-family:'Geist Mono',monospace">{{ m.name }}</div><div style="font-size:12px;color:#8d8c86;margin-top:4px">{{ m.provider }}</div></div>
+<span style="font:12px 'Geist Mono',monospace;color:#a9a8a2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ m.endpoint }}</span>
+<span style="font:12px 'Geist Mono',monospace;color:#8d8c86">{{ m.key }}</span>
+<span style="display:flex;align-items:center;gap:8px;font:12px 'Geist Mono',monospace;color:{{ m.sColor }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ m.sColor }}"></span>{{ m.status }}</span>
+<div style="display:flex;gap:6px"><span style="width:30px;height:30px;border-radius:50%;border:1px solid #33332f;display:flex;align-items:center;justify-content:center;font-size:13px;color:{{ m.upColor }}">↑</span><span style="width:30px;height:30px;border-radius:50%;border:1px solid #33332f;display:flex;align-items:center;justify-content:center;font-size:13px;color:{{ m.downColor }}">↓</span></div>
+<span style="font-size:13px;color:#8d8c86;text-align:right">Remove</span>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</div>
+</div></div>
+
+</div>
+</section>
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Lumen — public site + dashboard, dark editorial theme</span></div>
+<div style="max-width:1440px;margin:0 0 32px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;font-size:13px;line-height:1.55;color:#a9a8a2">
+<div><div style="font:500 10px 'Geist Mono',monospace;letter-spacing:.12em;color:#efeee9;margin-bottom:8px">THEME</div>Near-black canvas, warm off-white type, one lime accent. Oversized tight headlines, mono uppercase labels, hairline dividers, numbered sections — the agency look from the reference, applied to an original product.</div>
+<div><div style="font:500 10px 'Geist Mono',monospace;letter-spacing:.12em;color:#efeee9;margin-bottom:8px">SCOPE (PHASE 4)</div>Home, sign-in, and the dashboard: Documents, API keys, Try it, Analytics. Copy and data follow the brief's API contracts (route, k, cost, status).</div>
+<div><div style="font:500 10px 'Geist Mono',monospace;letter-spacing:.12em;color:#efeee9;margin-bottom:8px">ASSUMPTIONS</div>Product name "Lumen". Marketing copy is drafted by me — replace freely. Striped boxes are image slots for real screenshots.</div>
+</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a"><div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Home (public)</div>
+<div class="dv-card" data-screen-label="Home" style="width:1440px">
+<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:28px 48px">
+<div style="display:flex;gap:32px;font-size:14px;color:#a9a8a2"><a href="#1a">Product</a><a href="#1a">Docs</a><a href="#1a">Pricing</a></div>
+<div style="font:600 18px Geist,sans-serif;letter-spacing:-.02em;display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:oklch(0.88 0.17 118)"></span>lumen</div>
+<div style="display:flex;justify-content:flex-end;gap:12px;align-items:center"><a href="#1b" style="font-size:14px;color:#a9a8a2">Sign in</a><a href="#1b" style="font-size:13px;font-weight:500;padding:10px 18px;border-radius:999px;background:#efeee9;color:#0c0c0b">Get an API key</a></div>
+</div>
+<div style="padding:96px 48px 64px;display:flex;flex-direction:column;gap:40px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">RAG API FOR YOUR CHATBOT — 01</div>
+<h1 style="margin:0;font-weight:500;font-size:112px;line-height:.95;letter-spacing:-.05em;max-width:1200px;text-wrap:balance">Answers from your documents, at the cheapest model that gets them right.</h1>
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:48px">
+<p style="margin:0;max-width:520px;font-size:19px;line-height:1.5;color:#a9a8a2;text-wrap:pretty">Upload your files, get an API key, and point your chatbot at one endpoint. Lumen retrieves only your tenant's passages, routes easy questions to a small model, and escalates when it's unsure.</p>
+<div style="display:flex;gap:12px"><a href="#1b" style="font-size:15px;font-weight:500;padding:16px 28px;border-radius:999px;background:oklch(0.88 0.17 118);color:#0c0c0b">Sign in to start</a><a href="#1a" style="font-size:15px;padding:16px 28px;border-radius:999px;border:1px solid #33332f">Read the docs</a></div>
+</div>
+</div>
+<div style="margin:0 48px;height:560px;border-radius:14px;border:1px solid #262624;background:repeating-linear-gradient(135deg,#141413 0 14px,#111110 14px 28px);display:flex;align-items:center;justify-content:center;font:12px 'Geist Mono',monospace;color:#6d6c67">dashboard screenshot — analytics view</div>
+<div style="padding:140px 48px 0;display:grid;grid-template-columns:1fr 2fr;gap:48px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">HOW IT WORKS — 02</div>
+<h2 style="margin:0;font-weight:400;font-size:52px;line-height:1.05;letter-spacing:-.035em;text-wrap:balance">Three steps from a folder of PDFs to a chatbot that cites its sources.</h2>
+</div>
+<div style="padding:72px 48px 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr))">
+<sc-for list="{{ steps }}" as="s" hint-placeholder-count="3">
+<div style="border-top:1px solid #33332f;padding:28px 32px 0 0;display:flex;flex-direction:column;gap:16px">
+<div style="font:500 13px 'Geist Mono',monospace;color:oklch(0.88 0.17 118)">{{ s.n }}</div>
+<div style="font-size:28px;font-weight:500;letter-spacing:-.02em">{{ s.title }}</div>
+<div style="font-size:15px;line-height:1.55;color:#a9a8a2;max-width:360px">{{ s.body }}</div>
+</div>
+</sc-for>
+</div>
+<div style="padding:140px 48px 0;display:grid;grid-template-columns:1fr 2fr;gap:48px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">DEMO — 03</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+<div style="background:#141413;border:1px solid #262624;border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:16px">
+<div style="font:11px 'Geist Mono',monospace;color:#8d8c86">REQUEST</div>
+<pre style="margin:0;font:13px/1.7 'Geist Mono',monospace;color:#d8d7d1;white-space:pre-wrap">POST /v1/chat
+x-api-key: lum_••••••••
+
+{
+  "query": "When does enrollment close?"
+}</pre>
+</div>
+<div style="background:#141413;border:1px solid #262624;border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:16px">
+<div style="font:11px 'Geist Mono',monospace;color:#8d8c86">RESPONSE · 820 MS</div>
+<pre style="margin:0;font:13px/1.7 'Geist Mono',monospace;color:#d8d7d1;white-space:pre-wrap">"answer": "Enrollment closes on
+  15 March. [1]",
+"route": {
+  "model_tier": <span style="color:oklch(0.88 0.17 118)">"cheap"</span>,
+  "k": 3, "escalated": false
+},
+"usage": { "cost_usd": 0.0004 }</pre>
+</div>
+</div>
+</div>
+<div style="padding:140px 48px 0">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;margin-bottom:40px">BUILT IN — 04</div>
+<sc-for list="{{ features }}" as="f" hint-placeholder-count="3">
+<div style="display:grid;grid-template-columns:80px 1fr 1fr;gap:32px;align-items:baseline;border-top:1px solid #262624;padding:36px 0">
+<div style="font:13px 'Geist Mono',monospace;color:#8d8c86">{{ f.n }}</div>
+<div style="font-size:44px;font-weight:400;letter-spacing:-.03em">{{ f.title }}</div>
+<div style="font-size:15px;line-height:1.55;color:#a9a8a2;max-width:440px">{{ f.body }}</div>
+</div>
+</sc-for>
+</div>
+<div style="margin:120px 48px 0;padding:80px 0;border-top:1px solid #262624;display:flex;justify-content:space-between;align-items:flex-end;gap:40px">
+<h2 style="margin:0;font-weight:500;font-size:96px;line-height:.95;letter-spacing:-.05em">Ask your documents<br>anything.</h2>
+<a href="#1b" style="font-size:15px;font-weight:500;padding:18px 32px;border-radius:999px;background:#efeee9;color:#0c0c0b">Sign in</a>
+</div>
+<div style="padding:28px 48px;border-top:1px solid #262624;display:flex;justify-content:space-between;font-size:13px;color:#8d8c86"><span>© 2026 Lumen</span><div style="display:flex;gap:28px"><a href="#1a">Docs</a><a href="#1a">Pricing</a><a href="#1a">Privacy</a></div></div>
+</div></div>
+
+<div class="dv-opt" id="1b"><div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Sign in</div>
+<div class="dv-card" data-screen-label="Sign in" style="width:1440px;height:900px;display:grid;grid-template-columns:1.2fr 1fr">
+<div style="padding:40px 48px;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid #262624">
+<div style="font:600 18px Geist,sans-serif;letter-spacing:-.02em;display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:oklch(0.88 0.17 118)"></span>lumen</div>
+<h1 style="margin:0;font-weight:500;font-size:88px;line-height:.95;letter-spacing:-.05em">One login.<br>Your own tenant.</h1>
+<div style="font:12px 'Geist Mono',monospace;color:#8d8c86">A personal workspace is created on first sign-in.</div>
+</div>
+<div style="display:flex;align-items:center;justify-content:center;padding:48px">
+<div style="width:100%;max-width:400px;display:flex;flex-direction:column;gap:14px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;margin-bottom:8px">SIGN IN</div>
+<div style="font-size:32px;font-weight:500;letter-spacing:-.03em;margin-bottom:16px">Welcome to Lumen</div>
+<a href="#1c" style="display:flex;align-items:center;justify-content:center;gap:12px;height:56px;border-radius:999px;background:#efeee9;color:#0c0c0b;font-size:15px;font-weight:500"><span style="width:18px;height:18px;border-radius:50%;background:#0c0c0b;color:#efeee9;font-size:11px;display:flex;align-items:center;justify-content:center">G</span>Continue with Google</a>
+<a href="#1c" style="display:flex;align-items:center;justify-content:center;gap:12px;height:56px;border-radius:999px;border:1px solid #33332f;font-size:15px;font-weight:500"><span style="width:18px;height:18px;border-radius:50%;background:#efeee9;color:#0c0c0b;font-size:11px;display:flex;align-items:center;justify-content:center">G</span>Continue with GitHub</a>
+<div style="font-size:13px;line-height:1.5;color:#8d8c86;margin-top:16px">No passwords. Google and GitHub only.</div>
+</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="1c"><div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Dashboard · Documents</div>
+<div class="dv-card" data-screen-label="Documents" style="width:1440px;height:900px;display:grid;grid-template-columns:240px 1fr">
+<div style="border-right:1px solid #262624;padding:28px 20px;display:flex;flex-direction:column;gap:4px">
+<div style="font:600 17px Geist,sans-serif;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;padding:0 12px 28px"><span style="width:9px;height:9px;border-radius:50%;background:oklch(0.88 0.17 118)"></span>lumen</div>
+<a href="#1c" style="padding:10px 12px;border-radius:8px;font-size:14px;background:#1c1c1a;display:flex;justify-content:space-between">Documents<span style="font:11px 'Geist Mono',monospace;color:#8d8c86">01</span></a>
+<a href="#1d" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">API keys<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">02</span></a>
+<a href="#1e" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">Try it<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">03</span></a>
+<a href="#1f" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">Analytics<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">04</span></a>
+<div style="margin-top:auto;padding:12px;border-top:1px solid #262624;display:flex;gap:10px;align-items:center"><span style="width:28px;height:28px;border-radius:50%;background:#33332f"></span><div style="font-size:13px">Campus FAQ<div style="font-size:12px;color:#8d8c86">maya@campus.edu</div></div></div>
+</div>
+<div style="padding:40px 56px;display:flex;flex-direction:column;gap:32px;overflow:hidden">
+<div style="display:flex;justify-content:space-between;align-items:flex-end"><div><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;margin-bottom:10px">01 — DOCUMENTS</div><div style="font-size:48px;font-weight:500;letter-spacing:-.04em">Documents</div></div><div style="font:12px 'Geist Mono',monospace;color:#8d8c86">5 OF 50 · 214 CHUNKS</div></div>
+<div style="border:1px dashed #44443f;border-radius:14px;padding:36px;display:flex;justify-content:space-between;align-items:center">
+<div><div style="font-size:18px;font-weight:500">Drop files to upload</div><div style="font-size:13px;color:#8d8c86;margin-top:6px">PDF, .txt or .md · up to 10 MB each</div></div>
+<div style="font-size:14px;font-weight:500;padding:12px 22px;border-radius:999px;background:#efeee9;color:#0c0c0b">Choose files</div>
+</div>
+<div>
+<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 60px;padding:0 0 12px;font:500 11px 'Geist Mono',monospace;letter-spacing:.1em;color:#6d6c67;border-bottom:1px solid #262624"><span>FILE</span><span>STATUS</span><span>CHUNKS</span><span>UPLOADED</span><span></span></div>
+<sc-for list="{{ docs }}" as="d" hint-placeholder-count="5">
+<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 60px;align-items:center;padding:18px 0;border-bottom:1px solid #1f1f1d;font-size:14px">
+<div><div>{{ d.name }}</div><div style="font-size:12px;color:oklch(0.72 0.15 28);margin-top:4px">{{ d.error }}</div></div>
+<div style="display:flex;align-items:center;gap:8px;font:12px 'Geist Mono',monospace;color:{{ d.color }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ d.color }}"></span>{{ d.status }}</div>
+<div style="font-family:'Geist Mono',monospace;font-size:13px;color:#a9a8a2">{{ d.chunks }}</div>
+<div style="color:#8d8c86;font-size:13px">{{ d.date }}</div>
+<div style="font-size:13px;color:#8d8c86;text-align:right">Delete</div>
+</div>
+</sc-for>
+</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="1d"><div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Dashboard · API keys (new key shown once)</div>
+<div class="dv-card" data-screen-label="API keys" style="width:1440px;height:900px;display:grid;grid-template-columns:240px 1fr;position:relative">
+<div style="border-right:1px solid #262624;padding:28px 20px;display:flex;flex-direction:column;gap:4px">
+<div style="font:600 17px Geist,sans-serif;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;padding:0 12px 28px"><span style="width:9px;height:9px;border-radius:50%;background:oklch(0.88 0.17 118)"></span>lumen</div>
+<a href="#1c" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">Documents<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">01</span></a>
+<a href="#1d" style="padding:10px 12px;border-radius:8px;font-size:14px;background:#1c1c1a;display:flex;justify-content:space-between">API keys<span style="font:11px 'Geist Mono',monospace;color:#8d8c86">02</span></a>
+<a href="#1e" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">Try it<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">03</span></a>
+<a href="#1f" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">Analytics<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">04</span></a>
+<div style="margin-top:auto;padding:12px;border-top:1px solid #262624;display:flex;gap:10px;align-items:center"><span style="width:28px;height:28px;border-radius:50%;background:#33332f"></span><div style="font-size:13px">Campus FAQ<div style="font-size:12px;color:#8d8c86">maya@campus.edu</div></div></div>
+</div>
+<div style="padding:40px 56px;display:flex;flex-direction:column;gap:32px">
+<div style="display:flex;justify-content:space-between;align-items:flex-end"><div><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;margin-bottom:10px">02 — API KEYS</div><div style="font-size:48px;font-weight:500;letter-spacing:-.04em">API keys</div></div><div onClick="{{ openKey }}" style="cursor:pointer;font-size:14px;font-weight:500;padding:12px 22px;border-radius:999px;background:#efeee9;color:#0c0c0b">Create key</div></div>
+<div style="font-size:14px;color:#a9a8a2;max-width:640px;line-height:1.55">Send a key in the <span style="font-family:'Geist Mono',monospace;color:#efeee9">x-api-key</span> header from your chatbot's backend. Keys are stored as hashes and belong to this workspace.</div>
+<div>
+<div style="display:grid;grid-template-columns:1.5fr 1.5fr 1fr 1fr 80px;padding:0 0 12px;font:500 11px 'Geist Mono',monospace;letter-spacing:.1em;color:#6d6c67;border-bottom:1px solid #262624"><span>NAME</span><span>KEY</span><span>CREATED</span><span>LAST USED</span><span></span></div>
+<sc-for list="{{ keys }}" as="k" hint-placeholder-count="3">
+<div style="display:grid;grid-template-columns:1.5fr 1.5fr 1fr 1fr 80px;align-items:center;padding:18px 0;border-bottom:1px solid #1f1f1d;font-size:14px">
+<div>{{ k.name }}</div><div style="font:13px 'Geist Mono',monospace;color:#a9a8a2">{{ k.prefix }}</div><div style="color:#8d8c86;font-size:13px">{{ k.created }}</div><div style="color:#8d8c86;font-size:13px">{{ k.used }}</div><div style="font-size:13px;color:oklch(0.72 0.15 28);text-align:right">Revoke</div>
+</div>
+</sc-for>
+</div>
+</div>
+<sc-if value="{{ showKey }}" hint-placeholder-val="{{ true }}">
+<div style="position:absolute;inset:0;background:rgba(8,8,7,.72);display:flex;align-items:center;justify-content:center">
+<div style="width:560px;background:#141413;border:1px solid #33332f;border-radius:16px;padding:36px;display:flex;flex-direction:column;gap:20px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:oklch(0.88 0.17 118)">KEY CREATED</div>
+<div style="font-size:28px;font-weight:500;letter-spacing:-.03em">Copy this key now</div>
+<div style="font-size:14px;color:#a9a8a2;line-height:1.5">It won't be shown again. If you lose it, revoke it and create a new one.</div>
+<div style="display:flex;gap:8px;align-items:center;background:#0c0c0b;border:1px solid #262624;border-radius:10px;padding:14px 16px"><span style="flex:1;font:13px 'Geist Mono',monospace;word-break:break-all">lum_live_7Qk2xR9vTzN4bW1pLm8sYc3dHf6Ga0Ue</span><span style="font-size:12px;font-weight:500;padding:8px 14px;border-radius:999px;background:#efeee9;color:#0c0c0b">Copy</span></div>
+<div onClick="{{ closeKey }}" style="cursor:pointer;align-self:flex-end;font-size:14px;padding:10px 20px;border-radius:999px;border:1px solid #33332f">I've saved it</div>
+</div>
+</div>
+</sc-if>
+</div></div>
+
+<div class="dv-opt" id="1e"><div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a>Dashboard · Try it</div>
+<div class="dv-card" data-screen-label="Try it" style="width:1440px;height:900px;display:grid;grid-template-columns:240px 1fr">
+<div style="border-right:1px solid #262624;padding:28px 20px;display:flex;flex-direction:column;gap:4px">
+<div style="font:600 17px Geist,sans-serif;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;padding:0 12px 28px"><span style="width:9px;height:9px;border-radius:50%;background:oklch(0.88 0.17 118)"></span>lumen</div>
+<a href="#1c" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">Documents<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">01</span></a>
+<a href="#1d" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">API keys<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">02</span></a>
+<a href="#1e" style="padding:10px 12px;border-radius:8px;font-size:14px;background:#1c1c1a;display:flex;justify-content:space-between">Try it<span style="font:11px 'Geist Mono',monospace;color:#8d8c86">03</span></a>
+<a href="#1f" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">Analytics<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">04</span></a>
+<div style="margin-top:auto;padding:12px;border-top:1px solid #262624;display:flex;gap:10px;align-items:center"><span style="width:28px;height:28px;border-radius:50%;background:#33332f"></span><div style="font-size:13px">Campus FAQ<div style="font-size:12px;color:#8d8c86">maya@campus.edu</div></div></div>
+</div>
+<div style="padding:40px 56px;display:grid;grid-template-columns:1fr 340px;gap:40px">
+<div style="display:flex;flex-direction:column;gap:28px">
+<div><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;margin-bottom:10px">03 — TRY IT</div><div style="font-size:48px;font-weight:500;letter-spacing:-.04em">Ask a test question</div></div>
+<div style="display:flex;gap:10px;align-items:center;border:1px solid #33332f;border-radius:999px;padding:8px 8px 8px 24px">
+<span style="flex:1;font-size:16px">What's the difference between the fall and spring refund deadlines?</span>
+<span style="font-size:14px;font-weight:500;padding:12px 22px;border-radius:999px;background:oklch(0.88 0.17 118);color:#0c0c0b">Ask</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">ANSWER</div>
+<div style="font-size:22px;line-height:1.45;letter-spacing:-.01em;max-width:760px;text-wrap:pretty">For the fall term, a full refund is available until 12 September; after that it drops to 50% until 30 September <span style="color:oklch(0.88 0.17 118)">[1]</span>. Spring follows the same pattern with deadlines of 6 February and 24 February <span style="color:oklch(0.88 0.17 118)">[2]</span>.</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:0">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;padding-bottom:12px;border-bottom:1px solid #262624">SOURCES</div>
+<sc-for list="{{ sources }}" as="s" hint-placeholder-count="3">
+<div style="display:grid;grid-template-columns:40px 1fr 140px;gap:16px;align-items:center;padding:16px 0;border-bottom:1px solid #1f1f1d">
+<span style="font:13px 'Geist Mono',monospace;color:oklch(0.88 0.17 118)">{{ s.n }}</span>
+<div style="font-size:14px">{{ s.doc }}<div style="font-size:13px;color:#8d8c86;margin-top:4px">{{ s.snippet }}</div></div>
+<div style="display:flex;align-items:center;gap:10px"><div style="flex:1;height:4px;background:#262624;border-radius:2px"><div style="height:4px;border-radius:2px;background:#efeee9;width:{{ s.pct }}"></div></div><span style="font:12px 'Geist Mono',monospace;color:#a9a8a2">{{ s.score }}</span></div>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:16px;padding-top:96px">
+<div style="background:#141413;border:1px solid #262624;border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:18px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">ROUTE</div>
+<div style="font-size:30px;font-weight:500;letter-spacing:-.03em">Expensive tier</div>
+<div style="font-size:13px;color:#a9a8a2;line-height:1.5">Hard word "difference" raised difficulty, so the router fetched more passages and used the larger model.</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;border-top:1px solid #262624;padding-top:16px;font:13px 'Geist Mono',monospace">
+<div><div style="font-size:11px;color:#6d6c67">K</div>8</div><div><div style="font-size:11px;color:#6d6c67">DIFFICULTY</div>0.25</div><div><div style="font-size:11px;color:#6d6c67">ESCALATED</div>true</div><div><div style="font-size:11px;color:#6d6c67">TOP SCORE</div>0.71</div>
+</div>
+</div>
+<div style="background:#141413;border:1px solid #262624;border-radius:14px;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:14px;font:13px 'Geist Mono',monospace">
+<div style="grid-column:1/-1;font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">USAGE</div>
+<div><div style="font-size:11px;color:#6d6c67">TOKENS IN</div>1,946</div><div><div style="font-size:11px;color:#6d6c67">TOKENS OUT</div>88</div><div><div style="font-size:11px;color:#6d6c67">COST</div>$0.0012</div><div><div style="font-size:11px;color:#6d6c67">LATENCY</div>1,240 ms</div>
+</div>
+</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="1f"><div class="dv-olabel"><a class="dv-oid" href="#1f">1f</a>Dashboard · Analytics (7d / 30d toggle works)</div>
+<div class="dv-card" data-screen-label="Analytics" style="width:1440px;height:1000px;display:grid;grid-template-columns:240px 1fr">
+<div style="border-right:1px solid #262624;padding:28px 20px;display:flex;flex-direction:column;gap:4px">
+<div style="font:600 17px Geist,sans-serif;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;padding:0 12px 28px"><span style="width:9px;height:9px;border-radius:50%;background:oklch(0.88 0.17 118)"></span>lumen</div>
+<a href="#1c" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">Documents<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">01</span></a>
+<a href="#1d" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">API keys<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">02</span></a>
+<a href="#1e" style="padding:10px 12px;border-radius:8px;font-size:14px;color:#a9a8a2;display:flex;justify-content:space-between">Try it<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">03</span></a>
+<a href="#1f" style="padding:10px 12px;border-radius:8px;font-size:14px;background:#1c1c1a;display:flex;justify-content:space-between">Analytics<span style="font:11px 'Geist Mono',monospace;color:#8d8c86">04</span></a>
+<div style="margin-top:auto;padding:12px;border-top:1px solid #262624;display:flex;gap:10px;align-items:center"><span style="width:28px;height:28px;border-radius:50%;background:#33332f"></span><div style="font-size:13px">Campus FAQ<div style="font-size:12px;color:#8d8c86">maya@campus.edu</div></div></div>
+</div>
+<div style="padding:40px 56px;display:flex;flex-direction:column;gap:32px">
+<div style="display:flex;justify-content:space-between;align-items:flex-end"><div><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;margin-bottom:10px">04 — ANALYTICS</div><div style="font-size:48px;font-weight:500;letter-spacing:-.04em">Analytics</div></div>
+<div style="display:flex;gap:4px;padding:4px;border:1px solid #33332f;border-radius:999px;font:12px 'Geist Mono',monospace">
+<div onClick="{{ set7 }}" style="cursor:pointer;padding:8px 16px;border-radius:999px;background:{{ bg7 }};color:{{ fg7 }}">7D</div>
+<div onClick="{{ set30 }}" style="cursor:pointer;padding:8px 16px;border-radius:999px;background:{{ bg30 }};color:{{ fg30 }}">30D</div>
+</div></div>
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid #262624;border-bottom:1px solid #262624">
+<sc-for list="{{ stats }}" as="st" hint-placeholder-count="4">
+<div style="padding:24px 24px 24px 0;display:flex;flex-direction:column;gap:10px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.12em;color:#8d8c86">{{ st.label }}</div>
+<div style="font-size:44px;font-weight:500;letter-spacing:-.04em;color:{{ st.color }}">{{ st.value }}</div>
+<div style="font-size:12px;color:#8d8c86">{{ st.note }}</div>
+</div>
+</sc-for>
+</div>
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:40px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">REQUESTS PER DAY</div>
+<div style="height:220px;display:flex;align-items:flex-end;gap:6px;border-bottom:1px solid #33332f">
+<sc-for list="{{ bars }}" as="b" hint-placeholder-count="7">
+<div style="flex:1;height:{{ b.h }};background:#efeee9;border-radius:3px 3px 0 0;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden"><div style="height:{{ b.exp }};background:oklch(0.88 0.17 118)"></div></div>
+</sc-for>
+</div>
+<div style="display:flex;gap:20px;font:11px 'Geist Mono',monospace;color:#8d8c86"><span style="display:flex;gap:6px;align-items:center"><span style="width:8px;height:8px;background:#efeee9"></span>CHEAP</span><span style="display:flex;gap:6px;align-items:center"><span style="width:8px;height:8px;background:oklch(0.88 0.17 118)"></span>EXPENSIVE</span></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">ROUTE MIX</div>
+<div style="display:flex;height:10px;border-radius:5px;overflow:hidden"><div style="width:71%;background:#efeee9"></div><div style="width:9%;background:oklch(0.8 0.12 118)"></div><div style="width:14%;background:oklch(0.88 0.17 118)"></div><div style="width:6%;background:#44443f"></div></div>
+<sc-for list="{{ mix }}" as="m" hint-placeholder-count="4">
+<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1f1f1d;font-size:14px"><span>{{ m.label }}</span><span style="font-family:'Geist Mono',monospace;color:#a9a8a2">{{ m.pct }}</span></div>
+</sc-for>
+</div>
+</div>
+<div style="display:flex;flex-direction:column">
+<div style="display:flex;justify-content:space-between;font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;padding-bottom:12px;border-bottom:1px solid #262624"><span>UNANSWERED QUESTIONS — ADD DOCUMENTS FOR THESE</span><span>BEST MATCH</span></div>
+<sc-for list="{{ unanswered }}" as="u" hint-placeholder-count="3">
+<div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid #1f1f1d;font-size:14px"><span>{{ u.q }}</span><span style="font-family:'Geist Mono',monospace;color:oklch(0.72 0.15 28)">{{ u.s }}</span></div>
+</sc-for>
+</div>
+</div>
+</div></div>
+
+</div>
+<p class="dv-next">Try next: "light version of <a class="dv-oid" href="#1a">1a</a>" · "add a pricing page" · "make <a class="dv-oid" href="#1e">1e</a> a chat thread"</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;range&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;7d&quot;,&quot;30d&quot;],&quot;default&quot;:&quot;7d&quot;,&quot;tsType&quot;:&quot;'7d'|'30d'&quot;},&quot;showKeyModal&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  state = { range: null, showKey: null };
+  renderVals() {
+    const range = this.state.range ?? this.props.range ?? '7d';
+    const showKey = this.state.showKey ?? this.props.showKeyModal ?? true;
+    const r7 = [142, 188, 165, 231, 254, 198, 276];
+    const r30 = Array.from({ length: 30 }, (_, i) => Math.round(150 + 90 * Math.sin(i / 3) + i * 4 + (i * 37 % 40)));
+    const data = range === '7d' ? r7 : r30;
+    const max = Math.max(...data);
+    const total = data.reduce((a, b) => a + b, 0);
+    const on = '#efeee9', off = 'transparent';
+    const ready = 'oklch(0.88 0.17 118)', proc = 'oklch(0.84 0.12 80)', fail = 'oklch(0.72 0.15 28)';
+    return {
+      range, showKey,
+      openKey: () => this.setState({ showKey: true }),
+      closeKey: () => this.setState({ showKey: false }),
+      set7: () => this.setState({ range: '7d' }), set30: () => this.setState({ range: '30d' }),
+      bg7: range === '7d' ? on : off, fg7: range === '7d' ? '#0c0c0b' : '#a9a8a2',
+      bg30: range === '30d' ? on : off, fg30: range === '30d' ? '#0c0c0b' : '#a9a8a2',
+      steps: [
+        { n: '01', title: 'Upload documents', body: 'Add PDFs, text or Markdown in the dashboard. Lumen splits them into passages and indexes them for your workspace only.' },
+        { n: '02', title: 'Create an API key', body: 'Generate a key in one click. It is shown once and tied to your workspace.' },
+        { n: '03', title: 'Call /v1/chat', body: 'Your chatbot sends the question. You get the answer, its sources, the route taken and what it cost.' }
+      ],
+      features: [
+        { n: '01', title: 'Cost-aware routing', body: 'Easy questions go to a small, fast model. Long, comparative or weakly matched questions escalate to the larger one.' },
+        { n: '02', title: 'Tenant isolation', body: 'Every passage carries its owner. A request can only ever search the documents of the key that sent it.' },
+        { n: '03', title: 'Honest when it can\u2019t answer', body: 'If nothing in your documents matches, Lumen says so instead of guessing, and lists the question so you can fill the gap.' }
+      ],
+      docs: [
+        { name: 'student-handbook-2026.pdf', status: 'ready', color: ready, chunks: '128', date: 'Oct 21', error: '' },
+        { name: 'refund-policy.md', status: 'ready', color: ready, chunks: '14', date: 'Oct 21', error: '' },
+        { name: 'housing-faq.txt', status: 'ready', color: ready, chunks: '72', date: 'Oct 20', error: '' },
+        { name: 'course-catalog-fall.pdf', status: 'processing', color: proc, chunks: '—', date: 'Just now', error: '' },
+        { name: 'campus-map-scan.pdf', status: 'failed', color: fail, chunks: '0', date: 'Oct 19', error: 'No text found. This looks like a scanned image.' }
+      ],
+      keys: [
+        { name: 'Production chatbot', prefix: 'lum_live_7Qk2••••', created: 'Oct 22', used: 'Never' },
+        { name: 'Staging', prefix: 'lum_live_Rb81••••', created: 'Oct 14', used: '2 hours ago' },
+        { name: 'Local dev', prefix: 'lum_live_x0Pd••••', created: 'Oct 02', used: 'Oct 18' }
+      ],
+      sources: [
+        { n: '[1]', doc: 'refund-policy.md', snippet: 'Fall term: full refund until 12 September, 50% until 30 September…', score: '0.71', pct: '71%' },
+        { n: '[2]', doc: 'refund-policy.md', snippet: 'Spring term: full refund until 6 February, 50% until 24 February…', score: '0.68', pct: '68%' },
+        { n: '[3]', doc: 'student-handbook-2026.pdf', snippet: 'Withdrawal requests must be submitted through the registrar…', score: '0.44', pct: '44%' }
+      ],
+      stats: [
+        { label: 'REQUESTS', value: total.toLocaleString(), note: range === '7d' ? 'Last 7 days' : 'Last 30 days', color: '#efeee9' },
+        { label: 'COST', value: '$' + (total * 0.00041).toFixed(2), note: 'Actual provider spend', color: '#efeee9' },
+        { label: 'EST. SAVINGS', value: '$' + (total * 0.00212).toFixed(2), note: 'Estimate vs. always expensive', color: ready },
+        { label: 'MEDIAN LATENCY', value: '840 ms', note: 'p95 2.1 s', color: '#efeee9' }
+      ],
+      bars: data.map((v, i) => ({ h: (v / max * 100) + '%', exp: (18 + (i * 7 % 14)) + '%' })),
+      mix: [
+        { label: 'Cheap', pct: '71%' }, { label: 'Escalated (caution)', pct: '9%' },
+        { label: 'Expensive (hard)', pct: '14%' }, { label: 'No answer — no model called', pct: '6%' }
+      ],
+      security: [
+        ['Isolated per workspace', 'Every stored passage carries its owner, and every query is filtered by it.'],
+        ['Keys shown once', 'API keys are stored as hashes. Lose one and you revoke it and make a new one.'],
+        ['No document text in logs', 'Logs keep the question, route and cost. Passages and keys are never written to them.'],
+        ['Documents treated as data', 'Instructions hidden inside an uploaded file can\u2019t change how the assistant behaves.']
+      ].map(([title, body], i) => ({ n: '0' + (i + 1), title, body })),
+      faqs: [
+        ['Which files can I upload?', 'PDF, plain text and Markdown files, up to 10 MB each. Scanned PDFs without a text layer can\u2019t be read and are marked as failed.'],
+        ['What if my documents don\u2019t contain the answer?', 'Lumen replies that it could not find the answer, calls no model, and lists the question under Unanswered questions so you know what to add.'],
+        ['Can other customers see my documents?', 'No. Every search is limited to the workspace that owns the API key, and another workspace\u2019s document ids behave as if they don\u2019t exist.'],
+        ['How is the savings number calculated?', 'It compares what each request actually cost with what it would have cost on the large model. It is an estimate and is labelled as one.'],
+        ['How long are questions kept?', 'You choose a retention period for logged questions. Document text is never written to logs.']
+      ].map(([q, a], i) => ({ q, a, open: i === 1, sign: i === 1 ? '\u2212' : '+' })),
+      modelGroups: [
+        ['Cheap', 'oklch(0.88 0.17 118)', 'Easy questions. Tried top to bottom.', [['gpt-4o-mini', 'OpenAI', 'https://api.openai.com/v1', 'sk-p••••3f9a', 1], ['gemini-2.0-flash', 'Google', 'https://generativelanguage.googleapis.com/v1beta', 'AIza••••uQ2k', 1]]],
+        ['Expensive', '#efeee9', 'Hard questions and escalations. Tried top to bottom.', [['claude-sonnet-4-5', 'Anthropic', 'https://api.anthropic.com/v1', 'sk-a••••81cd', 1], ['gpt-4o', 'OpenAI', 'https://api.openai.com/v1', 'sk-p••••3f9a', 1]]],
+        ['Fallback', 'oklch(0.84 0.12 80)', 'Used when every model in a tier fails or times out.', [['llama-3.1-8b-instruct', 'OpenAI-compatible', 'https://llm.campus.edu/v1', 'cmp_••••d20e', 0]]]
+      ].map(([title, dot, note, rows]) => ({ title, dot, note, count: rows.length + (rows.length === 1 ? ' MODEL' : ' MODELS'),
+        rows: rows.map(([name, provider, endpoint, key, ok], i) => ({ name, provider, endpoint, key, rank: i === 0 ? 'PRIMARY' : 'BACKUP ' + i, rankColor: i === 0 ? 'oklch(0.88 0.17 118)' : '#8d8c86',
+          status: ok ? 'Connected' : 'Failing', sColor: ok ? 'oklch(0.88 0.17 118)' : 'oklch(0.72 0.15 28)', upColor: i === 0 ? '#33332f' : '#efeee9', downColor: i === rows.length - 1 ? '#33332f' : '#efeee9' })) })),
+      usage: [['Documents', 5, 50], ['Requests / min', 52, 60], ['This month', 18432, 50000]].map(([label, v, max]) => { const p = v / max; return { label, value: v.toLocaleString('en-US') + ' / ' + max.toLocaleString('en-US'), pct: (p * 100) + '%', color: p > 0.8 ? proc : '#a9a8a2' }; }),
+      logRows: [
+        ['14:32', 'What\u2019s the difference between the fall and spring refund deadlines?', 'expensive', '8', '$0.0012', '1,240 ms'],
+        ['14:29', 'When does enrollment close?', 'cheap', '3', '$0.0001', '620 ms'],
+        ['14:21', 'Is there parking for visitors on weekends?', 'none', '0', '$0', '140 ms'],
+        ['14:12', 'How do I request a transcript?', 'cheap', '3', '$0.0001', '580 ms'],
+        ['13:58', 'Compare on-campus and off-campus housing costs', 'expensive', '8', '$0.0014', '1,410 ms'],
+        ['13:41', 'Where is the registrar\u2019s office?', 'cheap', '3', '$0.0001', '540 ms']
+      ].map(([time, q, tier, k, cost, latency], i) => ({ time, q, tier, k, cost, latency, dot: tier === 'expensive' ? ready : tier === 'none' ? '#8d8c86' : '#efeee9', open: i === 0, sign: i === 0 ? '\u2212' : '+' })),
+      unanswered: [
+        { q: 'Is there parking for visitors on weekends?', s: '0.09' },
+        { q: 'Can I defer my offer to next year?', s: '0.12' },
+        { q: 'What time does the library close during exams?', s: '0.14' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

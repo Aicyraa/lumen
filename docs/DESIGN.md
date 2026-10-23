@@ -1,6 +1,6 @@
 # Lumen — Design guide
 
-Follow this when building or extending any Lumen screen (marketing site or dashboard). Reference files: `Lumen Website.dc.html` (static hi-fi screens, turn 2 is current) and `Lumen Prototype.dc.html` (interactive behaviour).
+Follow this when building or extending any Lumen screen (marketing site or dashboard). Reference files (in `docs/lumen-website-ui-mockups/project/`): `Lumen Website.dc.html` (static hi-fi screens, turn 2 is current) and `Lumen Prototype.dc.html` (interactive behaviour). Where the mockups differ from `docs/AI_BUILD_BRIEF.md` (the "Design source" list under Phase 4), the brief wins.
 
 ## 1. Character
 
@@ -63,9 +63,9 @@ Fluid builds use `clamp()`: section H2 `clamp(32px,3.6vw,52px)`, feature title `
 - Dashboard: grid `240px 1fr`; sidebar padding 28px 20px with 1px `line` right border; content padding 40px 56px, vertical gap 32px.
 - Always lay out sibling groups with flex/grid + `gap`. Grids use `minmax(0,1fr)`.
 
-### Money comes last
+### Money
 
-Everything that shows money (savings calculator, cost and savings stats, cost columns, `$` figures, pricing copy) is built in Phase 7, after the rest is tested. Until then omit the calculator section (keep the other sections' numbering as shown, so adding it later changes nothing), show no cost or savings stat, and leave cost columns out of the Requests table and detail cards. Everything below describes the final design.
+Lumen has no pricing of its own: omit the savings calculator section (keep the other sections' numbering as shown), the Pricing nav and footer links, the EST. SAVINGS stat and any Lumen price or `$` example. The cost columns, tiles and drawer fields stay, but they show the tenant's own estimated provider cost (from prices they enter per model), labelled "estimated provider cost", with "no price set" for unpriced models. Everything below describes the design; the brief decides what is built.
 
 ### Home section order
 01 Hero → image slot (560px, striped placeholder) → 02 How it works (3 steps) → 03 Demo (Easy / Hard / No answer request-response pair) → 04 Quickstart (cURL / Node / Python tabs + Copy) → 05 Savings calculator → 06 Built in (feature rows) → 07 Security (4 columns) → 08 FAQ (accordion; postponed, omit for now) → closing CTA → footer.

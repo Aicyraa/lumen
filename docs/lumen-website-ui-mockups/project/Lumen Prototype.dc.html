@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:#0c0c0b;color:#efeee9;font-family:Geist,system-ui,sans-serif}a{color:#efeee9;text-decoration:none}a:hover{color:oklch(0.88 0.17 118)}*{box-sizing:border-box}input{font-family:inherit}@keyframes lpulse{0%,100%{opacity:.35}50%{opacity:1}}@keyframes lrise{from{transform:translateY(105%)}to{transform:none}}@keyframes lgrow{from{transform:scaleY(0)}to{transform:none}}@keyframes lgrowx{from{transform:scaleX(0)}to{transform:none}}@keyframes lblink{50%{opacity:0}}@keyframes ldot{0%,100%{box-shadow:0 0 0 0 rgba(200,230,80,.5)}50%{box-shadow:0 0 0 6px rgba(200,230,80,0)}}@keyframes lstripe{to{background-position:56px 0}}@keyframes lfade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}</style>
+</helmet>
+<div style="min-height:100vh">
+
+<sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+<div data-screen-label="Home" style="max-width:1440px;margin:0 auto">
+<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:24px clamp(20px,4vw,48px);position:sticky;top:0;background:rgba(12,12,11,.85);backdrop-filter:blur(10px);z-index:5">
+<div style="display:flex;gap:28px;font-size:14px;color:#a9a8a2"><span onClick="{{ goHow }}" style="cursor:pointer">How it works</span><span onClick="{{ goDemo }}" style="cursor:pointer">Demo</span></div>
+<div style="font:600 18px Geist,sans-serif;letter-spacing:-.02em;display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:oklch(0.88 0.17 118);animation:ldot 2.4s infinite"></span>lumen</div>
+<div style="display:flex;justify-content:flex-end;gap:16px;align-items:center"><span onClick="{{ goSignin }}" style="cursor:pointer;font-size:14px;color:#a9a8a2">Sign in</span><span onClick="{{ goSignin }}" style="cursor:pointer;font-size:13px;font-weight:500;padding:10px 18px;border-radius:999px;background:#efeee9;color:#0c0c0b" style-hover="background:oklch(0.88 0.17 118)">Get an API key</span></div>
+</div>
+<div style="padding:clamp(56px,8vw,96px) clamp(20px,4vw,48px) 64px;display:flex;flex-direction:column;gap:40px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;animation:lfade .6s both">RAG API FOR YOUR CHATBOT — 01</div>
+<h1 style="margin:0;font-weight:500;font-size:clamp(48px,7.8vw,112px);line-height:.95;letter-spacing:-.05em;max-width:1200px;text-wrap:balance"><span style="display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.06em"><span style="display:inline-block;animation:lrise .9s cubic-bezier(.2,.7,.1,1) both;animation-delay:0.10s">Answers</span></span> <span style="display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.06em"><span style="display:inline-block;animation:lrise .9s cubic-bezier(.2,.7,.1,1) both;animation-delay:0.16s">from</span></span> <span style="display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.06em"><span style="display:inline-block;animation:lrise .9s cubic-bezier(.2,.7,.1,1) both;animation-delay:0.22s">your</span></span> <span style="display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.06em"><span style="display:inline-block;animation:lrise .9s cubic-bezier(.2,.7,.1,1) both;animation-delay:0.28s">documents,</span></span> <span style="display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.06em"><span style="display:inline-block;animation:lrise .9s cubic-bezier(.2,.7,.1,1) both;animation-delay:0.34s">at</span></span> <span style="display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.06em"><span style="display:inline-block;animation:lrise .9s cubic-bezier(.2,.7,.1,1) both;animation-delay:0.40s">the</span></span> <span style="display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.06em"><span style="display:inline-block;animation:lrise .9s cubic-bezier(.2,.7,.1,1) both;animation-delay:0.46s">cheapest</span></span> <span style="display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.06em"><span style="display:inline-block;animation:lrise .9s cubic-bezier(.2,.7,.1,1) both;animation-delay:0.52s">model</span></span> <span style="display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.06em"><span style="display:inline-block;animation:lrise .9s cubic-bezier(.2,.7,.1,1) both;animation-delay:0.58s">that</span></span> <span style="display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.06em"><span style="display:inline-block;animation:lrise .9s cubic-bezier(.2,.7,.1,1) both;animation-delay:0.64s">gets</span></span> <span style="display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.06em"><span style="display:inline-block;animation:lrise .9s cubic-bezier(.2,.7,.1,1) both;animation-delay:0.70s">them</span></span> <span style="display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.06em"><span style="display:inline-block;animation:lrise .9s cubic-bezier(.2,.7,.1,1) both;animation-delay:0.76s">right.</span></span></h1>
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:32px;animation:lfade .9s .85s both">
+<p style="margin:0;max-width:520px;font-size:19px;line-height:1.5;color:#a9a8a2;text-wrap:pretty">Upload your files, get an API key, and point your chatbot at one endpoint. Lumen retrieves only your tenant's passages, routes easy questions to a small model, and escalates when it's unsure.</p>
+<div style="display:flex;gap:12px"><span onClick="{{ goSignin }}" style="cursor:pointer;font-size:15px;font-weight:500;padding:16px 28px;border-radius:999px;background:oklch(0.88 0.17 118);color:#0c0c0b">Sign in to start</span><span onClick="{{ goDemo }}" style="cursor:pointer;font-size:15px;padding:16px 28px;border-radius:999px;border:1px solid #33332f" style-hover="border-color:#efeee9">See a request</span></div>
+</div>
+</div>
+<div style="margin:0 clamp(20px,4vw,48px);height:clamp(280px,40vw,560px);border-radius:14px;border:1px solid #262624;background:repeating-linear-gradient(90deg,#141413 0 28px,#111110 28px 56px);animation:lstripe 3s linear infinite, lfade 1s 1.1s both;display:flex;align-items:center;justify-content:center;font:12px 'Geist Mono',monospace;color:#6d6c67">dashboard screenshot — analytics view</div>
+<div data-reveal="1" ref="{{ howRef }}" style="padding:clamp(80px,10vw,140px) clamp(20px,4vw,48px) 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:32px 48px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">HOW IT WORKS — 02</div>
+<h2 style="margin:0;font-weight:400;font-size:clamp(32px,3.6vw,52px);line-height:1.05;letter-spacing:-.035em;text-wrap:balance;grid-column:span 2">Three steps from a folder of PDFs to a chatbot that cites its sources.</h2>
+</div>
+<div style="padding:64px clamp(20px,4vw,48px) 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:32px">
+<sc-for list="{{ steps }}" as="s" hint-placeholder-count="3">
+<div data-reveal="1" data-delay="{{ s.delay }}" style="border-top:1px solid #33332f;padding-top:28px;display:flex;flex-direction:column;gap:16px">
+<div style="font:500 13px 'Geist Mono',monospace;color:oklch(0.88 0.17 118)">{{ s.n }}</div>
+<div style="font-size:28px;font-weight:500;letter-spacing:-.02em">{{ s.title }}</div>
+<div style="font-size:15px;line-height:1.55;color:#a9a8a2;max-width:360px">{{ s.body }}</div>
+</div>
+</sc-for>
+</div>
+<div data-reveal="demo" ref="{{ demoRef }}" style="padding:clamp(80px,10vw,140px) clamp(20px,4vw,48px) 0;display:flex;flex-direction:column;gap:32px">
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:20px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">DEMO — 03</div>
+<div style="display:flex;gap:4px;padding:4px;border:1px solid #33332f;border-radius:999px;font:12px 'Geist Mono',monospace">
+<sc-for list="{{ demoTabs }}" as="t" hint-placeholder-count="3">
+<div onClick="{{ t.on }}" style="cursor:pointer;padding:8px 14px;border-radius:999px;background:{{ t.bg }};color:{{ t.fg }}">{{ t.label }}</div>
+</sc-for>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px">
+<div style="background:#141413;border:1px solid #262624;border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:16px">
+<div style="font:11px 'Geist Mono',monospace;color:#8d8c86">REQUEST</div>
+<pre style="margin:0;font:13px/1.7 'Geist Mono',monospace;color:#d8d7d1;white-space:pre-wrap">{{ demo.req }}</pre>
+</div>
+<div style="background:#141413;border:1px solid #262624;border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:16px">
+<div style="font:11px 'Geist Mono',monospace;color:#8d8c86">{{ demo.head }}</div>
+<pre style="margin:0;font:13px/1.7 'Geist Mono',monospace;color:#d8d7d1;white-space:pre-wrap">{{ typedRes }}<span style="display:inline-block;width:7px;height:14px;margin-left:2px;background:oklch(0.88 0.17 118);vertical-align:middle;animation:lblink 1s steps(1) infinite"></span></pre>
+</div>
+</div>
+</div>
+<div data-reveal="1" style="padding:clamp(80px,10vw,140px) clamp(20px,4vw,48px) 0;display:flex;flex-wrap:wrap;gap:32px 48px;align-items:flex-start">
+<div style="flex:1 1 300px;display:flex;flex-direction:column;gap:20px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">QUICKSTART — 04</div><h2 style="margin:0;font-weight:400;font-size:clamp(32px,3.6vw,52px);line-height:1.05;letter-spacing:-.035em;text-wrap:balance">Call it from your backend in a few lines.</h2><p style="margin:0;font-size:15px;line-height:1.55;color:#a9a8a2;max-width:420px">Keep the key on your server. Your chatbot's frontend talks to your backend, and your backend talks to Lumen.</p></div>
+<div style="flex:2 1 480px;min-width:0;background:#141413;border:1px solid #262624;border-radius:14px;overflow:hidden">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #262624;padding:8px 8px 8px 8px">
+<div style="display:flex;gap:4px;font:12px 'Geist Mono',monospace">
+<sc-for list="{{ codeTabs }}" as="t" hint-placeholder-count="3"><div onClick="{{ t.on }}" style="cursor:pointer;padding:8px 14px;border-radius:999px;background:{{ t.bg }};color:{{ t.fg }}">{{ t.label }}</div></sc-for>
+</div>
+<span onClick="{{ copyCode }}" style="cursor:pointer;font:12px 'Geist Mono',monospace;padding:8px 14px;border-radius:999px;border:1px solid #33332f;color:#a9a8a2" style-hover="color:#efeee9;border-color:#efeee9">{{ codeCopyLabel }}</span>
+</div>
+<pre style="margin:0;padding:24px;font:13px/1.75 'Geist Mono',monospace;color:#d8d7d1;white-space:pre;overflow-x:auto;animation:lfade .3s ease">{{ code }}</pre>
+</div>
+</div>
+<div data-reveal="1" style="padding:clamp(80px,10vw,140px) clamp(20px,4vw,48px) 0;display:flex;flex-wrap:wrap;gap:32px 48px;align-items:flex-start">
+<div style="flex:1 1 300px;display:flex;flex-direction:column;gap:20px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">SAVINGS — 05</div><h2 style="margin:0;font-weight:400;font-size:clamp(32px,3.6vw,52px);line-height:1.05;letter-spacing:-.035em;text-wrap:balance">See what routing could save you.</h2><p style="margin:0;font-size:15px;line-height:1.55;color:#a9a8a2;max-width:420px">Easy questions go to the small model. Move the sliders to match your traffic.</p></div>
+<div style="flex:2 1 480px;min-width:0;background:#141413;border:1px solid #262624;border-radius:14px;padding:32px;display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;flex-direction:column;gap:12px"><div style="display:flex;justify-content:space-between;font-size:14px;color:#a9a8a2"><span>Requests per month</span><span style="font-family:'Geist Mono',monospace;color:#efeee9">{{ calcReqLabel }}</span></div><input type="range" min="5000" max="1000000" step="5000" value="{{ calcReq }}" onChange="{{ onCalcReq }}" style="width:100%;accent-color:oklch(0.88 0.17 118)"></div>
+<div style="display:flex;flex-direction:column;gap:12px"><div style="display:flex;justify-content:space-between;font-size:14px;color:#a9a8a2"><span>Share of easy questions</span><span style="font-family:'Geist Mono',monospace;color:#efeee9">{{ calcShareLabel }}</span></div><input type="range" min="40" max="95" step="1" value="{{ calcShare }}" onChange="{{ onCalcShare }}" style="width:100%;accent-color:oklch(0.88 0.17 118)"></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:20px;border-top:1px solid #262624;padding-top:24px">
+<div style="display:flex;flex-direction:column;gap:8px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.12em;color:#8d8c86">ALWAYS LARGE MODEL</div><div style="font-size:30px;font-weight:500;letter-spacing:-.03em;color:#a9a8a2">{{ calcAlways }}</div></div>
+<div style="display:flex;flex-direction:column;gap:8px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.12em;color:#8d8c86">WITH ROUTING</div><div style="font-size:30px;font-weight:500;letter-spacing:-.03em">{{ calcRouted }}</div></div>
+<div style="display:flex;flex-direction:column;gap:8px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.12em;color:oklch(0.88 0.17 118)">EST. SAVED · {{ calcPct }}</div><div style="font-size:30px;font-weight:500;letter-spacing:-.03em;color:oklch(0.88 0.17 118)">{{ calcSaved }}</div></div>
+</div>
+<div style="font-size:12px;line-height:1.5;color:#8d8c86">Estimate per month, using example prices of $0.0012 per large-model request and $0.0001 per small-model request.</div>
+</div>
+</div>
+<div style="padding:clamp(80px,10vw,140px) clamp(20px,4vw,48px) 0">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;margin-bottom:32px">BUILT IN — 06</div>
+<sc-for list="{{ features }}" as="f" hint-placeholder-count="3">
+<div data-reveal="1" data-delay="{{ f.delay }}" onClick="{{ f.toggle }}" style="cursor:pointer;border-top:1px solid #262624;padding:32px 0">
+<div style="display:grid;grid-template-columns:60px 1fr 40px;gap:24px;align-items:baseline">
+<div style="font:13px 'Geist Mono',monospace;color:#8d8c86">{{ f.n }}</div>
+<div style="font-size:clamp(28px,3vw,44px);font-weight:400;letter-spacing:-.03em">{{ f.title }}</div>
+<div style="font:20px 'Geist Mono',monospace;color:#8d8c86;text-align:right">{{ f.sign }}</div>
+</div>
+<sc-if value="{{ f.open }}" hint-placeholder-val="{{ false }}">
+<div style="padding:16px 0 0 84px;font-size:16px;line-height:1.55;color:#a9a8a2;max-width:640px;animation:lfade .3s ease">{{ f.body }}</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+<div data-reveal="1" style="padding:clamp(80px,10vw,140px) clamp(20px,4vw,48px) 0;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-wrap:wrap;gap:32px 48px"><div style="flex:1 1 300px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">SECURITY — 07</div></div><div style="flex:2 1 480px"><h2 style="margin:0;font-weight:400;font-size:clamp(32px,3.6vw,52px);line-height:1.05;letter-spacing:-.035em;text-wrap:balance">Your documents stay yours.</h2></div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:32px">
+<sc-for list="{{ security }}" as="sc" hint-placeholder-count="4">
+<div style="border-top:1px solid #33332f;padding-top:24px;display:flex;flex-direction:column;gap:12px"><div style="font:500 13px 'Geist Mono',monospace;color:oklch(0.88 0.17 118)">{{ sc.n }}</div><div style="font-size:21px;font-weight:500;letter-spacing:-.02em">{{ sc.title }}</div><div style="font-size:14px;line-height:1.55;color:#a9a8a2">{{ sc.body }}</div></div>
+</sc-for>
+</div>
+</div>
+<div data-reveal="1" style="padding:clamp(80px,10vw,140px) clamp(20px,4vw,48px) 0;display:flex;flex-wrap:wrap;gap:32px 48px;align-items:flex-start">
+<div style="flex:1 1 300px;display:flex;flex-direction:column;gap:20px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">FAQ — 08</div><h2 style="margin:0;font-weight:400;font-size:clamp(32px,3.6vw,52px);line-height:1.05;letter-spacing:-.035em;text-wrap:balance">Questions</h2></div>
+<div style="flex:2 1 480px;min-width:0">
+<sc-for list="{{ faqs }}" as="q" hint-placeholder-count="5">
+<div onClick="{{ q.toggle }}" style="cursor:pointer;border-top:1px solid #262624;padding:24px 0">
+<div style="display:flex;justify-content:space-between;gap:24px;align-items:baseline"><div style="font-size:20px;letter-spacing:-.01em">{{ q.q }}</div><div style="font:18px 'Geist Mono',monospace;color:#8d8c86">{{ q.sign }}</div></div>
+<sc-if value="{{ q.open }}" hint-placeholder-val="{{ false }}"><div style="padding-top:12px;font-size:15px;line-height:1.6;color:#a9a8a2;max-width:620px;animation:lfade .3s ease">{{ q.a }}</div></sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+<div data-reveal="1" style="margin:100px clamp(20px,4vw,48px) 0;padding:72px 0;border-top:1px solid #262624;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:32px">
+<h2 style="margin:0;font-weight:500;font-size:clamp(48px,6.6vw,96px);line-height:.95;letter-spacing:-.05em">Ask your documents<br>anything.</h2>
+<span onClick="{{ goSignin }}" style="cursor:pointer;font-size:15px;font-weight:500;padding:18px 32px;border-radius:999px;background:#efeee9;color:#0c0c0b" style-hover="background:oklch(0.88 0.17 118)">Sign in</span>
+</div>
+<div style="padding:28px clamp(20px,4vw,48px);border-top:1px solid #262624;display:flex;justify-content:space-between;font-size:13px;color:#8d8c86"><span>© 2026 Lumen</span><span>Google and GitHub sign-in only</span></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isSignin }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Sign in" style="min-height:100vh;display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr))">
+<div style="padding:40px clamp(20px,4vw,48px);display:flex;flex-direction:column;justify-content:space-between;gap:48px;border-right:1px solid #262624">
+<div onClick="{{ goHome }}" style="cursor:pointer;font:600 18px Geist,sans-serif;letter-spacing:-.02em;display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:oklch(0.88 0.17 118)"></span>lumen</div>
+<h1 style="animation:lfade .9s .1s both;margin:0;font-weight:500;font-size:clamp(48px,6vw,88px);line-height:.95;letter-spacing:-.05em">One login.<br>Your own tenant.</h1>
+<div style="font:12px 'Geist Mono',monospace;color:#8d8c86">A personal workspace is created on first sign-in.</div>
+</div>
+<div style="display:flex;align-items:center;justify-content:center;padding:48px">
+<div style="width:100%;max-width:400px;display:flex;flex-direction:column;gap:14px">
+<div onClick="{{ goHome }}" style="cursor:pointer;font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;margin-bottom:8px">← BACK</div>
+<div style="font-size:32px;font-weight:500;letter-spacing:-.03em;margin-bottom:16px">Welcome to Lumen</div>
+<sc-if value="{{ signingIn }}" hint-placeholder-val="{{ false }}">
+<div style="height:126px;display:flex;flex-direction:column;justify-content:center;gap:12px;border:1px solid #262624;border-radius:14px;padding:24px">
+<div style="font:12px 'Geist Mono',monospace;color:oklch(0.88 0.17 118);animation:lpulse 1s infinite">{{ signinMsg }}</div>
+<div style="font-size:13px;color:#8d8c86">Redirecting to your dashboard…</div>
+</div>
+</sc-if>
+<sc-if value="{{ notSigningIn }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:14px">
+<div onClick="{{ signGoogle }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;height:56px;border-radius:999px;background:#efeee9;color:#0c0c0b;font-size:15px;font-weight:500" style-hover="background:oklch(0.88 0.17 118)">Continue with Google</div>
+<div onClick="{{ signGithub }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;height:56px;border-radius:999px;border:1px solid #33332f;font-size:15px;font-weight:500" style-hover="border-color:#efeee9">Continue with GitHub</div>
+</div>
+</sc-if>
+<div style="font-size:13px;line-height:1.5;color:#8d8c86;margin-top:16px">No passwords. Google and GitHub only.</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isApp }}" hint-placeholder-val="{{ false }}">
+<div style="min-height:100vh;display:grid;grid-template-columns:240px minmax(0,1fr)">
+<div style="border-right:1px solid #262624;padding:28px 20px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh">
+<div style="font:600 17px Geist,sans-serif;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;padding:0 12px 28px"><span style="width:9px;height:9px;border-radius:50%;background:oklch(0.88 0.17 118)"></span>lumen</div>
+<sc-for list="{{ nav }}" as="n" hint-placeholder-count="4">
+<div onClick="{{ n.on }}" style="cursor:pointer;padding:10px 12px;border-radius:8px;font-size:14px;background:{{ n.bg }};color:{{ n.fg }};display:flex;justify-content:space-between" style-hover="color:#efeee9">{{ n.label }}<span style="font:11px 'Geist Mono',monospace;color:#6d6c67">{{ n.num }}</span></div>
+</sc-for>
+<div style="margin-top:auto;padding:16px 12px;display:flex;flex-direction:column;gap:14px">
+<div style="font:500 10px 'Geist Mono',monospace;letter-spacing:.14em;color:#6d6c67">USAGE</div>
+<sc-for list="{{ usage }}" as="u" hint-placeholder-count="3">
+<div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#a9a8a2"><span>{{ u.label }}</span><span style="font-family:'Geist Mono',monospace;color:{{ u.color }}">{{ u.value }}</span></div><div style="height:3px;background:#262624;border-radius:2px;overflow:hidden"><div style="height:3px;width:{{ u.pct }};background:{{ u.color }};transition:width .5s ease"></div></div></div>
+</sc-for>
+</div>
+<div style="padding:12px;border-top:1px solid #262624;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;gap:10px;align-items:center"><span style="width:28px;height:28px;border-radius:50%;background:#33332f;display:flex;align-items:center;justify-content:center;font-size:12px">M</span><div style="font-size:13px">Campus FAQ<div style="font-size:12px;color:#8d8c86">via {{ provider }}</div></div></div>
+<div onClick="{{ signOut }}" style="cursor:pointer;font:11px 'Geist Mono',monospace;letter-spacing:.1em;color:#8d8c86" style-hover="color:#efeee9">SIGN OUT</div>
+</div>
+</div>
+
+<div style="padding:40px clamp(24px,4vw,56px) 64px;min-width:0">
+
+<sc-if value="{{ tDocs }}" hint-placeholder-val="{{ true }}">
+<div data-screen-label="Documents" style="display:flex;flex-direction:column;gap:32px;animation:lfade .3s ease">
+<div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-end"><div><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;margin-bottom:10px">01 — DOCUMENTS</div><div style="font-size:48px;font-weight:500;letter-spacing:-.04em">Documents</div></div><div style="font:12px 'Geist Mono',monospace;color:#8d8c86">{{ docSummary }}</div></div>
+<div onClick="{{ pickFile }}" onDragOver="{{ dragOver }}" onDragLeave="{{ dragLeave }}" onDrop="{{ dropFiles }}" style="cursor:pointer;border:1px dashed {{ dropBorder }};background:{{ dropBg }};border-radius:14px;padding:36px;display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:center">
+<div><div style="font-size:18px;font-weight:500">Drop files to upload</div><div style="font-size:13px;color:#8d8c86;margin-top:6px">PDF, .txt or .md · up to 10 MB each</div></div>
+<div style="font-size:14px;font-weight:500;padding:12px 22px;border-radius:999px;background:#efeee9;color:#0c0c0b">Choose files</div>
+<input ref="{{ fileRef }}" type="file" multiple="{{ true }}" onChange="{{ onFiles }}" style="display:none">
+</div>
+<sc-if value="{{ uploadError }}" hint-placeholder-val="{{ false }}">
+<div style="font-size:13px;color:oklch(0.72 0.15 28)">{{ uploadError }}</div>
+</sc-if>
+<div>
+<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 60px;padding:0 0 12px;font:500 11px 'Geist Mono',monospace;letter-spacing:.1em;color:#6d6c67;border-bottom:1px solid #262624"><span>FILE</span><span>STATUS</span><span>CHUNKS</span><span>UPLOADED</span><span></span></div>
+<sc-for list="{{ docs }}" as="d" hint-placeholder-count="4">
+<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 60px;align-items:center;padding:18px 0;border-bottom:1px solid #1f1f1d;font-size:14px;animation:lfade .3s ease">
+<div style="min-width:0"><div style="overflow:hidden;text-overflow:ellipsis">{{ d.name }}</div><div style="font-size:12px;color:oklch(0.72 0.15 28);margin-top:4px">{{ d.error }}</div></div>
+<div style="display:flex;align-items:center;gap:8px;font:12px 'Geist Mono',monospace;color:{{ d.color }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ d.color }};animation:{{ d.anim }}"></span>{{ d.status }}</div>
+<div style="font-family:'Geist Mono',monospace;font-size:13px;color:#a9a8a2">{{ d.chunks }}</div>
+<div style="color:#8d8c86;font-size:13px">{{ d.date }}</div>
+<div onClick="{{ d.del }}" style="cursor:pointer;font-size:13px;color:#8d8c86;text-align:right" style-hover="color:oklch(0.72 0.15 28)">Delete</div>
+</div>
+</sc-for>
+<sc-if value="{{ noDocs }}" hint-placeholder-val="{{ false }}">
+<div style="padding:40px 0;color:#8d8c86;font-size:14px">No documents yet. Upload one to start answering questions.</div>
+</sc-if>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ tKeys }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="API keys" style="display:flex;flex-direction:column;gap:32px;animation:lfade .3s ease">
+<div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-end"><div><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;margin-bottom:10px">02 — API KEYS</div><div style="font-size:48px;font-weight:500;letter-spacing:-.04em">API keys</div></div><div onClick="{{ openCreate }}" style="cursor:pointer;font-size:14px;font-weight:500;padding:12px 22px;border-radius:999px;background:#efeee9;color:#0c0c0b" style-hover="background:oklch(0.88 0.17 118)">Create key</div></div>
+<div style="font-size:14px;color:#a9a8a2;max-width:640px;line-height:1.55">Send a key in the <span style="font-family:'Geist Mono',monospace;color:#efeee9">x-api-key</span> header from your chatbot's backend. Keys are stored as hashes and belong to this workspace.</div>
+<div>
+<div style="display:grid;grid-template-columns:1.5fr 1.5fr 1fr 1fr 80px;padding:0 0 12px;font:500 11px 'Geist Mono',monospace;letter-spacing:.1em;color:#6d6c67;border-bottom:1px solid #262624"><span>NAME</span><span>KEY</span><span>CREATED</span><span>LAST USED</span><span></span></div>
+<sc-for list="{{ keys }}" as="k" hint-placeholder-count="2">
+<div style="display:grid;grid-template-columns:1.5fr 1.5fr 1fr 1fr 80px;align-items:center;padding:18px 0;border-bottom:1px solid #1f1f1d;font-size:14px;animation:lfade .3s ease">
+<div>{{ k.name }}</div><div style="font:13px 'Geist Mono',monospace;color:#a9a8a2">{{ k.prefix }}</div><div style="color:#8d8c86;font-size:13px">{{ k.created }}</div><div style="color:#8d8c86;font-size:13px">{{ k.used }}</div><div onClick="{{ k.revoke }}" style="cursor:pointer;font-size:13px;color:oklch(0.72 0.15 28);text-align:right">Revoke</div>
+</div>
+</sc-for>
+<sc-if value="{{ noKeys }}" hint-placeholder-val="{{ false }}">
+<div style="padding:40px 0;color:#8d8c86;font-size:14px">No keys. Create one to connect your chatbot.</div>
+</sc-if>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ tModels }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Models" style="display:flex;flex-direction:column;gap:32px;animation:lfade .3s ease">
+<div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-end"><div><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;margin-bottom:10px">06 — MODELS</div><div style="font-size:48px;font-weight:500;letter-spacing:-.04em">Models</div></div><div onClick="{{ toggleAddModel }}" style="cursor:pointer;font-size:14px;font-weight:500;padding:12px 22px;border-radius:999px;background:#efeee9;color:#0c0c0b" style-hover="background:oklch(0.88 0.17 118)">Add model</div></div>
+<div style="font-size:14px;color:#a9a8a2;max-width:680px;line-height:1.55">Connect your own provider keys. Easy questions go to the cheap tier and hard ones to the expensive tier. Each tier tries its models top to bottom; if all of them fail, the fallback answers.</div>
+<sc-if value="{{ mFormOpen }}" hint-placeholder-val="{{ false }}">
+<div style="background:#141413;border:1px solid #262624;border-radius:14px;padding:28px;display:flex;flex-direction:column;gap:24px;animation:lfade .3s ease">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">ADD MODEL</div>
+<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:13px;color:#a9a8a2">Provider</div><div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ mProviders }}" as="p" hint-placeholder-count="4"><div onClick="{{ p.on }}" style="cursor:pointer;padding:9px 16px;border-radius:999px;border:1px solid {{ p.bd }};background:{{ p.bg }};color:{{ p.fg }};font-size:13px">{{ p.label }}</div></sc-for></div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
+<label style="display:flex;flex-direction:column;gap:10px"><span style="font-size:13px;color:#a9a8a2">Model ID</span><input value="{{ mModel }}" onChange="{{ setMModel }}" placeholder="{{ mModelPh }}" style="background:#0c0c0b;border:1px solid #33332f;border-radius:10px;padding:12px 14px;color:#efeee9;font:14px 'Geist Mono',monospace;outline:none" style-focus="border-color:#8d8c86"></label>
+<label style="display:flex;flex-direction:column;gap:10px"><span style="font-size:13px;color:#a9a8a2">Endpoint URL</span><input value="{{ mEndpoint }}" onChange="{{ setMEndpoint }}" style="background:#0c0c0b;border:1px solid #33332f;border-radius:10px;padding:12px 14px;color:#efeee9;font:14px 'Geist Mono',monospace;outline:none" style-focus="border-color:#8d8c86"></label>
+<label style="display:flex;flex-direction:column;gap:10px"><span style="font-size:13px;color:#a9a8a2">API key</span><input type="password" value="{{ mKey }}" onChange="{{ setMKey }}" placeholder="Stored encrypted, never shown again" style="background:#0c0c0b;border:1px solid #33332f;border-radius:10px;padding:12px 14px;color:#efeee9;font:14px 'Geist Mono',monospace;outline:none" style-focus="border-color:#8d8c86"></label>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:13px;color:#a9a8a2">Use as</div><div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center"><div style="display:flex;gap:4px;padding:4px;border:1px solid #33332f;border-radius:999px;font:12px 'Geist Mono',monospace"><sc-for list="{{ mRoles }}" as="r" hint-placeholder-count="3"><div onClick="{{ r.on }}" style="cursor:pointer;padding:8px 14px;border-radius:999px;background:{{ r.bg }};color:{{ r.fg }}">{{ r.label }}</div></sc-for></div><span style="font-size:13px;color:#8d8c86">Added to the end of the tier. Reorder it below.</span></div></div>
+<sc-if value="{{ mErr }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:oklch(0.72 0.15 28)">{{ mErr }}</div></sc-if>
+<div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #262624;padding-top:20px"><div onClick="{{ closeAddModel }}" style="cursor:pointer;font-size:14px;padding:12px 22px;border-radius:999px;border:1px solid #33332f;color:#a9a8a2" style-hover="color:#efeee9">Cancel</div><div onClick="{{ saveModel }}" style="cursor:pointer;font-size:14px;font-weight:500;padding:12px 22px;border-radius:999px;background:#efeee9;color:#0c0c0b" style-hover="background:oklch(0.88 0.17 118)">{{ mSaveLabel }}</div></div>
+</div>
+</sc-if>
+<div style="display:flex;flex-direction:column;gap:40px">
+<sc-for list="{{ modelGroups }}" as="g" hint-placeholder-count="3">
+<div style="display:flex;flex-direction:column">
+<div style="display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:space-between;align-items:baseline;padding-bottom:12px;border-bottom:1px solid #262624"><div style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;border-radius:50%;background:{{ g.dot }}"></span><span style="font-size:20px;font-weight:500;letter-spacing:-.02em">{{ g.title }}</span><span style="font:12px 'Geist Mono',monospace;color:#6d6c67">{{ g.count }}</span></div><div style="font-size:13px;color:#8d8c86">{{ g.note }}</div></div>
+<sc-for list="{{ g.rows }}" as="m" hint-placeholder-count="2">
+<div style="display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;padding:16px 0;border-bottom:1px solid #1f1f1d;font-size:14px;animation:lfade .3s ease">
+<span style="flex:0 0 80px;font:11px 'Geist Mono',monospace;letter-spacing:.1em;color:{{ m.rankColor }}">{{ m.rank }}</span>
+<div style="flex:1 1 220px;min-width:180px;display:flex;flex-direction:column;gap:4px"><div style="display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline"><span style="font-family:'Geist Mono',monospace;white-space:nowrap">{{ m.name }}</span><span style="font-size:12px;color:#8d8c86">{{ m.provider }}</span></div><div style="font:12px 'Geist Mono',monospace;color:#8d8c86;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ m.endpoint }} · {{ m.key }}</div></div>
+<span style="flex:0 0 100px;display:flex;align-items:center;gap:8px;font:12px 'Geist Mono',monospace;color:{{ m.sColor }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ m.sColor }}"></span>{{ m.status }}</span>
+<div style="display:flex;gap:6px"><div onClick="{{ m.up }}" title="Move up" style="cursor:pointer;width:30px;height:30px;border-radius:50%;border:1px solid #33332f;display:flex;align-items:center;justify-content:center;font-size:13px;color:{{ m.upColor }}" style-hover="border-color:#8d8c86">↑</div><div onClick="{{ m.down }}" title="Move down" style="cursor:pointer;width:30px;height:30px;border-radius:50%;border:1px solid #33332f;display:flex;align-items:center;justify-content:center;font-size:13px;color:{{ m.downColor }}" style-hover="border-color:#8d8c86">↓</div></div>
+<div onClick="{{ m.remove }}" style="cursor:pointer;font-size:13px;color:#8d8c86;text-align:right;flex:0 0 56px" style-hover="color:oklch(0.72 0.15 28)">Remove</div>
+</div>
+</sc-for>
+<sc-if value="{{ g.empty }}" hint-placeholder-val="{{ false }}"><div style="padding:24px 0;font-size:14px;color:#8d8c86">{{ g.emptyMsg }}</div></sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ tTry }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Try it" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:40px;animation:lfade .3s ease">
+<div style="display:flex;flex-direction:column;gap:28px;grid-column:span 2;min-width:0">
+<div><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;margin-bottom:10px">03 — TRY IT</div><div style="font-size:48px;font-weight:500;letter-spacing:-.04em">Ask a test question</div></div>
+<div style="display:flex;gap:10px;align-items:center;border:1px solid #33332f;border-radius:999px;padding:8px 8px 8px 24px">
+<input value="{{ query }}" onChange="{{ onQuery }}" onKeyDown="{{ onQueryKey }}" placeholder="Ask something your documents cover…" style="flex:1;min-width:0;background:transparent;border:0;outline:0;color:#efeee9;font-size:16px">
+<span onClick="{{ ask }}" style="cursor:pointer;font-size:14px;font-weight:500;padding:12px 22px;border-radius:999px;background:oklch(0.88 0.17 118);color:#0c0c0b">Ask</span>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<sc-for list="{{ suggestions }}" as="sg" hint-placeholder-count="3">
+<span onClick="{{ sg.on }}" style="cursor:pointer;font-size:13px;padding:8px 14px;border-radius:999px;border:1px solid #262624;color:#a9a8a2" style-hover="border-color:#efeee9;color:#efeee9">{{ sg.q }}</span>
+</sc-for>
+</div>
+<sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+<div style="font:12px 'Geist Mono',monospace;color:oklch(0.88 0.17 118);animation:lpulse 1s infinite">EMBEDDING · PROBE SEARCH · ROUTING…</div>
+</sc-if>
+<sc-if value="{{ hasResult }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:28px;animation:lfade .35s ease">
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">ANSWER</div>
+<div style="font-size:22px;line-height:1.45;letter-spacing:-.01em;max-width:760px;text-wrap:pretty">{{ result.answer }}</div>
+<div style="display:flex;gap:8px;align-items:center;font-size:13px;color:#8d8c86">Helpful?
+<span onClick="{{ rateUp }}" style="cursor:pointer;padding:6px 12px;border-radius:999px;border:1px solid {{ upBorder }}">Yes</span>
+<span onClick="{{ rateDown }}" style="cursor:pointer;padding:6px 12px;border-radius:999px;border:1px solid {{ downBorder }}">No</span></div>
+</div>
+<sc-if value="{{ hasSources }}" hint-placeholder-val="{{ false }}">
+<div>
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;padding-bottom:12px;border-bottom:1px solid #262624">SOURCES</div>
+<sc-for list="{{ result.sources }}" as="s" hint-placeholder-count="2">
+<div style="display:grid;grid-template-columns:40px 1fr 140px;gap:16px;align-items:center;padding:16px 0;border-bottom:1px solid #1f1f1d">
+<span style="font:13px 'Geist Mono',monospace;color:oklch(0.88 0.17 118)">{{ s.n }}</span>
+<div style="font-size:14px;min-width:0">{{ s.doc }}<div style="font-size:13px;color:#8d8c86;margin-top:4px">{{ s.snippet }}</div></div>
+<div style="display:flex;align-items:center;gap:10px"><div style="flex:1;height:4px;background:#262624;border-radius:2px"><div style="height:4px;border-radius:2px;background:#efeee9;width:{{ s.pct }};transform-origin:left;animation:lgrowx .9s .25s cubic-bezier(.2,.7,.1,1) both"></div></div><span style="font:12px 'Geist Mono',monospace;color:#a9a8a2">{{ s.score }}</span></div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</sc-if>
+</div>
+<sc-if value="{{ hasResult }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:16px;padding-top:96px;animation:lfade .35s ease">
+<div style="background:#141413;border:1px solid #262624;border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:18px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">ROUTE</div>
+<div style="font-size:30px;font-weight:500;letter-spacing:-.03em;color:{{ result.tierColor }}">{{ result.tierLabel }}</div>
+<div style="font-size:13px;color:#a9a8a2;line-height:1.5">{{ result.why }}</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;border-top:1px solid #262624;padding-top:16px;font:13px 'Geist Mono',monospace">
+<div><div style="font-size:11px;color:#6d6c67">K</div>{{ result.k }}</div><div><div style="font-size:11px;color:#6d6c67">DIFFICULTY</div>{{ result.difficulty }}</div><div><div style="font-size:11px;color:#6d6c67">ESCALATED</div>{{ result.escalated }}</div><div><div style="font-size:11px;color:#6d6c67">TOP SCORE</div>{{ result.top }}</div>
+</div>
+</div>
+<div style="background:#141413;border:1px solid #262624;border-radius:14px;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:14px;font:13px 'Geist Mono',monospace">
+<div style="grid-column:1/-1;font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">USAGE</div>
+<div><div style="font-size:11px;color:#6d6c67">TOKENS IN</div>{{ result.tin }}</div><div><div style="font-size:11px;color:#6d6c67">TOKENS OUT</div>{{ result.tout }}</div><div><div style="font-size:11px;color:#6d6c67">COST</div>{{ result.cost }}</div><div><div style="font-size:11px;color:#6d6c67">LATENCY</div>{{ result.latency }}</div>
+</div>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ tLog }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Requests" style="display:flex;flex-direction:column;gap:28px;animation:lfade .3s ease">
+<div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-end"><div><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;margin-bottom:10px">05 — REQUESTS</div><div style="font-size:48px;font-weight:500;letter-spacing:-.04em">Request log</div></div>
+<div style="display:flex;gap:4px;padding:4px;border:1px solid #33332f;border-radius:999px;font:12px 'Geist Mono',monospace">
+<sc-for list="{{ logFilters }}" as="lf" hint-placeholder-count="4"><div onClick="{{ lf.on }}" style="cursor:pointer;padding:8px 14px;border-radius:999px;background:{{ lf.bg }};color:{{ lf.fg }}">{{ lf.label }}</div></sc-for>
+</div></div>
+<div style="overflow-x:auto"><div style="min-width:720px">
+<div style="display:grid;grid-template-columns:70px minmax(0,1fr) 110px 40px 80px 90px 24px;gap:12px;padding:0 0 12px;font:500 11px 'Geist Mono',monospace;letter-spacing:.1em;color:#6d6c67;border-bottom:1px solid #262624"><span>TIME</span><span>QUERY</span><span>ROUTE</span><span>K</span><span>COST</span><span>LATENCY</span><span></span></div>
+<sc-for list="{{ logRows }}" as="l" hint-placeholder-count="6">
+<div style="border-bottom:1px solid #1f1f1d">
+<div onClick="{{ l.toggle }}" style="cursor:pointer;display:grid;grid-template-columns:70px minmax(0,1fr) 110px 40px 80px 90px 24px;gap:12px;align-items:center;padding:16px 0;font-size:14px" style-hover="background:#121211">
+<span style="font:12px 'Geist Mono',monospace;color:#8d8c86">{{ l.time }}</span>
+<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ l.q }}</span>
+<span style="display:flex;align-items:center;gap:8px;font:12px 'Geist Mono',monospace;color:{{ l.dot }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ l.dot }}"></span>{{ l.tier }}</span>
+<span style="font:13px 'Geist Mono',monospace;color:#a9a8a2">{{ l.k }}</span>
+<span style="font:13px 'Geist Mono',monospace;color:#a9a8a2">{{ l.cost }}</span>
+<span style="font:13px 'Geist Mono',monospace;color:#a9a8a2">{{ l.latency }}</span>
+<span style="font:16px 'Geist Mono',monospace;color:#8d8c86;text-align:right">{{ l.sign }}</span>
+</div>
+<sc-if value="{{ l.open }}" hint-placeholder-val="{{ false }}">
+<div style="padding:4px 0 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;animation:lfade .25s ease">
+<div style="background:#141413;border:1px solid #262624;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">ROUTE</div><div style="font-size:20px;font-weight:500;color:{{ l.tierColor }}">{{ l.tierLabel }}</div><div style="font-size:13px;line-height:1.5;color:#a9a8a2">{{ l.why }}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font:13px 'Geist Mono',monospace;border-top:1px solid #262624;padding-top:12px"><div><div style="font-size:11px;color:#6d6c67">DIFFICULTY</div>{{ l.difficulty }}</div><div><div style="font-size:11px;color:#6d6c67">ESCALATED</div>{{ l.escalated }}</div><div><div style="font-size:11px;color:#6d6c67">TOP SCORE</div>{{ l.top }}</div><div><div style="font-size:11px;color:#6d6c67">K</div>{{ l.k }}</div></div></div>
+<div style="background:#141413;border:1px solid #262624;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">USAGE</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font:13px 'Geist Mono',monospace"><div><div style="font-size:11px;color:#6d6c67">TOKENS IN</div>{{ l.tin }}</div><div><div style="font-size:11px;color:#6d6c67">TOKENS OUT</div>{{ l.tout }}</div><div><div style="font-size:11px;color:#6d6c67">COST</div>{{ l.cost }}</div><div><div style="font-size:11px;color:#6d6c67">LATENCY</div>{{ l.latency }}</div></div><div style="display:flex;flex-direction:column;gap:6px;font:12px 'Geist Mono',monospace;color:#8d8c86;border-top:1px solid #262624;padding-top:12px"><span>{{ l.id }}</span><span>key · {{ l.key }}</span></div></div>
+<div style="background:#141413;border:1px solid #262624;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px"><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">SOURCES</div>
+<sc-for list="{{ l.sources }}" as="src" hint-placeholder-count="2"><div style="display:flex;gap:10px;font-size:13px"><span style="font-family:'Geist Mono',monospace;color:oklch(0.88 0.17 118)">{{ src.n }}</span><span style="flex:1;min-width:0">{{ src.doc }}</span><span style="font-family:'Geist Mono',monospace;color:#a9a8a2">{{ src.score }}</span></div></sc-for>
+<sc-if value="{{ l.noSrc }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#8d8c86">No passages matched. Consider adding a document that covers this.</div></sc-if>
+</div>
+</div>
+</sc-if>
+</div>
+</sc-for>
+<sc-if value="{{ noLog }}" hint-placeholder-val="{{ false }}"><div style="padding:40px 0;color:#8d8c86;font-size:14px">No requests match this filter.</div></sc-if>
+</div></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ tStats }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Analytics" style="display:flex;flex-direction:column;gap:32px;animation:lfade .3s ease">
+<div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-end"><div><div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;margin-bottom:10px">04 — ANALYTICS</div><div style="font-size:48px;font-weight:500;letter-spacing:-.04em">Analytics</div></div>
+<div style="display:flex;gap:4px;padding:4px;border:1px solid #33332f;border-radius:999px;font:12px 'Geist Mono',monospace">
+<div onClick="{{ set7 }}" style="cursor:pointer;padding:8px 16px;border-radius:999px;background:{{ bg7 }};color:{{ fg7 }}">7D</div>
+<div onClick="{{ set30 }}" style="cursor:pointer;padding:8px 16px;border-radius:999px;background:{{ bg30 }};color:{{ fg30 }}">30D</div>
+</div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));border-top:1px solid #262624;border-bottom:1px solid #262624">
+<sc-for list="{{ stats }}" as="st" hint-placeholder-count="4">
+<div style="padding:24px 24px 24px 0;display:flex;flex-direction:column;gap:10px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.12em;color:#8d8c86">{{ st.label }}</div>
+<div style="font-size:44px;font-weight:500;letter-spacing:-.04em;color:{{ st.color }}">{{ st.value }}</div>
+<div style="font-size:12px;color:#8d8c86">{{ st.note }}</div>
+</div>
+</sc-for>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:40px">
+<div style="display:flex;flex-direction:column;gap:16px;grid-column:span 2;min-width:0">
+<div style="display:flex;justify-content:space-between;font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86"><span>REQUESTS PER DAY</span><span style="color:#efeee9">{{ hoverLabel }}</span></div>
+<div onMouseLeave="{{ clearHover }}" style="height:220px;display:flex;align-items:flex-end;gap:4px;border-bottom:1px solid #33332f">
+<sc-for list="{{ bars }}" as="b" hint-placeholder-count="7">
+<div onMouseEnter="{{ b.hover }}" style="flex:1;height:{{ b.h }};background:{{ b.color }};border-radius:3px 3px 0 0;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;transition:height .4s ease, background .2s;transform-origin:bottom;animation:lgrow .8s cubic-bezier(.2,.7,.1,1) both;animation-delay:{{ b.delay }}"><div style="height:{{ b.exp }};background:oklch(0.88 0.17 118)"></div></div>
+</sc-for>
+</div>
+<div style="display:flex;gap:20px;font:11px 'Geist Mono',monospace;color:#8d8c86"><span style="display:flex;gap:6px;align-items:center"><span style="width:8px;height:8px;background:#efeee9"></span>CHEAP</span><span style="display:flex;gap:6px;align-items:center"><span style="width:8px;height:8px;background:oklch(0.88 0.17 118)"></span>EXPENSIVE</span></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">ROUTE MIX</div>
+<div style="display:flex;height:10px;border-radius:5px;overflow:hidden;transform-origin:left;animation:lgrowx 1s .25s cubic-bezier(.2,.7,.1,1) both"><div style="width:71%;background:#efeee9"></div><div style="width:9%;background:oklch(0.7 0.1 118)"></div><div style="width:14%;background:oklch(0.88 0.17 118)"></div><div style="width:6%;background:#44443f"></div></div>
+<sc-for list="{{ mix }}" as="m" hint-placeholder-count="4">
+<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1f1f1d;font-size:14px"><span>{{ m.label }}</span><span style="font-family:'Geist Mono',monospace;color:#a9a8a2">{{ m.pct }}</span></div>
+</sc-for>
+</div>
+</div>
+<div>
+<div style="display:flex;justify-content:space-between;font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86;padding-bottom:12px;border-bottom:1px solid #262624"><span>UNANSWERED QUESTIONS — ADD DOCUMENTS FOR THESE</span><span>BEST MATCH</span></div>
+<sc-for list="{{ unanswered }}" as="u" hint-placeholder-count="3">
+<div style="display:flex;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid #1f1f1d;font-size:14px"><span>{{ u.q }}</span><span style="font-family:'Geist Mono',monospace;color:oklch(0.72 0.15 28)">{{ u.s }}</span></div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeModal }}" style="position:fixed;inset:0;background:rgba(8,8,7,.75);display:flex;align-items:center;justify-content:center;z-index:20;padding:20px">
+<div onClick="{{ stop }}" style="width:100%;max-width:560px;background:#141413;border:1px solid #33332f;border-radius:16px;padding:36px;display:flex;flex-direction:column;gap:20px;animation:lfade .25s ease">
+<sc-if value="{{ modalCreate }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:#8d8c86">NEW KEY</div>
+<div style="font-size:28px;font-weight:500;letter-spacing:-.03em">Name this key</div>
+<input value="{{ keyName }}" onChange="{{ onKeyName }}" placeholder="e.g. Production chatbot" style="background:#0c0c0b;border:1px solid #33332f;border-radius:10px;padding:14px 16px;color:#efeee9;font-size:15px;outline:0">
+<div style="display:flex;justify-content:flex-end;gap:10px"><span onClick="{{ closeModal }}" style="cursor:pointer;font-size:14px;padding:10px 20px;border-radius:999px;border:1px solid #33332f">Cancel</span><span onClick="{{ createKey }}" style="cursor:pointer;font-size:14px;font-weight:500;padding:10px 20px;border-radius:999px;background:#efeee9;color:#0c0c0b">Create</span></div>
+</div>
+</sc-if>
+<sc-if value="{{ modalShow }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="font:500 11px 'Geist Mono',monospace;letter-spacing:.14em;color:oklch(0.88 0.17 118)">KEY CREATED</div>
+<div style="font-size:28px;font-weight:500;letter-spacing:-.03em">Copy this key now</div>
+<div style="font-size:14px;color:#a9a8a2;line-height:1.5">It won't be shown again. If you lose it, revoke it and create a new one.</div>
+<div style="display:flex;gap:8px;align-items:center;background:#0c0c0b;border:1px solid #262624;border-radius:10px;padding:14px 16px"><span style="flex:1;font:13px 'Geist Mono',monospace;word-break:break-all">{{ newKey }}</span><span onClick="{{ copyKey }}" style="cursor:pointer;font-size:12px;font-weight:500;padding:8px 14px;border-radius:999px;background:#efeee9;color:#0c0c0b">{{ copyLabel }}</span></div>
+<span onClick="{{ closeModal }}" style="cursor:pointer;align-self:flex-end;font-size:14px;padding:10px 20px;border-radius:999px;border:1px solid #33332f">I've saved it</span>
+</div>
+</sc-if>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+<div style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#efeee9;color:#0c0c0b;font-size:14px;padding:12px 20px;border-radius:999px;z-index:30;animation:lfade .25s ease">{{ toast }}</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;signin&quot;,&quot;app&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;'home'|'signin'|'app'&quot;},&quot;range&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;7d&quot;,&quot;30d&quot;],&quot;default&quot;:&quot;7d&quot;,&quot;tsType&quot;:&quot;'7d'|'30d'&quot;}}">
+class Component extends DCLogic {
+  fileRef = React.createRef(); howRef = React.createRef(); demoRef = React.createRef();
+  state = {
+    screen: null, tab: 'docs', provider: 'Google', signingIn: false,
+    demo: 'easy', openFeat: 0, drag: false, uploadError: '',
+    docs: [
+      { id: 1, name: 'student-handbook-2026.pdf', status: 'ready', chunks: 128, date: 'Oct 21' },
+      { id: 2, name: 'refund-policy.md', status: 'ready', chunks: 14, date: 'Oct 21' },
+      { id: 3, name: 'housing-faq.txt', status: 'ready', chunks: 72, date: 'Oct 20' },
+      { id: 4, name: 'campus-map-scan.pdf', status: 'failed', chunks: 0, date: 'Oct 19', error: 'No text found. This looks like a scanned image.' }
+    ],
+    keys: [
+      { id: 1, name: 'Staging', prefix: 'lum_live_Rb81••••', created: 'Oct 14', used: '2 hours ago' },
+      { id: 2, name: 'Local dev', prefix: 'lum_live_x0Pd••••', created: 'Oct 02', used: 'Oct 18' }
+    ],
+    models: [
+      { id: 1, role: 'cheap', name: 'gpt-4o-mini', provider: 'OpenAI', endpoint: 'https://api.openai.com/v1', key: 'sk-p••••3f9a', status: 'ok' },
+      { id: 2, role: 'cheap', name: 'gemini-2.0-flash', provider: 'Google', endpoint: 'https://generativelanguage.googleapis.com/v1beta', key: 'AIza••••uQ2k', status: 'ok' },
+      { id: 3, role: 'expensive', name: 'claude-sonnet-4-5', provider: 'Anthropic', endpoint: 'https://api.anthropic.com/v1', key: 'sk-a••••81cd', status: 'ok' },
+      { id: 4, role: 'expensive', name: 'gpt-4o', provider: 'OpenAI', endpoint: 'https://api.openai.com/v1', key: 'sk-p••••3f9a', status: 'ok' },
+      { id: 5, role: 'fallback', name: 'llama-3.1-8b-instruct', provider: 'OpenAI-compatible', endpoint: 'https://llm.campus.edu/v1', key: 'cmp_••••d20e', status: 'fail' }
+    ],
+    mForm: { open: false, provider: 'OpenAI', model: '', endpoint: 'https://api.openai.com/v1', key: '', role: 'cheap', testing: false, err: '' },
+    modal: null, keyName: '', newKey: '', copied: false,
+    typed: 9999, ct: 1, calcReq: 100000, calcShare: 75, codeTab: 'curl', codeCopied: false, openFaq: 0, logFilter: 'all', openLog: -1, hits: [], log: this.seed(), query: '', loading: false, result: null, rating: 0, extra: 0,
+    range: null, hover: -1, toast: '',
+    unanswered: [
+      { q: 'Is there parking for visitors on weekends?', s: '0.09' },
+      { q: 'Can I defer my offer to next year?', s: '0.12' },
+      { q: 'What time does the library close during exams?', s: '0.14' }
+    ]
+  };
+  seed() {
+    const qs = [['09:42', 'When does enrollment close?', 'Production chatbot'], ['09:38', "What's the difference between fall and spring refunds?", 'Production chatbot'],
+      ['09:31', 'Is there parking for visitors on weekends?', 'Production chatbot'], ['09:27', 'Are first-year students guaranteed housing?', 'Staging'],
+      ['09:14', 'Can I get a refund if I withdraw in week 3?', 'Production chatbot'], ['09:02', 'Why are housing rooms assigned in July?', 'Production chatbot'],
+      ['08:55', 'Can I defer my offer to next year?', 'Staging'], ['08:41', 'What is the late enrollment process?', 'Production chatbot'],
+      ['08:30', 'Compare the refund rules for fall and spring terms', 'Production chatbot']];
+    const ctx = { docs: [{ status: 'ready' }] };
+    return qs.map(([time, q, key], i) => { const r = this.answer(q, ctx);
+      return { ...r, id: 'req_' + (0x3f0c1a + i * 7919).toString(16), time, q, key, latency: ((r.tier === 'none' ? 120 : r.tier === 'expensive' ? 1100 : 540) + i * 37).toLocaleString('en-US') + ' ms' }; });
+  }
+  reveal() {
+    const show = el => { el.style.opacity = 1; el.style.transform = 'none'; el.setAttribute('data-rv', 'done'); if (el.dataset.reveal === 'demo') this.typeDemo(); };
+    document.querySelectorAll('[data-reveal]:not([data-rv])').forEach(el => {
+      const d = el.dataset.delay || 0;
+      if (el.getBoundingClientRect().top < window.innerHeight * 0.9) { el.setAttribute('data-rv', 'done'); return; }
+      el.setAttribute('data-rv', 'wait');
+      el.style.opacity = 0; el.style.transform = 'translateY(32px)';
+      el.style.transition = `opacity .8s ease ${d}s, transform 1s cubic-bezier(.2,.7,.1,1) ${d}s`;
+    });
+    this.check = () => document.querySelectorAll('[data-rv="wait"]').forEach(el => { if (el.getBoundingClientRect().top < window.innerHeight * 0.9) show(el); });
+    if (!this._bound) { this._bound = true; window.addEventListener('scroll', () => { clearTimeout(this._fb); clearInterval(this._tick); this.check(); }, { passive: true, capture: true }); window.addEventListener('resize', () => this.check()); }
+    this.check();
+    clearTimeout(this._fb); clearInterval(this._tick); this._fb = setTimeout(() => document.querySelectorAll('[data-rv="wait"]').forEach(show), 4000);
+  }
+  typeDemo() {
+    clearInterval(this._ti); this.setState({ typed: 0 });
+    this._ti = setInterval(() => this.setState(s => {
+      if (s.typed >= (this.demoLen || 200)) { clearInterval(this._ti); return null; }
+      return { typed: s.typed + 3 };
+    }), 16);
+  }
+  countUp() {
+    cancelAnimationFrame(this._raf); const t0 = performance.now();
+    const step = now => { const t = Math.min((now - t0) / 900, 1); this.setState({ ct: 1 - Math.pow(1 - t, 3) }); if (t < 1) this._raf = requestAnimationFrame(step); };
+    this._raf = requestAnimationFrame(step);
+  }
+  modelVals(s) {
+    const lime = 'oklch(0.88 0.17 118)', amber = 'oklch(0.84 0.12 80)', red = 'oklch(0.72 0.15 28)';
+    const defs = { OpenAI: ['https://api.openai.com/v1', 'gpt-4o-mini'], Anthropic: ['https://api.anthropic.com/v1', 'claude-haiku-4-5'], Google: ['https://generativelanguage.googleapis.com/v1beta', 'gemini-2.0-flash'], 'OpenAI-compatible': ['https://', 'llama-3.1-8b-instruct'] };
+    const f = s.mForm, upd = o => this.setState(st => ({ mForm: { ...st.mForm, ...o } }));
+    const setF = k => e => upd({ [k]: e.target.value, err: '' });
+    const groups = [['cheap', 'Cheap', lime, 'Easy questions. Tried top to bottom.', 'No cheap model. Easy questions will use the expensive tier.'],
+      ['expensive', 'Expensive', '#efeee9', 'Hard questions and escalations. Tried top to bottom.', 'No expensive model. Hard questions will use the cheap tier.'],
+      ['fallback', 'Fallback', amber, 'Used when every model in a tier fails or times out.', 'No fallback. If every model in a tier fails, the request returns an error.']];
+    return {
+      mFormOpen: f.open, mErr: f.err, mModel: f.model, mEndpoint: f.endpoint, mKey: f.key, mModelPh: defs[f.provider][1],
+      mSaveLabel: f.testing ? 'Testing connection…' : 'Test & save',
+      toggleAddModel: () => upd({ open: !f.open, err: '' }), closeAddModel: () => upd({ open: false, err: '' }),
+      setMModel: setF('model'), setMEndpoint: setF('endpoint'), setMKey: setF('key'), saveModel: () => this.saveModel(),
+      mProviders: Object.keys(defs).map(p => { const on = f.provider === p; return { label: p, on: () => upd({ provider: p, endpoint: defs[p][0] }), bg: on ? '#efeee9' : 'transparent', fg: on ? '#0c0c0b' : '#a9a8a2', bd: on ? '#efeee9' : '#33332f' }; }),
+      mRoles: groups.map(([id, label]) => ({ label: label.toUpperCase(), on: () => upd({ role: id }), bg: f.role === id ? '#efeee9' : 'transparent', fg: f.role === id ? '#0c0c0b' : '#a9a8a2' })),
+      modelGroups: groups.map(([id, title, dot, note, emptyMsg]) => {
+        const rows = s.models.filter(m => m.role === id);
+        return { title, dot, note, emptyMsg, empty: !rows.length, count: rows.length + (rows.length === 1 ? ' MODEL' : ' MODELS'),
+          rows: rows.map((m, i) => ({ ...m, rank: i === 0 ? 'PRIMARY' : 'BACKUP ' + i, rankColor: i === 0 ? lime : '#8d8c86',
+            status: m.status === 'ok' ? 'Connected' : 'Failing', sColor: m.status === 'ok' ? lime : red,
+            upColor: i === 0 ? '#33332f' : '#efeee9', downColor: i === rows.length - 1 ? '#33332f' : '#efeee9',
+            up: () => this.moveModel(m.id, -1), down: () => this.moveModel(m.id, 1),
+            remove: () => { this.setState(st => ({ models: st.models.filter(x => x.id !== m.id) })); this.flash(m.name + ' removed'); } })) };
+      })
+    };
+  }
+  moveModel(id, dir) {
+    this.setState(st => { const a = [...st.models], i = a.findIndex(m => m.id === id); let j = i + dir;
+      while (j >= 0 && j < a.length && a[j].role !== a[i].role) j += dir;
+      if (j < 0 || j >= a.length) return null; [a[i], a[j]] = [a[j], a[i]]; return { models: a }; });
+  }
+  saveModel() {
+    const f = this.state.mForm; if (f.testing) return;
+    const model = f.model.trim(), key = f.key.trim(), ep = f.endpoint.trim();
+    if (!model || !key || !/^https?:\/\/.+\..+/.test(ep)) return this.setState({ mForm: { ...f, err: 'Enter a model ID, a full endpoint URL and an API key.' } });
+    const pos = this.state.models.filter(m => m.role === f.role).length + 1;
+    this.setState({ mForm: { ...f, testing: true, err: '' } });
+    setTimeout(() => {
+      this.setState(st => ({ models: [...st.models, { id: Date.now(), role: f.role, name: model, provider: f.provider, endpoint: ep, key: key.slice(0, 4) + '••••' + key.slice(-4), status: 'ok' }],
+        mForm: { ...st.mForm, open: false, testing: false, model: '', key: '' } }));
+      this.flash(`${model} added to ${f.role} · position ${pos}`);
+    }, 900);
+  }
+  componentWillUnmount() { clearInterval(this._ti); cancelAnimationFrame(this._raf); clearTimeout(this._fb); clearInterval(this._tick); }
+  componentDidMount() {
+    this._prev = { screen: this.state.screen, tab: this.state.tab, range: this.state.range };
+    setTimeout(() => this.reveal(), 50);
+    this._tick = setInterval(() => { if (this.state.screen === 'app') this.forceUpdate(); }, 5000);
+    const saved = localStorage.getItem('lumen-proto-screen');
+    if (saved && !this.props.startScreen) this.setState(JSON.parse(saved));
+  }
+  componentDidUpdate() {
+    try {
+      const s = this.state, p = this._prev || {};
+      this._prev = { screen: s.screen, tab: s.tab, range: s.range };
+      if (p.screen !== s.screen) setTimeout(() => this.reveal(), 50);
+      if (s.screen === 'app' && s.tab === 'stats' && (p.tab !== 'stats' || p.range !== s.range || p.screen !== s.screen)) this.countUp();
+      if (p.screen !== s.screen || p.tab !== s.tab) localStorage.setItem('lumen-proto-screen', JSON.stringify({ screen: s.screen, tab: s.tab }));
+    } catch (e) {}
+  }
+  flash(msg) { this.setState({ toast: msg }); clearTimeout(this._t); this._t = setTimeout(() => this.setState({ toast: '' }), 2200); }
+  go(screen) { this.setState({ screen }); window.scrollTo(0, 0); }
+  signIn(provider) {
+    this.setState({ signingIn: true, provider });
+    setTimeout(() => this.setState({ signingIn: false, screen: 'app', tab: 'docs' }), 1400);
+  }
+  addFiles(list) {
+    const files = Array.from(list || []); let err = '';
+    files.forEach(f => {
+      const ok = /\.(pdf|txt|md)$/i.test(f.name);
+      if (!ok) { err = `${f.name}: unsupported type. Use PDF, .txt or .md.`; return; }
+      if (f.size > 10 * 1024 * 1024) { err = `${f.name}: file too large (max 10 MB).`; return; }
+      const id = Date.now() + Math.random();
+      this.setState(s => ({ docs: [{ id, name: f.name, status: 'processing', chunks: 0, date: 'Just now' }, ...s.docs] }));
+      setTimeout(() => this.setState(s => ({ docs: s.docs.map(d => d.id !== id ? d : /scan/i.test(f.name)
+        ? { ...d, status: 'failed', error: 'No text found. This looks like a scanned image.' }
+        : { ...d, status: 'ready', chunks: Math.max(3, Math.round(f.size / 2400)) }) })), 2600);
+    });
+    this.setState({ uploadError: err });
+  }
+  ask(q) {
+    const query = (q ?? this.state.query).trim();
+    if (!query) return;
+    this.setState({ query, loading: true, result: null, rating: 0 });
+    setTimeout(() => this.setState(s => {
+      const res = this.answer(query, s); const d = new Date();
+      const row = { ...res, id: 'req_' + Math.random().toString(16).slice(2, 8), time: String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'), q: query, key: 'Try it (dashboard)' };
+      return { loading: false, result: res, extra: s.extra + 1, log: [row, ...s.log], hits: [...s.hits, Date.now()],
+        unanswered: this.lastNone ? [{ q: query, s: '0.08' }, ...s.unanswered] : s.unanswered };
+    }), 1100);
+  }
+  answer(query, s) {
+    const t = query.toLowerCase(); this.lastNone = false;
+    const ready = s.docs.filter(d => d.status === 'ready');
+    const hard = ['compare', 'difference', 'versus', ' vs', 'which applies', 'both', 'why', 'exception', 'unless', 'except'];
+    const kb = [
+      { re: /refund|withdraw/, score: 0.71, doc: 'refund-policy.md', a: 'For the fall term, a full refund is available until 12 September, then 50% until 30 September [1]. Spring follows the same pattern with 6 February and 24 February [2].',
+        src: [['refund-policy.md', 'Fall term: full refund until 12 September, 50% until 30 September…', 0.71], ['refund-policy.md', 'Spring term: full refund until 6 February, 50% until 24 February…', 0.68]] },
+      { re: /enrol|enrollment|register|deadline/, score: 0.78, a: 'Enrollment for the spring term closes on 15 March [1]. Late enrollment requires approval from the registrar [2].',
+        src: [['student-handbook-2026.pdf', 'Spring enrollment closes 15 March at 17:00 local time…', 0.78], ['student-handbook-2026.pdf', 'Late enrollment requests must be approved by the registrar…', 0.52]] },
+      { re: /hous|dorm|room|rent/, score: 0.64, a: 'First-year students are guaranteed on-campus housing if they apply by 1 June [1]. Rooms are assigned in July [1].',
+        src: [['housing-faq.txt', 'First-year students who apply by 1 June are guaranteed a room…', 0.64], ['housing-faq.txt', 'Room assignments are emailed in the second week of July…', 0.49]] }
+    ];
+    if (!ready.length) { this.lastNone = true; return this.pack('none', 'No documents are ready yet. Upload a document first.', [], 0, 0, 0, 'The workspace has no searchable passages, so no model was called.'); }
+    const hit = kb.find(k => k.re.test(t));
+    if (!hit) { this.lastNone = true; return this.pack('none', 'I could not find that in the documents.', [], 0.08, 0, 0, 'Best match 0.08 is below the no-answer score (0.15), so no model was called. Added to Unanswered questions.'); }
+    let pts = 0; const reasons = [];
+    if (t.split(/\s+/).length > 25) { pts++; reasons.push('the question is long'); }
+    const hw = hard.find(w => t.includes(w)); if (hw) { pts++; reasons.push(`hard word "${hw.trim()}"`); }
+    const diff = Math.min(pts / 4, 1); const exp = diff >= 0.25;
+    const why = exp ? `${reasons.join(' and ')} raised difficulty, so the router fetched more passages and used the larger model.` : 'Short question with a strong match, so the small model with 3 passages was enough.';
+    return this.pack(exp ? 'expensive' : 'cheap', hit.a, hit.src, hit.score, diff, exp && diff < 0.5, why.charAt(0).toUpperCase() + why.slice(1));
+  }
+  pack(tier, answer, src, top, diff, escalated, why) {
+    const none = tier === 'none', exp = tier === 'expensive';
+    const tin = none ? 0 : exp ? 1946 : 812, tout = none ? 0 : exp ? 88 : 64;
+    return {
+      answer, why, tier,
+      tierLabel: none ? 'No model called' : exp ? 'Expensive tier' : 'Cheap tier',
+      tierColor: none ? '#a9a8a2' : exp ? 'oklch(0.88 0.17 118)' : '#efeee9',
+      k: none ? '—' : exp ? 8 : 3, difficulty: diff.toFixed(2), escalated: String(!!escalated), top: top.toFixed(2),
+      tin: tin.toLocaleString(), tout, cost: none ? '$0' : exp ? '$0.0012' : '$0.0001', latency: none ? '140 ms' : exp ? '1,240 ms' : '620 ms',
+      sources: src.map((x, i) => ({ n: `[${i + 1}]`, doc: x[0], snippet: x[1], score: x[2].toFixed(2), pct: Math.round(x[2] * 100) + '%' }))
+    };
+  }
+  extraVals(s, lime, amber) {
+    const pill = (cur, id) => ({ bg: cur === id ? '#efeee9' : 'transparent', fg: cur === id ? '#0c0c0b' : '#a9a8a2' });
+    const codes = {
+      curl: ['curl "$LUMEN_URL/v1/chat" \\', '  -H "x-api-key: $LUMEN_API_KEY" \\', '  -H "Content-Type: application/json" \\', "  -d '{\"query\": \"When does enrollment close?\"}'"].join('\n'),
+      node: ['const res = await fetch(process.env.LUMEN_URL + "/v1/chat", {', '  method: "POST",', '  headers: {', '    "x-api-key": process.env.LUMEN_API_KEY,', '    "Content-Type": "application/json",', '  },', '  body: JSON.stringify({ query, session_id }),', '});', '', 'const { answer, sources, route } = await res.json();'].join('\n'),
+      python: ['import os, requests', '', 'r = requests.post(', '    os.environ["LUMEN_URL"] + "/v1/chat",', '    headers={"x-api-key": os.environ["LUMEN_API_KEY"]},', '    json={"query": "When does enrollment close?"},', ')', 'data = r.json()', 'print(data["answer"], data["route"]["model_tier"])'].join('\n')
+    };
+    const n = s.calcReq, sh = s.calcShare / 100, always = n * 0.0012, routed = n * (sh * 0.0001 + (1 - sh) * 0.0012);
+    const money = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const faqs = [
+      ['Which files can I upload?', 'PDF, plain text and Markdown files, up to 10 MB each. Scanned PDFs without a text layer can\u2019t be read and are marked as failed.'],
+      ['What if my documents don\u2019t contain the answer?', 'Lumen replies that it could not find the answer, calls no model, and lists the question under Unanswered questions so you know what to add.'],
+      ['Can other customers see my documents?', 'No. Every search is limited to the workspace that owns the API key, and another workspace\u2019s document ids behave as if they don\u2019t exist.'],
+      ['How is the savings number calculated?', 'It compares what each request actually cost with what it would have cost on the large model. It is an estimate and is labelled as one.'],
+      ['How long are questions kept?', 'You choose a retention period for logged questions. Document text is never written to logs.']
+    ];
+    const tierColor = t => t === 'expensive' ? lime : t === 'none' ? '#8d8c86' : '#efeee9';
+    const rows = s.log.filter(l => s.logFilter === 'all' || l.tier === s.logFilter);
+    const now = Date.now(), rate = 12 + s.hits.filter(t => now - t < 60000).length;
+    const meter = (label, v, max) => { const p = v / max; return { label, value: v.toLocaleString('en-US') + ' / ' + max.toLocaleString('en-US'), pct: Math.min(p * 100, 100) + '%', color: p > 0.8 ? amber : lime }; };
+    return {
+      codeTabs: [['curl', 'cURL'], ['node', 'Node'], ['python', 'Python']].map(([id, label]) => ({ label, ...pill(s.codeTab, id), on: () => this.setState({ codeTab: id, codeCopied: false }) })),
+      code: codes[s.codeTab], codeCopyLabel: s.codeCopied ? 'Copied' : 'Copy',
+      copyCode: () => { navigator.clipboard && navigator.clipboard.writeText(codes[s.codeTab]).catch(() => {}); this.setState({ codeCopied: true }); },
+      calcReq: n, calcShare: s.calcShare, calcReqLabel: n.toLocaleString('en-US'), calcShareLabel: s.calcShare + '%',
+      onCalcReq: e => this.setState({ calcReq: +e.target.value }), onCalcShare: e => this.setState({ calcShare: +e.target.value }),
+      calcAlways: money(always), calcRouted: money(routed), calcSaved: money(always - routed), calcPct: Math.round((1 - routed / always) * 100) + '% LESS',
+      security: [
+        ['Isolated per workspace', 'Every stored passage carries its owner, and every query is filtered by it.'],
+        ['Keys shown once', 'API keys are stored as hashes. Lose one and you revoke it and make a new one.'],
+        ['Private AI service', 'The retrieval service is never exposed to the internet. Only the API can reach it.'],
+        ['Documents treated as data', 'Instructions hidden inside an uploaded file can\u2019t change how the assistant behaves.']
+      ].map(([title, body], i) => ({ n: '0' + (i + 1), title, body })),
+      faqs: faqs.map(([q, a], i) => ({ q, a, open: s.openFaq === i, sign: s.openFaq === i ? '\u2212' : '+', toggle: () => this.setState({ openFaq: s.openFaq === i ? -1 : i }) })),
+      logFilters: [['all', 'ALL'], ['cheap', 'CHEAP'], ['expensive', 'EXPENSIVE'], ['none', 'NO ANSWER']].map(([id, label]) => ({ label, ...pill(s.logFilter, id), on: () => this.setState({ logFilter: id, openLog: -1 }) })),
+      logRows: rows.map(l => ({ ...l, dot: tierColor(l.tier), open: s.openLog === l.id, sign: s.openLog === l.id ? '\u2212' : '+', noSrc: !l.sources.length, toggle: () => this.setState({ openLog: s.openLog === l.id ? -1 : l.id }) })),
+      noLog: !rows.length,
+      usage: [meter('Documents', s.docs.length, 50), meter('Requests / min', rate, 60), meter('This month', 18432 + s.log.length, 50000)]
+    };
+  }
+  renderVals() {
+    const s = this.state;
+    const screen = s.screen ?? this.props.startScreen ?? 'home';
+    const range = s.range ?? this.props.range ?? '7d';
+    const lime = 'oklch(0.88 0.17 118)', amber = 'oklch(0.84 0.12 80)', red = 'oklch(0.72 0.15 28)';
+    const r7 = [142, 188, 165, 231, 254, 198, 276];
+    const r30 = Array.from({ length: 30 }, (_, i) => Math.round(150 + 90 * Math.sin(i / 3) + i * 4 + (i * 37 % 40)));
+    const data = (range === '7d' ? r7 : r30).slice(); data[data.length - 1] += s.extra;
+    const max = Math.max(...data), total = data.reduce((a, b) => a + b, 0);
+    const days7 = ['Oct 16', 'Oct 17', 'Oct 18', 'Oct 19', 'Oct 20', 'Oct 21', 'Today'];
+    const ready = s.docs.filter(d => d.status === 'ready');
+    const tabs = [['docs', 'Documents', '01'], ['keys', 'API keys', '02'], ['try', 'Try it', '03'], ['stats', 'Analytics', '04'], ['log', 'Requests', '05'], ['models', 'Models', '06']];
+    const demos = {
+      easy: { req: 'POST /v1/chat\nx-api-key: lum_••••••••\n\n{ "query": "When does enrollment close?" }', head: 'RESPONSE · 620 MS',
+        res: '"answer": "Enrollment closes on 15 March. [1]",\n"route": {\n  "model_tier": "cheap",\n  "k": 3, "escalated": false\n},\n"usage": { "cost_usd": 0.0001 }' },
+      hard: { req: 'POST /v1/chat\nx-api-key: lum_••••••••\n\n{ "query": "What is the difference between\n  fall and spring refunds?" }', head: 'RESPONSE · 1,240 MS',
+        res: '"answer": "Fall: full refund until 12 Sep… [1]\n  Spring: until 6 Feb… [2]",\n"route": {\n  "model_tier": "expensive",\n  "k": 8, "escalated": true\n},\n"usage": { "cost_usd": 0.0012 }' },
+      none: { req: 'POST /v1/chat\nx-api-key: lum_••••••••\n\n{ "query": "Who won the football match?" }', head: 'RESPONSE · 140 MS',
+        res: '"answer": "I could not find that in\n  the documents.",\n"route": {\n  "model_tier": "none",\n  "k": 0, "escalated": false\n},\n"usage": { "cost_usd": 0 }' }
+    };
+    const scroll = r => () => r.current && window.scrollTo({ top: r.current.getBoundingClientRect().top + window.scrollY - 80, behavior: 'smooth' });
+    const feats = [
+      ['Cost-aware routing', 'Easy questions go to a small, fast model. Long, comparative or weakly matched questions escalate to the larger one.'],
+      ['Tenant isolation', 'Every passage carries its owner. A request can only ever search the documents of the key that sent it.'],
+      ['Honest when it can\u2019t answer', 'If nothing in your documents matches, Lumen says so instead of guessing, and lists the question so you can fill the gap.']
+    ];
+    const r = s.result; this.demoLen = demos[s.demo].res.length; const ct = s.ct;
+    return {
+      isHome: screen === 'home', isSignin: screen === 'signin', isApp: screen === 'app',
+      goHome: () => this.go('home'), goSignin: () => this.go('signin'),
+      goHow: scroll(this.howRef), goDemo: scroll(this.demoRef), howRef: this.howRef, demoRef: this.demoRef,
+      signingIn: s.signingIn, notSigningIn: !s.signingIn, signinMsg: `CONNECTING TO ${s.provider.toUpperCase()}…`,
+      signGoogle: () => this.signIn('Google'), signGithub: () => this.signIn('GitHub'),
+      signOut: () => { this.go('home'); this.flash('Signed out'); }, provider: s.provider,
+      steps: [
+        { delay: '0', n: '01', title: 'Upload documents', body: 'Add PDFs, text or Markdown in the dashboard. Lumen splits them into passages and indexes them for your workspace only.' },
+        { delay: '0.12', n: '02', title: 'Create an API key', body: 'Generate a key in one click. It is shown once and tied to your workspace.' },
+        { delay: '0.24', n: '03', title: 'Call /v1/chat', body: 'Your chatbot sends the question. You get the answer, its sources, the route taken and what it cost.' }
+      ],
+      demo: demos[s.demo], typedRes: demos[s.demo].res.slice(0, s.typed),
+      demoTabs: [['easy', 'EASY'], ['hard', 'HARD'], ['none', 'NO MATCH']].map(([id, label]) => ({ label, on: () => { this.setState({ demo: id }); setTimeout(() => this.typeDemo(), 0); }, bg: s.demo === id ? '#efeee9' : 'transparent', fg: s.demo === id ? '#0c0c0b' : '#a9a8a2' })),
+      features: feats.map(([title, body], i) => ({ delay: String(i * 0.1), n: '0' + (i + 1), title, body, open: s.openFeat === i, sign: s.openFeat === i ? '−' : '+', toggle: () => this.setState({ openFeat: s.openFeat === i ? -1 : i }) })),
+      nav: tabs.map(([id, label, num]) => ({ label, num, on: () => this.setState({ tab: id }), bg: s.tab === id ? '#1c1c1a' : 'transparent', fg: s.tab === id ? '#efeee9' : '#a9a8a2' })),
+      tDocs: s.tab === 'docs', tKeys: s.tab === 'keys', tTry: s.tab === 'try', tStats: s.tab === 'stats', tLog: s.tab === 'log', tModels: s.tab === 'models', ...this.modelVals(s),
+      docSummary: `${s.docs.length} OF 50 · ${ready.reduce((a, d) => a + d.chunks, 0)} CHUNKS`,
+      fileRef: this.fileRef, pickFile: () => this.fileRef.current && this.fileRef.current.click(),
+      onFiles: e => { this.addFiles(e.target.files); e.target.value = ''; },
+      dragOver: e => { e.preventDefault(); if (!s.drag) this.setState({ drag: true }); },
+      dragLeave: () => this.setState({ drag: false }),
+      dropFiles: e => { e.preventDefault(); this.setState({ drag: false }); this.addFiles(e.dataTransfer.files); },
+      dropBorder: s.drag ? lime : '#44443f', dropBg: s.drag ? 'rgba(200,230,80,.05)' : 'transparent',
+      uploadError: s.uploadError, noDocs: !s.docs.length,
+      docs: s.docs.map(d => ({ ...d, error: d.error || '', chunks: d.status === 'processing' ? '—' : String(d.chunks),
+        color: d.status === 'ready' ? lime : d.status === 'processing' ? amber : red, anim: d.status === 'processing' ? 'lpulse 1s infinite' : 'none',
+        del: () => { this.setState(st => ({ docs: st.docs.filter(x => x.id !== d.id) })); this.flash(`Deleted ${d.name} and its chunks`); } })),
+      keys: s.keys.map(k => ({ ...k, revoke: () => { this.setState(st => ({ keys: st.keys.filter(x => x.id !== k.id) })); this.flash(`Revoked "${k.name}"`); } })),
+      noKeys: !s.keys.length,
+      openCreate: () => this.setState({ modal: 'create', keyName: '' }),
+      modalOpen: !!s.modal, modalCreate: s.modal === 'create', modalShow: s.modal === 'show',
+      closeModal: () => this.setState({ modal: null, copied: false }), stop: e => e.stopPropagation(),
+      keyName: s.keyName, onKeyName: e => this.setState({ keyName: e.target.value }),
+      createKey: () => {
+        const c = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz0123456789';
+        const key = 'lum_live_' + Array.from({ length: 32 }, () => c[Math.floor(Math.random() * c.length)]).join('');
+        this.setState(st => ({ modal: 'show', newKey: key, keys: [{ id: Date.now(), name: st.keyName.trim() || 'Untitled key', prefix: key.slice(0, 13) + '••••', created: 'Today', used: 'Never' }, ...st.keys] }));
+      },
+      newKey: s.newKey, copyLabel: s.copied ? 'Copied' : 'Copy',
+      copyKey: () => { navigator.clipboard && navigator.clipboard.writeText(s.newKey).catch(() => {}); this.setState({ copied: true }); },
+      query: s.query, onQuery: e => this.setState({ query: e.target.value }),
+      onQueryKey: e => { if (e.key === 'Enter') this.ask(); }, ask: () => this.ask(),
+      suggestions: ['When does enrollment close?', "What's the difference between fall and spring refunds?", 'Is there visitor parking?'].map(q => ({ q, on: () => this.ask(q) })),
+      loading: s.loading, hasResult: !!r && !s.loading, result: r || { sources: [] }, hasSources: !!(r && r.sources.length),
+      rateUp: () => { this.setState({ rating: 1 }); this.flash('Thanks — feedback logged'); },
+      rateDown: () => { this.setState({ rating: -1 }); this.flash('Thanks — feedback logged'); },
+      upBorder: s.rating === 1 ? lime : '#33332f', downBorder: s.rating === -1 ? red : '#33332f',
+      set7: () => this.setState({ range: '7d', hover: -1 }), set30: () => this.setState({ range: '30d', hover: -1 }),
+      bg7: range === '7d' ? '#efeee9' : 'transparent', fg7: range === '7d' ? '#0c0c0b' : '#a9a8a2',
+      bg30: range === '30d' ? '#efeee9' : 'transparent', fg30: range === '30d' ? '#0c0c0b' : '#a9a8a2',
+      stats: [
+        { label: 'REQUESTS', value: Math.round(total * ct).toLocaleString(), note: range === '7d' ? 'Last 7 days' : 'Last 30 days', color: '#efeee9' },
+        { label: 'COST', value: '$' + (total * ct * 0.00041).toFixed(2), note: 'Actual provider spend', color: '#efeee9' },
+        { label: 'EST. SAVINGS', value: '$' + (total * ct * 0.00212).toFixed(2), note: 'Estimate vs. always expensive', color: lime },
+        { label: 'MEDIAN LATENCY', value: Math.round(840 * ct) + ' ms', note: 'p95 2.1 s', color: '#efeee9' }
+      ],
+      bars: data.map((v, i) => ({ h: (v / max * 100) + '%', exp: (18 + (i * 7 % 14)) + '%', delay: (i * (data.length > 7 ? 0.02 : 0.06)).toFixed(2) + 's', color: s.hover === i ? '#ffffff' : s.hover >= 0 ? '#6d6c67' : '#efeee9', hover: () => this.setState({ hover: i }) })),
+      clearHover: () => this.setState({ hover: -1 }),
+      hoverLabel: s.hover >= 0 ? `${range === '7d' ? days7[s.hover] : (s.hover === 29 ? 'Today' : (30 - s.hover) + 'd ago')} · ${data[s.hover]} requests` : '',
+      mix: [{ label: 'Cheap', pct: '71%' }, { label: 'Escalated (caution)', pct: '9%' }, { label: 'Expensive (hard)', pct: '14%' }, { label: 'No answer — no model called', pct: '6%' }],
+      unanswered: s.unanswered.slice(0, 6),
+      ...this.extraVals(s, lime, amber),
+      toast: s.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

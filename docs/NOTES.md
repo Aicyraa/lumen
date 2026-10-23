@@ -74,3 +74,9 @@
 - Lead e2e (both services, real Groq test key, tenant model added through the API): chat and Try it answered through the tenant's model; cost 0.0000734 for 559 in / 105 out at 0.075/0.30 per 1M matches the hand calculation; usage endpoint totals match model_calls; Groq limits captured from headers (8000 TPM); bad key and 169.254.169.254 endpoint refused with nothing stored; no key in logs; dev DB cleaned. Fallback path through both services is covered by tests plus the Python engineer's direct Groq run (wrong primary, good backup), not run live through Express.
 - Reviewer: no blockers on either half. Fixed: limits moved to config.json, endpoint re-check at use time, deep/case-insensitive log redaction, reported cost only from ok attempts, IPv6 ::/96 and fec0::/10 in the Python guard. Known: DNS rebinding between the Python check and connect (flagged in code), worst-case latency with many slow models vs Express timeout not checked, Anthropic/Google compatible endpoints read from docs only, Requests-detail passages deferred to Phase 4.
 - Process caveat: both engineers committed on the same branch concurrently, so some Python tests and code landed inside API commits; test-before-code holds by content, not in git. Do not run two engineers in one working tree again.
+
+## 2026-10-23 Phase 4 prep
+
+- Design mockups added under docs/lumen-website-ui-mockups/project/ (not rendered by the lead; text and structure read). Overrides vs mockups recorded in the brief's Phase 4 "Design source" list.
+- Google and GitHub OAuth apps created by the human; client ids and secrets are in .env; the human's Google account is a test user. Dev callbacks: http://localhost:3000/api/auth/callback/{google,github}, homepage http://localhost:5173.
+- Order for Phase 4: api-engineer (missing dashboard endpoints: analytics summary/unanswered/by-model, requests list/detail with live passages, usage), then web-engineer. Never two engineers in one working tree at once.

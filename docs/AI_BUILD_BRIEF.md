@@ -546,7 +546,7 @@ Report using the format in section 9.
 Do Phase 4 only. Build the React dashboard in apps/web/ per sections 4 and 6.
 - Follow docs/DESIGN.md for every screen.
 - A public home page (no login), sections in the order of docs/DESIGN.md: hero with a Sign in button, how it works in three steps, a demo (easy, hard and no-answer example), Quickstart (cURL, Node and Python tabs with a Copy button, using the real `POST /v1/chat` contract), built-in features and Security. The FAQ section is postponed (decided 2026-10-23); leave it out for now. Leave out the savings calculator (pricing is being reconsidered, see Phase 7) and make no cost, savings or pricing claims in any copy. Security copy (and the FAQ when it returns) may only state what the product actually does. In particular, do not say tenants can choose a retention period.
-- A sign-in page with Continue with Google and Continue with GitHub using authClient.signIn.social.
+- A sign-in page with Continue with Google and Continue with GitHub (authClient.signIn.social) and an email and password form (authClient.signIn.email, plus sign-up), in the mockup's style. The mockup says "Google and GitHub only, no passwords"; that line is overridden (decided 2026-10-23).
 - A protected dashboard shell that redirects to sign-in when there is no session.
 - An API keys page using the API key plugin's client methods: create (show the key once), list, revoke.
 - A Documents page: upload, status polling until ready or failed, delete.
@@ -554,7 +554,7 @@ Do Phase 4 only. Build the React dashboard in apps/web/ per sections 4 and 6.
 - An Analytics page: requests per day, route mix, median latency, and the unanswered-questions list, all from the dashboard analytics endpoints.
 - A Requests page: the request log from GET /api/dashboard/requests with a tier filter, and a detail view per request from GET /api/dashboard/requests/:id showing route, usage and sources with filenames.
 - Usage meters in the sidebar (documents, requests per minute, requests this month) from GET /api/dashboard/usage. The limits come from config, never from the front end.
-- - A public Docs page at /docs (quickstart, authentication with the x-api-key header, the POST /v1/chat and document endpoints with request and response examples, error codes) and a Privacy page at /privacy, both linked from the home page hero ("Read the docs") and footer, in the same design. Write them from the real contracts in section 6; the Privacy page may only state what the product does (queries are logged for analytics, full document text is never logged, provider keys are stored encrypted) and must not promise a retention period.
+- A public Docs page at /docs (quickstart, authentication with the x-api-key header, the POST /v1/chat and document endpoints with request and response examples, error codes) and a Privacy page at /privacy, both linked from the home page hero ("Read the docs") and footer, in the same design. Write them from the real contracts in section 6; the Privacy page may only state what the product does (queries are logged for analytics, full document text is never logged, provider keys are stored encrypted) and must not promise a retention period.
 - A Models page (Phase 3B endpoints): Cheap, Expensive and Fallback groups, models in order with provider, endpoint, masked key and status, reorder arrows, Remove, and an Add model form (provider, model id, endpoint URL, API key, tier) with Test & save. The key field is write-only. Each model row also shows its usage for the range (requests, tokens, failures, fallback use) and the provider-reported limits when known ("not reported" otherwise), from GET /api/dashboard/models/usage. Analytics gets a By model section (requests, tokens, failures, fallback use per model, fallback models included). Cost is shown as "estimated provider cost" from the tenant-entered prices (Models form has optional input and output price per 1M tokens): per model on the Models page, per request in the Requests list and detail and Try it usage, and cost per day plus total on Analytics (by model, fallback models included). Show "no price set" for unpriced models. No savings figure and no Lumen pricing. See docs/WEBSITE_GUIDE.md section 06.
 Dashboard nav order: Documents, API keys, Try it, Analytics, Requests, Models.
 Add any missing dashboard endpoints from section 6 to apps/api/ (including the `sources` column on request_logs, written by the chat route), always filtered by tenant, with a supertest case that tenant A cannot read tenant B's request id (404).
@@ -566,14 +566,22 @@ Use plain CSS or one small component library. Report using the format in section
 - [ ] The analytics page shows real numbers after a few requests
 - [ ] The Requests page lists those requests, the tier filter works, and a detail view shows sources with real filenames
 - [ ] The usage meters match the configured limits, and changing a limit in the environment changes the meter
-- [ ] The home page has Quickstart and Security sections (FAQ postponed), /docs and /privacy exist and are linked, and no copy mentions a retention period, cost, savings or pricing
+- [ ] The home page has Quickstart and Security sections (FAQ postponed), /docs and /privacy exist and are linked, and no copy mentions a retention period or any Lumen price, savings or pricing (the tenant's own estimated provider cost, labelled as an estimate, is allowed in the dashboard)
+- [ ] Google, GitHub and email + password sign-in each create a user and personal organization (the Google and GitHub ones need the OAuth credentials in .env; run them in a real browser)
+- [ ] The Models page shows usage, limits (or "not reported") and estimated cost per model, with price fields in the Add model form, and no key is ever shown after saving
 - [ ] Two different accounts never see each other's documents, keys, requests or analytics
 
-**Design versus brief.** The design mockups go beyond the first Phase 4 scope (Quickstart, calculator, Security, FAQ, the Requests page and the usage meters) and those are now in scope as written above. Where the mockups still differ, follow this brief:
+**Design source.** The mockups are in `docs/lumen-website-ui-mockups/project/` (`Lumen Website.dc.html` static screens, `Lumen Prototype.dc.html` interactive prototype; `support.js` is only the design-canvas runtime and `uploads/` holds outdated copies of old briefs, ignore both). Rebuild them as real React components; the `{{ ... }}` markers are the design runtime's templating, not product code. Layout, spacing, tokens and components come from the mockups and `docs/DESIGN.md`; behaviour and copy rules come from this brief. Where they differ, follow this brief:
 
-- Money: the mockups' calculator, cost and savings figures ($0.0012 and $0.0001 per request, the savings stat, cost columns) are skipped in Phase 4 and built in Phase 7. There, the calculator's example prices live in `VITE_CALC_*` variables and the calculator is labelled as an illustration. The real prices per 1k tokens live in `config.yaml` and are not exposed to the public page.
-- Limits: 50 documents, 60 requests a minute and 50,000 a month are placeholders. The human chooses the real values.
-- Retention: the FAQ line "You choose a retention period" must be reworded, for example "Queries are logged for your analytics and never include full document text." Retention returns when it is built.
+- Sign-in: add email and password next to Google and GitHub (the mockup says no passwords).
+- Lumen pricing: skip the Savings section (05) and its example prices, the Pricing nav and footer links, the demo's `cost_usd` figure and the Analytics "EST. SAVINGS" tile. Keep the other sections' numbering as in the mockup (a gap at 05), so adding it later changes nothing.
+- FAQ (section 08): postponed, skip it (its text also promises a retention period, which is forbidden).
+- Cost: the mockup's cost columns, tiles and drawer fields stay, but they show the tenant's estimated provider cost (labelled "estimated provider cost", "no price set" when a model has no price), never a Lumen price.
+- Request ids: UUIDs, not `req_...`.
+- Models: the mockup (tab 06) shows the Cheap / Expensive / Fallback groups, Add model with Test & save, reorder and Remove. Extend it in the same style with: optional input and output price per 1M tokens in the form, per-model usage, provider-reported limits or "not reported", status and estimated cost per row, and a By model section on Analytics (fallback models included). The key field is write-only and the key is never shown again.
+- Docs and Privacy: no mockup exists; design them in the same style from the real contracts.
+- Limits: 50 documents, 60 requests a minute and 50,000 a month in the mockup are placeholders; the numbers come from the API (`GET /api/dashboard/usage`).
+- Retention: never mention a retention period anywhere.
 
 ### Phase 5: isolation suite and evaluation
 
