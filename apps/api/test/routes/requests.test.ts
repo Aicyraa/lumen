@@ -87,4 +87,13 @@ describe("GET /api/dashboard/requests", () => {
     expect(theirs.body.items.map((i: Item) => i.id)).toEqual([ids.b]);
     expect(theirs.body.next_cursor).toBeNull();
   });
+
+  it("rejects a cursor whose timestamp is not the exact microsecond ISO format with 422, never 500", async () => {
+    const id = "3f0c1b2a-0000-4000-8000-000000000001";
+    const enc = (ts: string) => Buffer.from(JSON.stringify([ts, id])).toString("base64url");
+    for (const ts of ["1", "not a date", "2026-01-01T00:00:00.123456Z junk", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00.123Z", "2026-01-01 00:00:00.123456", "2026-13-45T99:99:99.123456Z"]) {
+      const res = await list(a, `?cursor=${enc(ts)}`);
+      expect([ts, res.status, res.body.error?.code]).toEqual([ts, 422, "invalid_request"]);
+    }
+  });
 });
