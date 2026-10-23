@@ -1,4 +1,4 @@
-import { PublicLayout, SectionLabel } from "../components/PublicLayout";
+import { DocLayout } from "../components/DocLayout";
 
 const ITEMS = [
   ["Your documents", "The text of the files you upload is split into passages and stored with your workspace id so Lumen can find them when a question arrives. A search only ever looks at the workspace that owns the API key."],
@@ -10,17 +10,16 @@ const ITEMS = [
   ["Your account", "Signing in with Google, GitHub or email and password gives Lumen your name and email address so it can create your workspace and show who is signed in."],
 ];
 
+const id = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+const TOC = ITEMS.map(([t]) => ({ id: id(t), label: t }));
+
 export function Privacy() {
   return (
-    <PublicLayout>
-      <main className="doc">
-        <SectionLabel>PRIVACY</SectionLabel>
-        <h1 className="doc-h1">What Lumen does with your data</h1>
-        <p className="lead">A plain description of what the product does. If a behaviour is not listed here, Lumen does not do it.</p>
-        {ITEMS.map(([t, b], i) => (
-          <section key={t} className="priv-row"><div className="mono muted-3">0{i + 1}</div><h2 className="priv-title">{t}</h2><p className="body muted-2">{b}</p></section>
-        ))}
-      </main>
-    </PublicLayout>
+    <DocLayout label="PRIVACY" title="What Lumen does with your data" toc={TOC}
+      lead="A plain description of what the product does. If a behaviour is not listed here, Lumen does not do it.">
+      {ITEMS.map(([t, b], i) => (
+        <section key={t} id={id(t)} className="priv-row"><div className="mono muted-3">0{i + 1}</div><h2 className="priv-title">{t}</h2><p className="body muted-2">{b}</p></section>
+      ))}
+    </DocLayout>
   );
 }

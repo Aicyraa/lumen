@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { authClient } from "../lib/auth-client";
 import { readSession } from "../lib/sessionShape";
@@ -23,6 +23,10 @@ export function SectionLabel({ children }: { children: ReactNode }) {
   return <div className="label">{children}</div>;
 }
 
-export function CodeBlock({ children, testId }: { children: string; testId?: string }) {
-  return <pre className="code" data-testid={testId} tabIndex={0}>{children}</pre>;
+export function CodeBlock({ children, testId, copyable = false }: { children: string; testId?: string; copyable?: boolean }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => { void navigator.clipboard?.writeText(children).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 1500); };
+  const pre = <pre className="code" data-testid={testId} tabIndex={0}>{children}</pre>;
+  if (!copyable) return pre;
+  return <div className="codewrap">{pre}<button type="button" className="btn btn-outline btn-sm mono copy-btn" aria-label={copied ? "Copied" : "Copy code"} onClick={copy}>{copied ? "Copied" : "Copy"}</button></div>;
 }

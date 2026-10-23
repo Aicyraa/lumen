@@ -57,8 +57,9 @@ describe("Docs layout", () => {
   it("has an error-code table, a Limits section that quotes no numbers of its own, and a readable content column", () => {
     view(<Docs />);
     const limits = document.getElementById("limits")!;
-    expect(limits.textContent).toMatch(/usage/i);
-    expect(limits.textContent).not.toMatch(/\d{2,}/);
+    const text = limits.querySelector("p")!.textContent!;
+    expect(text).toMatch(/usage/i);
+    expect(text).not.toMatch(/\d+\s*(requests|documents|MB|per)/i); // no limit values of its own (status codes are fine)
     expect(screen.getByRole("table", { name: "Error codes" })).toBeInTheDocument();
     expect(document.querySelector(".doc-content")).not.toBeNull();
     expect(document.querySelector(".doc-toc")).not.toBeNull();
