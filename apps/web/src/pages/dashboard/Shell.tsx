@@ -4,6 +4,7 @@ import { NavLink, Outlet, useNavigate } from "react-router";
 import { Logo } from "../../components/Logo";
 import { UsageMeters } from "../../components/UsageMeters";
 import { authClient } from "../../lib/auth-client";
+import { readSession } from "../../lib/sessionShape";
 
 export const TABS = [
   ["documents", "Documents", "01"], ["keys", "API keys", "02"], ["try", "Try it", "03"],
@@ -11,11 +12,11 @@ export const TABS = [
 ] as const;
 
 export function Shell() {
-  const { data: session } = authClient.useSession();
+  const session = readSession(authClient.useSession());
   const { data: org } = authClient.useActiveOrganization();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const email = session?.user.email ?? "";
+  const email = session.user?.email ?? "";
   const workspace = org?.name ?? "Workspace";
 
   const [signOutError, setSignOutError] = useState(false);

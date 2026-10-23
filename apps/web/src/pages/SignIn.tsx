@@ -4,9 +4,14 @@ import { Link, Navigate, useNavigate } from "react-router";
 import { Logo } from "../components/Logo";
 import { ErrorText } from "../components/ui";
 import { authClient } from "../lib/auth-client";
+import { readSession } from "../lib/sessionShape";
+
+const UNREACHABLE = "Cannot reach the server. Check your connection and try again.";
+// An error without an HTTP status means the request never got an answer.
+const failure = (e: { status?: number; message?: string }) => (e.status ? (e.message ?? "Something went wrong. Try again.") : UNREACHABLE);
 
 export function SignIn() {
-  const { data: session } = authClient.useSession();
+  const session = readSession(authClient.useSession()).user;
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [mode, setMode] = useState<"in" | "up">("in");
@@ -22,8 +27,12 @@ export function SignIn() {
 
   async function social(provider: "google" | "github") {
     setError("");
-    const res = await authClient.signIn.social({ provider, callbackURL });
-    if (res?.error) setError(res.error.message ?? "Sign-in failed.");
+    try {
+      const res = await authClient.signIn.social({ provider, callbackURL });
+      if (res?.error) setError(failure(res.error));
+    } catch {
+      setError(UNREACHABLE);
+    }
   }
 
   async function submit(e: FormEvent) {
@@ -32,10 +41,10 @@ export function SignIn() {
     setBusy(true);
     try {
       const res = mode === "in" ? await authClient.signIn.email({ email, password }) : await authClient.signUp.email({ name: name.trim(), email, password });
-      if (res.error) setError(res.error.message ?? "Something went wrong. Try again.");
+      if (res.error) setError(failure(res.error));
       else { qc.clear(); navigate("/dashboard"); } // nothing from an earlier account may survive a new sign-in
     } catch {
-      setError("Could not reach the server. Try again.");
+      setError(UNREACHABLE);
     } finally {
       setBusy(false);
     }

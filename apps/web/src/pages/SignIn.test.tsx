@@ -52,7 +52,7 @@ describe("SignIn", () => {
   });
 
   it("shows the error and stays on the page when sign-in fails", async () => {
-    signInEmail.mockResolvedValue({ data: null, error: { message: "Invalid email or password" } });
+    signInEmail.mockResolvedValue({ data: null, error: { status: 401, message: "Invalid email or password" } });
     page();
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Email"), "a@b.test");

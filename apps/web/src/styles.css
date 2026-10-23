@@ -273,3 +273,4 @@ label.btn:focus-within { outline: 2px solid var(--lime); outline-offset: 2px; }
   .stat-value { font-size: 36px; }
 }
 .signout-error { padding: 4px 12px 0; }
+.fatal { max-width: 560px; margin: 20vh auto 0; padding: 0 24px; display: flex; flex-direction: column; gap: 16px; }

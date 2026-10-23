@@ -14,7 +14,7 @@ export async function api<T = void>(path: string, init: RequestInit = {}): Promi
   try {
     res = await fetch(BASE + path, { ...init, headers, credentials: "include" });
   } catch {
-    throw new ApiError(0, "network_error", "Could not reach the API.");
+    throw new ApiError(0, "network_error", "Cannot reach the server.");
   }
   if (res.status === 204) return undefined as T;
   const body = await res.json().catch(() => null);

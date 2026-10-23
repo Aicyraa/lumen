@@ -3,13 +3,13 @@ import { useState, type FormEvent } from "react";
 import { Dialog } from "../../components/Dialog";
 import { ErrorText, PageHead } from "../../components/ui";
 import { authClient } from "../../lib/auth-client";
+import { readSession } from "../../lib/sessionShape";
 import { fmtDate } from "../../lib/format";
 
 interface KeyRow { id: string; name: string | null; start: string | null; prefix: string | null; createdAt: string | Date; lastRequest: string | Date | null }
 
 export function ApiKeys() {
-  const { data: session } = authClient.useSession();
-  const orgId = session?.session.activeOrganizationId ?? "";
+  const orgId = readSession(authClient.useSession()).orgId;
   const qc = useQueryClient();
   const [step, setStep] = useState<"closed" | "name" | "show">("closed");
   const [name, setName] = useState("");

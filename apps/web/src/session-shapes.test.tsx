@@ -21,7 +21,7 @@ import { useOrgId } from "./lib/session";
 const good = { data: { user: { id: "u1", email: "a@b.test" }, session: { activeOrganizationId: "o1" } }, isPending: false, error: null };
 const SHAPES: [string, unknown][] = [
   ["null", null], ["{}", {}], ["{ data: {} }", { data: {} }], ["{ user: undefined }", { data: { user: undefined, session: { activeOrganizationId: "o" } } }],
-  ["{ session: undefined }", { data: { user: { id: "u1" }, session: undefined } }], ["a body without user or session", { data: { error: "x", message: "bad gateway" } }],
+["a body without user or session", { data: { error: "x", message: "bad gateway" } }],
 ];
 const wrap = (ui: React.ReactElement, route = "/") => (
   <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter></QueryClientProvider>
@@ -47,6 +47,16 @@ describe("odd useSession shapes never throw", () => {
     render(wrap(dash, "/dashboard"));
     expect(screen.getByText("sign-in page")).toBeInTheDocument();
     expect(screen.queryByText("dashboard secret")).not.toBeInTheDocument();
+  });
+
+  it("a user whose session has no organization renders without throwing (and must not redirect-loop with sign-in)", () => {
+    result = { data: { user: { id: "u1" }, session: undefined }, isPending: false };
+    render(wrap(<><SessionCacheGuard /><Probe /></>));
+    expect(screen.getByText("org:[]")).toBeInTheDocument();
+    render(wrap(dash, "/dashboard"));
+    expect(screen.getByText("dashboard secret")).toBeInTheDocument();
+    render(wrap(<Routes><Route path="/signin" element={<SignIn />} /><Route path="/dashboard" element={<div>dashboard home</div>} /></Routes>, "/signin"));
+    expect(screen.getByText("dashboard home")).toBeInTheDocument();
   });
 
   it("Shell and API keys tolerate a session without a user", () => {

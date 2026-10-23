@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from "react-router";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { SessionCacheGuard } from "./components/SessionCacheGuard";
 import { RequireSession } from "./components/RequireSession";
 import { Docs } from "./pages/Docs";
@@ -15,7 +16,7 @@ import { TryIt } from "./pages/dashboard/TryIt";
 
 export function App() {
   return (
-    <>
+    <ErrorBoundary>
     <SessionCacheGuard />
     <Routes>
       <Route path="/" element={<Home />} />
@@ -35,6 +36,6 @@ export function App() {
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
-    </>
+    </ErrorBoundary>
   );
 }
