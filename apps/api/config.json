@@ -10,5 +10,17 @@
   "queryTimeoutMs": 60000,
   "ragDeleteTimeoutMs": 30000,
   "modelTestTimeoutMs": 15000,
-  "snippetMaxChars": 200
+  "snippetMaxChars": 200,
+  "modelAttemptsMax": 20,
+  "rateLimitHeadersMax": 30,
+  "modelTestMaxTokens": 16,
+  "endpointResponseMaxBytes": 65536,
+  "modelIdMaxChars": 200,
+  "endpointUrlMaxChars": 2048,
+  "apiKeyMaxChars": 1000,
+  "apiKeyMinChars": 8,
+  "providerNameMaxChars": 100,
+  "sessionIdMaxChars": 200,
+  "maxPricePerMillion": 999999,
+  "endpointGuardCacheTtlMs": 60000
 }

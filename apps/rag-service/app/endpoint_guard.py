@@ -27,7 +27,7 @@ def _is_public(ip) -> bool:
     return ip.is_global and not ip.is_multicast and not (ip.version == 6 and ip in NAT64)
 
 
-def assert_endpoint(url: str, production: bool, resolve=_resolve) -> None:
+def assert_endpoint(url: str, production: bool, resolve=None) -> None:
     """Raise EndpointError unless the URL is https (or http://localhost outside production) and only
     resolves to public addresses. shortcut: checked just before the call, so a DNS answer that changes
     in between (rebinding) is not caught; upgrade by pinning the checked IP in the transport."""
@@ -47,7 +47,7 @@ def assert_endpoint(url: str, production: bool, resolve=_resolve) -> None:
         addresses = [host]  # a literal IP needs no DNS
     except ValueError:
         try:
-            addresses = resolve(host)
+            addresses = (resolve or _resolve)(host)  # looked up at call time so tests can replace _resolve
         except OSError:
             raise EndpointError("The endpoint host could not be resolved.") from None
     if not addresses:

@@ -64,3 +64,25 @@ def make_llm(base_url: str, api_key: str, models: dict, cfg: dict) -> LLM:
     # max_retries=0: the SDK retries 429 twice by default; we want exactly one retry, done above
     client = openai.OpenAI(base_url=base_url, api_key=api_key, timeout=cfg["timeout_seconds"], max_retries=0)
     return LLM(client, models, cfg)
+
+
+@dataclass
+class Attempt:
+    provider: str
+    model_id: str
+    tenant_model_id: str | None
+    tier: str
+    outcome: str = "error"
+    tokens_in: int | None = None
+    tokens_out: int | None = None
+    latency_ms: int | None = None
+    rate_limits: dict | None = None
+    reported_cost_usd: float | None = None
+    text: str | None = None
+
+
+TRANSPORT = None  # tests set an httpx2 mock transport here
+
+
+def call_model(m, tier, system, user, cfg, production):  # stub (red phase)
+    return Attempt(m["provider"], m["model_id"], m["tenant_model_id"], tier)

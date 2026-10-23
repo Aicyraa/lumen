@@ -15,6 +15,18 @@ interface Tunables {
   ragDeleteTimeoutMs: number;
   modelTestTimeoutMs: number;
   snippetMaxChars: number;
+  modelAttemptsMax: number;
+  rateLimitHeadersMax: number;
+  modelTestMaxTokens: number;
+  endpointResponseMaxBytes: number;
+  modelIdMaxChars: number;
+  endpointUrlMaxChars: number;
+  apiKeyMaxChars: number;
+  apiKeyMinChars: number;
+  providerNameMaxChars: number;
+  sessionIdMaxChars: number;
+  maxPricePerMillion: number;
+  endpointGuardCacheTtlMs: number;
 }
 const tunables: Tunables = JSON.parse(readFileSync(new URL("../../config.json", import.meta.url), "utf8"));
 const posInt = z.coerce.number().int().positive();

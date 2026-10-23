@@ -54,6 +54,12 @@ def fake_env(monkeypatch):
         monkeypatch.setenv(key, value)
 
 
+@pytest.fixture(autouse=True)
+def public_dns(monkeypatch):
+    """Hostnames resolve to a public address, so no test touches real DNS (the guard's own tests inject resolvers)."""
+    monkeypatch.setattr("app.endpoint_guard._resolve", lambda host: ["93.184.216.34"])
+
+
 class FakeLLM:
     """Records every call; the no-answer tests assert it was never used."""
 
