@@ -56,7 +56,7 @@ These are never negotiable. If a task seems to require breaking one, stop and sa
 | --- | --- | --- |
 | Dashboard | React, Vite, React Router, TanStack Query, Better Auth React client | Folder `apps/web/` |
 | Public API | Node.js LTS with ES modules, Express, `zod`, `multer`, `express-rate-limit`, `cors`, `pino` | Folder `apps/api/` |
-| Auth, tenants, keys | `better-auth`, its `organization` plugin, `@better-auth/api-key`; Google and GitHub login only | Inside `apps/api/` |
+| Auth, tenants, keys | `better-auth`, its `organization` plugin, `@better-auth/api-key`; Google, GitHub and email + password sign-in | Inside `apps/api/` |
 | RAG service | Python 3.11 or newer, FastAPI, `uvicorn`, `sentence-transformers` with `all-MiniLM-L6-v2`, `pypdf`, `psycopg[binary]`, `pgvector`, `numpy`, `pydantic`, `pyyaml`, `pytest` | Folder `apps/rag-service/` |
 | Database | Postgres 16 with pgvector, Docker image `pgvector/pgvector:pg16` | One database shared by both services |
 | LLM calls | `openai` Python SDK against an OpenAI-compatible endpoint | Set by `LLM_BASE_URL` |
@@ -137,6 +137,7 @@ export const auth = betterAuth({
       clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
     },
   },
+  emailAndPassword: { enabled: true }, // added 2026-10-23: username/password as a third choice
   plugins: [
     organization(),
     apiKey(), // VERIFY: option that makes keys belong to an organization (see the API key reference page)
@@ -436,7 +437,7 @@ Not part of the numbered workflow. Turborepo + pnpm workspaces monorepo: all app
 
 ```text
 Do Phase 3 only. Build the Express API in apps/api/ (ES modules) per sections 2, 4, 5 and 6.
-- Better Auth with Google and GitHub, the organization plugin and the API key plugin, as in section 4. Check every name marked VERIFY against the official docs for the installed version and list what you found in the report.
+- Better Auth with Google and GitHub (their client ids may be empty in dev: skip a provider whose credentials are missing) plus email and password (`emailAndPassword: { enabled: true }`), the organization plugin and the API key plugin, as in section 4. Check every name marked VERIFY against the official docs for the installed version and list what you found in the report.
 - A user's first login creates a personal organization and makes it the active one.
 - Middleware: requireSession for /api/dashboard/*, requireApiKey for /v1/* (x-api-key header, tenant taken from the key's organization), and rate limiting. Limit per tenant, with one shared counter for /v1/chat and /api/dashboard/try, so the Try it box cannot bypass it. Add one global cap on LLM-calling routes just under the provider's limit (from config, never hardcoded). Both return 429 rate_limited. The per-tenant rate limit, document limit and monthly allowance come from `RATE_LIMIT_PER_MINUTE`, `MAX_DOCUMENTS_PER_TENANT` and `MAX_REQUESTS_PER_MONTH`. The chat route also stores the response's `sources` in request_logs.
 - The routes in section 6: documents (upload with multer, type and size checks, save the file, insert a documents row, answer 202, forward to /internal/ingest in the background, then set status to ready or failed), chat (forward to /internal/query, insert a request_logs row, return the response), feedback, and delete document (also call the internal delete).
