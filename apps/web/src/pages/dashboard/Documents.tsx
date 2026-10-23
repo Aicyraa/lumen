@@ -6,9 +6,6 @@ import { fmtDate, fmtInt } from "../../lib/format";
 import { useOrgId } from "../../lib/session";
 import type { Doc, Usage } from "../../lib/types";
 
-const ALLOWED = /\.(pdf|txt|md)$/i;
-const MAX_BYTES = 10 * 1024 * 1024; // a hint only: the server's limit decides
-
 export const DOC_POLL_MS = 2000;
 
 // Refetch while anything is still processing; stop as soon as every document is ready or failed.
@@ -43,8 +40,6 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
   async function addFiles(list: FileList | null) {
     setError("");
     for (const f of Array.from(list ?? [])) {
-      if (!ALLOWED.test(f.name)) { setError(`${f.name}: unsupported type. Use PDF, .txt or .md.`); continue; }
-      if (f.size > MAX_BYTES) { setError(`${f.name}: file is over 10 MB.`); continue; }
       try { await upload.mutateAsync(f); } catch (e) { setError(e instanceof ApiError ? e.message : "Upload failed."); }
     }
     if (fileRef.current) fileRef.current.value = "";
@@ -62,7 +57,7 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
         onDrop={(e) => { e.preventDefault(); setDrag(false); void addFiles(e.dataTransfer.files); }}>
         <div>
           <div className="dz-title">Drop files to upload</div>
-          <div className="small muted-3">PDF, .txt or .md · up to 10 MB each</div>
+          <div className="small muted-3">PDF, .txt or .md · the server checks type and size</div>
         </div>
         <label className="btn btn-primary">
           Choose files

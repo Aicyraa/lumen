@@ -9,7 +9,7 @@ const ERRORS = [
   ["422", "no_models_configured", "Your workspace has no model yet. Add one in the Models tab of the dashboard."],
   ["429", "rate_limited", "Too many requests this minute for your workspace. Wait a moment and retry."],
   ["429", "monthly_limit", "The monthly request allowance for your workspace is used up."],
-  ["429", "document_limit", "Your workspace has reached its document limit. Delete a document or ask for a higher limit."],
+  ["429", "document_limit", "Your workspace has reached its document limit. Delete a document before uploading another."],
   ["502", "provider_error", "Every model for the chosen tier, and the fallback, failed. Retry shortly."],
 ];
 

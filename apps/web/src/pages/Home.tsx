@@ -18,7 +18,7 @@ const SECURITY = [
   ["Isolated per workspace", "Every stored passage carries its owner, and every query is filtered by it."],
   ["Keys shown once", "API keys are stored as hashes and shown once. Your model provider keys are stored encrypted and never shown again."],
   ["No document text in logs", "Logs keep the question, route and metadata. Passages and keys are never written to them."],
-  ["Documents treated as data", "Instructions hidden inside an uploaded file can’t change how the assistant behaves."],
+  ["Documents treated as data", "Passages are sent to the model as data, not instructions, and the assistant is told to ignore instructions inside them."],
 ];
 
 // Real POST /v1/chat response shape (sample values).
