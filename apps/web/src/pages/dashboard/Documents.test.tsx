@@ -57,14 +57,31 @@ describe("Documents", () => {
     expect(await screen.findByText("Only PDF, .txt and .md files are supported.")).toBeInTheDocument();
   });
 
-  it("hints before uploading when the type or size is clearly wrong", async () => {
-    const { calls } = mockFetch((url) => (url.endsWith("/usage") ? usage : { documents: [] }));
+  it("sends any file to the server and shows its 415 or 413 message: no type or size decision in the front end", async () => {
+    let status = 415;
+    const msgs: Record<number, string> = { 415: "Only PDF, .txt and .md files are supported.", 413: "The file is larger than the upload limit." };
+    const { calls } = mockFetch((url, init) => {
+      if (url.endsWith("/usage")) return usage;
+      if (init?.method === "POST") return reply(status, { error: { code: "x", message: msgs[status] } });
+      return { documents: [] };
+    });
     renderWithProviders(<Documents pollMs={40} />);
     await screen.findByText(/No documents yet/);
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    await userEvent.setup({ applyAccept: false }).upload(input, new File(["x"], "pic.png", { type: "image/png" }));
-    expect(await screen.findByText(/pic.png: unsupported type/)).toBeInTheDocument();
-    expect(calls.some((c) => c.init?.method === "POST")).toBe(false);
+    const user = userEvent.setup({ applyAccept: false });
+    await user.upload(input, new File(["x"], "pic.png", { type: "image/png" }));
+    expect(await screen.findByText(msgs[415])).toBeInTheDocument();
+    status = 413;
+    await user.upload(input, new File([new Uint8Array(11 * 1024 * 1024)], "big.pdf", { type: "application/pdf" }));
+    expect(await screen.findByText(msgs[413])).toBeInTheDocument();
+    expect(calls.filter((c) => c.init?.method === "POST")).toHaveLength(2); // both reached the server
+  });
+
+  it("states no size limit of its own in the upload copy", async () => {
+    mockFetch((url) => (url.endsWith("/usage") ? usage : { documents: [] }));
+    const { container } = renderWithProviders(<Documents pollMs={40} />);
+    await screen.findByText(/No documents yet/);
+    expect(container.textContent).not.toMatch(/\d+\s*MB/i);
   });
 
   it("deletes a document and refreshes the list", async () => {

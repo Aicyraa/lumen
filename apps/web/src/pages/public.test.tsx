@@ -75,6 +75,18 @@ describe("Home", () => {
   });
 });
 
+describe("claims the product can back up", () => {
+  it("Home security does not overstate prompt-injection protection", () => {
+    const text = view(<Home />).textContent!;
+    expect(text).not.toMatch(/can.t change how the assistant behaves/);
+    expect(text).toMatch(/sent to the model as data, not instructions/);
+    expect(text).toMatch(/told to ignore instructions inside them/);
+  });
+  it("Docs does not promise a process for raising limits", () => {
+    expect(view(<Docs />).textContent).not.toMatch(/higher limit/i);
+  });
+});
+
 describe("Docs", () => {
   it("documents auth, chat, documents, feedback and every error code", () => {
     const text = view(<Docs />).textContent!;
