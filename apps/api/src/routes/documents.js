@@ -64,8 +64,8 @@ export function documentsRouter({ pool, rag, config, log, pending }) {
       await pool.query(
         "UPDATE documents SET status = 'failed', error = $3 WHERE id = $1 AND tenant_id = $2 AND status = 'processing'",
         [id, tenantId, reason]);
-      // a timed-out call may still finish later; make sure no chunks survive a failed document
-      await rag.remove(tenantId, id).catch(() => {});
+      // The Python DELETE would remove the document row too, hiding the failure, so drop partial chunks here.
+      await pool.query("DELETE FROM chunks WHERE tenant_id = $1 AND document_id = $2", [tenantId, id]);
       log.warn({ documentId: id, code: err.code }, "ingest failed");
     } finally {
       await unlink(path).catch(() => {});

@@ -20,7 +20,7 @@ try {
 const pool = createPool(config.databaseUrl);
 const auth = createAuth({ pool, config });
 const rag = createRagClient(config);
-await sweepInterrupted({ pool, rag, config, log });
+await sweepInterrupted({ pool, config, log });
 
 const app = createApp({ config, pool, auth, rag, log });
 const port = Number(process.env.PORT || new URL(config.authUrl).port || 3000);
