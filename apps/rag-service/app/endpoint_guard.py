@@ -9,7 +9,8 @@ class EndpointError(Exception):
     """The endpoint URL is not allowed. The message is safe to show (it never contains the URL)."""
 
 
-NAT64 = ipaddress.ip_network("64:ff9b::/96")  # can wrap a private IPv4 address
+# IPv6 ranges Python calls global but that can wrap or reach internal addresses: NAT64, IPv4-compatible, site-local
+BLOCKED_V6 = [ipaddress.ip_network(n) for n in ("64:ff9b::/96", "::/96", "fec0::/10")]
 
 
 def _resolve(host: str) -> list[str]:
@@ -24,7 +25,7 @@ def _is_public(ip) -> bool:
     if ip.version == 6 and ip.ipv4_mapped:  # ::ffff:10.0.0.1 is the IPv4 address
         ip = ip.ipv4_mapped
     # is_global is false for private, loopback, link-local (incl. 169.254.169.254), CGNAT and reserved ranges
-    return ip.is_global and not ip.is_multicast and not (ip.version == 6 and ip in NAT64)
+    return ip.is_global and not ip.is_multicast and not (ip.version == 6 and any(ip in n for n in BLOCKED_V6))
 
 
 def assert_endpoint(url: str, production: bool, resolve=None) -> None:
