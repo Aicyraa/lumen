@@ -2,26 +2,29 @@ import hmac
 import logging
 import os
 import tempfile
+import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import psycopg
 from fastapi import APIRouter, Depends, FastAPI, Form, Header, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 from pypdf.errors import PyPdfError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app import store
 from app.chunking import chunk
-from app.config import load_config
+from app.config import load_config, router_cfg
 from app.embeddings import embed  # loads the model at import, before the server starts listening
 from app.env import load_env
 from app.extract import extract_text
-from app.llm import make_llm
+from app.llm import ProviderError, build_prompt, make_llm
+from app.router import decide
 
 load_env()  # DATABASE_URL etc. from the repo-root .env; real environment variables win
 
@@ -131,9 +134,51 @@ def ingest(tenant_id: Annotated[str, Form(min_length=1)], document_id: Annotated
     return {"chunk_count": len(chunks)}
 
 
+class QueryRequest(BaseModel):
+    tenant_id: str = Field(min_length=1)
+    query: str = Field(min_length=1)  # the upper length limit is enforced by Express (400/422 there)
+    session_id: str | None = None  # accepted for the contract; Express stores it in request_logs
+
+
+def query_response(started: float, answer: str, sources: list, route: dict, tokens_in=0, tokens_out=0) -> dict:
+    return {
+        "request_id": str(uuid4()),
+        "answer": answer,
+        "sources": sources,
+        "route": route,
+        "usage": {
+            "tokens_in": tokens_in,
+            "tokens_out": tokens_out,
+            "cost_usd": None,  # Phase 7 fills this in
+            "latency_ms": int((time.perf_counter() - started) * 1000),
+        },
+    }
+
+
 @internal.post("/query")
-def query():
-    raise ApiError(501, "not_implemented", "not built yet")
+def query(req: QueryRequest, llm=Depends(get_llm)):
+    # plain def: embedding and database calls block, so FastAPI runs this in its thread pool
+    started = time.perf_counter()
+    messages = load_config()["messages"]
+    none_route = {"model_tier": "none", "k": 0, "escalated": False, "difficulty": 0.0}
+    qvec = embed([req.query])[0]
+    probe = store.search(req.tenant_id, qvec, 1)  # best match only, to learn best_score
+    if not probe:  # this tenant has no chunks at all
+        return query_response(started, messages["no_documents"], [], none_route)
+    best_score = probe[0][3]
+    cfg = router_cfg()
+    if best_score < cfg.no_answer_score:  # nothing relevant: do not spend a model call
+        return query_response(started, messages["not_found"], [], none_route)
+    route = decide(req.query, best_score, cfg)
+    hits = store.search(req.tenant_id, qvec, route["k"])
+    system, user = build_prompt(req.query, [content for _, _, content, _ in hits])
+    try:
+        result = llm.complete(route["model_tier"], system, user)
+    except ProviderError:
+        raise ApiError(502, "provider_error", "The language model provider failed. Try again shortly.")
+    sources = [{"document_id": doc_id, "chunk_id": chunk_id, "score": score} for chunk_id, doc_id, _, score in hits]
+    log.info("query tenant=%s tier=%s k=%d top=%.3f", req.tenant_id, route["model_tier"], route["k"], best_score)
+    return query_response(started, result.text, sources, route, result.tokens_in, result.tokens_out)
 
 
 @internal.delete("/documents/{document_id}")
