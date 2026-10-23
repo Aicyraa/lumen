@@ -54,7 +54,9 @@ def test_answered_response_matches_the_contract_shape(client, llm, best_score):
         assert set(s) == {"document_id", "chunk_id", "score"}  # ids and scores only, never chunk text
         assert s["document_id"] == doc and isinstance(s["chunk_id"], int)
         assert s["score"] == pytest.approx(0.6, abs=1e-4)
-    assert body["route"] == {"model_tier": "cheap", "k": 3, "escalated": False, "difficulty": 0.0}
+    route = dict(body["route"])
+    assert route.pop("top_score") == pytest.approx(0.6, abs=1e-4)  # the probe's best score
+    assert route == {"model_tier": "cheap", "k": 3, "escalated": False, "difficulty": 0.0}
     usage = body["usage"]
     assert set(usage) == {"tokens_in", "tokens_out", "cost_usd", "latency_ms"}
     assert (usage["tokens_in"], usage["tokens_out"]) == (100, 10)  # from the (fake) provider response
@@ -74,7 +76,9 @@ def test_weak_match_goes_to_the_expensive_tier_with_more_chunks(client, llm, bes
     add_doc("tenant_a", [f"passage number {i}" for i in range(10)])
     best_score(0.20)  # above no_answer_score (0.15), below weak_score (0.30)
     body = ask(client).json()
-    assert body["route"] == {"model_tier": "expensive", "k": 8, "escalated": False, "difficulty": 0.5}
+    route = dict(body["route"])
+    assert route.pop("top_score") == pytest.approx(0.20, abs=1e-4)
+    assert route == {"model_tier": "expensive", "k": 8, "escalated": False, "difficulty": 0.5}
     assert len(body["sources"]) == 8
     assert [c["tier"] for c in llm.calls] == ["expensive"]
 
@@ -101,7 +105,7 @@ def test_no_documents_path_makes_zero_llm_calls(client, llm, best_score):
     body = ask(client, tenant="tenant_a").json()
     assert llm.calls == []
     assert body["answer"] == MESSAGES["no_documents"] and body["sources"] == []
-    assert body["route"] == {"model_tier": "none", "k": 0, "escalated": False, "difficulty": 0.0}
+    assert body["route"] == {"model_tier": "none", "k": 0, "escalated": False, "difficulty": 0.0, "top_score": None}
     assert body["usage"]["tokens_in"] == 0 and body["usage"]["tokens_out"] == 0 and body["usage"]["cost_usd"] is None
     uuid.UUID(body["request_id"])
 
@@ -113,6 +117,7 @@ def test_no_answer_path_makes_zero_llm_calls(client, llm, best_score):
     assert llm.calls == []
     assert body["answer"] == MESSAGES["not_found"] and body["sources"] == []
     assert body["route"]["model_tier"] == "none"
+    assert body["route"]["top_score"] == pytest.approx(0.10, abs=1e-4)  # the low probe score, not null
     assert body["usage"]["tokens_in"] == 0 and body["usage"]["cost_usd"] is None
 
 
