@@ -4,12 +4,13 @@ import { Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const signOut = vi.fn();
+let signOutImpl: () => unknown = () => signOut(); // a plain function: vitest 5 flags a vi.fn that throws or rejects
 vi.mock("../../lib/session", () => ({ useOrgId: () => "o1" }));
 vi.mock("../../lib/auth-client", () => ({
   authClient: {
     useSession: () => ({ data: { user: { email: "maya@campus.test", name: "Maya" }, session: { activeOrganizationId: "o1" } }, isPending: false }),
     useActiveOrganization: () => ({ data: { id: "o1", name: "Maya's workspace" } }),
-    signOut: () => signOut(),
+    signOut: () => signOutImpl(),
   },
 }));
 
@@ -17,7 +18,7 @@ import { mockFetch, renderWithProviders } from "../../test/helpers";
 import { Shell } from "./Shell";
 
 describe("Shell", () => {
-  beforeEach(() => signOut.mockReset().mockResolvedValue({ data: { success: true } }));
+  beforeEach(() => { signOut.mockReset().mockResolvedValue({ data: { success: true } }); signOutImpl = () => signOut(); });
 
   it("lists the tabs in the required order, the workspace chip and the usage meters", async () => {
     mockFetch(() => ({ documents: { used: 1, max: 5 }, requests_per_minute: { used: 0, max: 5 }, requests_this_month: { used: 0, max: 5 } }));
@@ -39,7 +40,7 @@ describe("Shell", () => {
   });
 
   it("clears every cached query on sign-out, even when signOut rejects", async () => {
-    signOut.mockImplementation(() => Promise.reject(new Error("network down")));
+    signOutImpl = () => Promise.reject(new Error("network down"));
     mockFetch(() => ({ documents: { used: 0, max: 1 }, requests_per_minute: { used: 0, max: 1 }, requests_this_month: { used: 0, max: 1 } }));
     const { client } = renderWithProviders(<Routes><Route path="/" element={<div>public home</div>} /><Route path="/dashboard" element={<Shell />}><Route path="documents" element={<div>docs page</div>} /></Route></Routes>, { route: "/dashboard/documents" });
     client.setQueryData(["documents", "o1"], [{ filename: "a-secret.md" }]);
