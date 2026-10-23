@@ -9,7 +9,7 @@ Invariants:
 - Every SQL touching `documents`/`chunks`/`request_logs` filters `tenant_id`; cross-tenant ids return 404.
 - rag-service is internal-only; all endpoints except `/internal/health` need `X-Internal-Secret`.
 - No hardcoded model names, thresholds, limits; no secrets in code/logs.
-- Money last: no prices/costs before Phase 7 (`cost_usd` stays null).
+- Money: no Lumen pricing/savings (Phase 7 on hold, no prices in code/config). Allowed: tenant's estimated provider cost from tenant-entered per-model prices.
 - One phase at a time, test-first (`test:` commit red, then `feat:`/`fix:`); never merge/push without user approval.
 
 Module memories: `mem:tech_stack`, `mem:suggested_commands`, `mem:conventions`, `mem:task_completion`.

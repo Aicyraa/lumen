@@ -64,3 +64,5 @@
 - Try it: live snippet (option B). Requests drawer: passage read live from chunks, tenant-scoped (option B). Global LLM cap: only for the shared default key.
 - Per-model usage, provider-reported limits and analytics for all models including fallback are in Phase 3B (data: model_calls table) and Phase 4 (UI). Token counts are recorded per attempt.
 - Total cost across models: requested by the human, but it needs per-model prices and contradicts the on-hold pricing decision. Open question: add price fields to tenant_models and build cost on top of model_calls (a pricing phase), or keep deferring.
+
+- Cost decision: show the tenant's estimated provider cost (their own spend), from per-model prices they enter in the Models tab; provider-reported cost preferred when present. Ships with Phase 3B (data, API) and Phase 4 (UI). AGENTS.md money rule reworded: Lumen itself still has no pricing, savings or calculator.

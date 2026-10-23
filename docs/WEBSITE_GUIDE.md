@@ -3,7 +3,7 @@
 What each page, tab and section of the Claude Design file `Lumen Website.dc.html`
 does. `support.js` in that project is only the design-canvas runtime and has no
 product content. Build rules live in `AI_BUILD_BRIEF.md` and `DESIGN.md`; if they
-disagree with this guide, the brief wins, except that the Models tab (06) is in scope: backend in Phase 3B, UI in Phase 4. Sign-in also offers email and password (decided 2026-10-23, kept). Pricing, the Savings section and the FAQ are on hold (see docs/NOTES.md).
+disagree with this guide, the brief wins, except that the Models tab (06) is in scope: backend in Phase 3B, UI in Phase 4. Sign-in also offers email and password (decided 2026-10-23, kept). Lumen pricing, the Savings section and the FAQ are on hold. Cost shown in the dashboard is the tenant's estimated provider cost from prices they enter per model (see docs/NOTES.md).
 
 > **Money comes last.** The design shows cost, savings, a calculator and example
 > prices (Savings section, COST and EST. SAVINGS stats, cost columns, `cost_usd` in
@@ -67,17 +67,17 @@ Ask a test question against your own documents without writing code.
 - Answer with inline citations `[1]`, `[2]`.
 - **Sources**: document, snippet, similarity score.
 - **Route**: cheap or expensive tier, why, `k`, difficulty, escalated, top score.
-- **Usage**: tokens in/out, latency (and cost, **Phase 7**).
+- **Usage**: tokens in/out, latency (and estimated provider cost).
 
 ### 04 Analytics
 Traffic and routing overview with a **7D / 30D** toggle.
-- Stat tiles: requests, median latency (p95 in the note); cost and estimated savings are **Phase 7**.
+- Stat tiles: requests, median latency (p95 in the note); estimated provider cost is shown (tenant-entered model prices); savings stay on hold.
 - Requests-per-day bar chart split cheap vs expensive.
 - Route mix: cheap, escalated (caution), expensive (hard), no answer (no model called).
 - **Unanswered questions**: questions with a weak best-match score, listed so you know which documents to add.
 
 ### 05 Requests (request log)
-One row per call: time, query, route, `k`, latency (and cost, **Phase 7**).
+One row per call: time, query, route, `k`, latency (and estimated provider cost).
 - Filter chips: ALL / CHEAP / EXPENSIVE / NO ANSWER.
 - Click a row for the detail drawer: route explanation, difficulty, escalated, top score, `k`, token and latency usage, request id (a UUID), the API key used, and the source passages with scores.
 - Logs hold the question, route and metadata, never document text.
