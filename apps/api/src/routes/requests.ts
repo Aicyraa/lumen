@@ -12,8 +12,8 @@ const ISO_US = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/;
 const decodeCursor = (v: string): { ts: string; id: string } => {
   try {
     const [ts, id] = JSON.parse(Buffer.from(v, "base64url").toString());
-    // exactly what TS produces; the date check also catches impossible days such as 02-31
-    if (typeof ts === "string" && ISO_US.test(ts) && new Date(ts.slice(0, 23) + "Z").toISOString().slice(0, 19) === ts.slice(0, 19) && z.uuid().safeParse(id).success) return { ts, id };
+    // exactly what TS produces, year 0001 or later (Postgres has no year 0); the date check also catches impossible days such as 02-31
+    if (typeof ts === "string" && ISO_US.test(ts) && ts >= "0001" && new Date(ts.slice(0, 23) + "Z").toISOString().slice(0, 19) === ts.slice(0, 19) && z.uuid().safeParse(id).success) return { ts, id };
   } catch { /* falls through to the error */ }
   throw new ApiError(422, "invalid_request", "cursor is not valid.");
 };
