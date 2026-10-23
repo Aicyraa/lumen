@@ -29,12 +29,15 @@ export function ApiKeys() {
   });
 
   const create = useMutation({
+    // The key goes straight into component state; the mutation's own data stays empty and it is not cached (gcTime 0).
+    gcTime: 0,
     mutationFn: async () => {
       const { data, error } = await authClient.apiKey.create({ name: name.trim() || "Untitled key", organizationId: orgId });
       if (error || !data) throw new Error(error?.message ?? "Could not create the key.");
-      return data.key as string;
+      setFullKey(data.key as string);
+      setStep("show");
     },
-    onSuccess: (key) => { setFullKey(key); setStep("show"); qc.invalidateQueries({ queryKey: ["api-keys", orgId] }); },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["api-keys", orgId] }),
     onError: (e: Error) => setError(e.message),
   });
   const revoke = useMutation({

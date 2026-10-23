@@ -127,7 +127,14 @@ function AddModel({ onDone, onCancel }: { onDone: () => void; onCancel: () => vo
   const [outPrice, setOutPrice] = useState("");
   const [error, setError] = useState("");
 
-  const save = useMutation({ mutationFn: (body: Record<string, unknown>) => post("/api/dashboard/models", body), onSuccess: onDone, onError: (e: Error) => setError(e.message) });
+  // gcTime 0 and reset(): the request body (with api_key) must not linger in the mutation cache.
+  const save = useMutation({
+    mutationFn: (body: Record<string, unknown>) => post("/api/dashboard/models", body),
+    gcTime: 0,
+    onSuccess: onDone,
+    onError: (e: Error) => setError(e.message),
+    onSettled: () => queueMicrotask(() => save.reset()),
+  });
 
   function submit(e: FormEvent) {
     e.preventDefault();
