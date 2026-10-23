@@ -7,16 +7,19 @@ beforeAll(async () => { ctx = await makeCtx(); });
 afterAll(async () => { await ctx.close(); });
 
 describe("first sign-in creates a personal organization", () => {
-  it("email sign-up gives the user one organization and makes it the active one on the session", async () => {
+  it("email sign-up gives the user one default project, and the first (verified) sign-in makes it the active one on the session", async () => {
     const email = `owner-${Date.now()}@example.test`;
     const signUp = await request(ctx.app).post("/api/auth/sign-up/email").set("origin", ctx.config.dashboardOrigin)
       .send({ email, password: "correct-horse-battery", name: "Owner" });
     expect(signUp.status).toBe(200);
-    const cookie = (signUp.headers["set-cookie"] as unknown as string[]).map((c) => c.split(";")[0]).join("; ");
+    expect(signUp.headers["set-cookie"]).toBeUndefined(); // unverified: no session yet
 
     const orgs = await ctx.pool.query(`SELECT "organizationId" FROM member WHERE "userId" = $1`, [signUp.body.user.id]);
     expect(orgs.rows).toHaveLength(1);
 
+    await ctx.verifyEmail(email);
+    const signIn = await request(ctx.app).post("/api/auth/sign-in/email").set("origin", ctx.config.dashboardOrigin).send({ email, password: "correct-horse-battery" });
+    const cookie = (signIn.headers["set-cookie"] as unknown as string[]).map((c) => c.split(";")[0]).join("; ");
     const session = await request(ctx.app).get("/api/auth/get-session").set("cookie", cookie);
     expect(session.body.session.activeOrganizationId).toBe(orgs.rows[0].organizationId);
   });

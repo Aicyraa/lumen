@@ -5,6 +5,7 @@ import { createAuth } from "./auth/auth.js";
 import { loadConfig, type Config } from "./config/config.js";
 import { createPool } from "./db/pool.js";
 import { createRagClient } from "./services/rag.js";
+import { createMailer } from "./services/mailer.js";
 import { sweepInterrupted } from "./services/sweep.js";
 
 const log = createLogger();
@@ -18,7 +19,7 @@ try {
 }
 
 const pool = createPool(config.databaseUrl);
-const auth = createAuth({ pool, config });
+const auth = createAuth({ pool, config, mailer: createMailer({ config, log }), log });
 const rag = createRagClient(config);
 await sweepInterrupted({ pool, config, log });
 

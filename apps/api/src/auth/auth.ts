@@ -3,10 +3,13 @@ import { organization } from "better-auth/plugins";
 import { apiKey } from "@better-auth/api-key";
 import type { Config } from "../config/config.js";
 import type { Pool } from "../db/pool.js";
+import type { Logger } from "pino";
+import type { Mailer } from "../services/mailer.js";
 
 export type Auth = ReturnType<typeof createAuth>;
 
-export function createAuth({ pool, config }: { pool: Pool; config: Config }) {
+// mailer and log are only needed to send mail; the migration script builds the same auth without them.
+export function createAuth({ pool, config, mailer, log }: { pool: Pool; config: Config; mailer?: Mailer; log?: Logger }) {
   // A provider without credentials is skipped, so dev works with email + password only.
   const socialProviders: Partial<Record<"google" | "github", { clientId: string; clientSecret: string }>> = {};
   const { google, github } = config;
@@ -41,7 +44,24 @@ export function createAuth({ pool, config }: { pool: Pool; config: Config }) {
         },
       },
     },
-    emailAndPassword: { enabled: true },
+    emailAndPassword: { enabled: true, requireEmailVerification: true }, // sign-in is refused until the email is verified
+    emailVerification: {
+      sendOnSignUp: true,
+      sendOnSignIn: true, // an unverified user who tries to sign in gets a fresh link
+      autoSignInAfterVerification: true, // the first click also signs in; a second click only redirects
+      expiresIn: config.verificationEmailExpiresSeconds,
+      sendVerificationEmail: async ({ user, url }) => {
+        // Whatever callbackURL the client sent, the user lands on the dashboard's /verify-email page (errors add ?error=...).
+        const link = new URL(url);
+        link.searchParams.set("callbackURL", `${config.dashboardOrigin}/verify-email?status=verified`);
+        // Not awaited: the response time must not reveal whether the address exists.
+        void mailer?.({
+          to: user.email,
+          subject: "Verify your email for Lumen",
+          text: `Open this link to verify your email and finish creating your Lumen account:\n\n${link.toString()}\n\nIf you did not sign up, ignore this email.`,
+        }).catch((err: Error) => log?.error({ err: err.message }, "verification email failed"));
+      },
+    },
     plugins: [
       organization(),
       // Keys belong to an organization (the tenant). The plugin's own per-key limit (default 10/day) is

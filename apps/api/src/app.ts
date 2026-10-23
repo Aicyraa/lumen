@@ -15,7 +15,8 @@ import { analyticsRouter } from "./routes/analytics.js";
 import { documentsRouter } from "./routes/documents.js";
 import type { Auth } from "./auth/auth.js";
 import type { Deps } from "./types/types.js";
-import { errorHandler, notFoundHandler } from "./lib/errors.js";
+import { rateLimit } from "express-rate-limit";
+import { errorHandler, notFoundHandler, sendError } from "./lib/errors.js";
 
 // Everything is injected so tests can pass a test database and a stubbed RAG client.
 export function createApp({ config, pool, auth, rag, log, resolveHost }: Omit<Deps, "pending"> & { auth: Auth }) {
@@ -23,6 +24,11 @@ export function createApp({ config, pool, auth, rag, log, resolveHost }: Omit<De
   const pending = new Set<Promise<void>>(); // background ingests still running
   app.locals.idle = () => Promise.allSettled([...pending]);
   app.use(cors({ origin: config.dashboardOrigin, credentials: true }));
+  // Resend is throttled per client address, before Better Auth sees it (its own limiter is production-only and keyed by header).
+  app.post("/api/auth/send-verification-email", rateLimit({
+    windowMs: config.verificationResendWindowSeconds * 1000, limit: config.verificationResendMax, legacyHeaders: false, standardHeaders: "draft-7",
+    handler: (_req, res) => sendError(res, 429, "rate_limited", "Too many requests. Try again in a minute."),
+  }));
   app.all("/api/auth/*splat", toNodeHandler(auth)); // Express 5 syntax; must come before express.json() (rule 5)
   app.use(express.json());
   // Public API: every /v1 route needs a valid key, so unknown paths also answer 401 first.

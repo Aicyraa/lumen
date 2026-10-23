@@ -83,7 +83,7 @@ describe("email verification", () => {
     expect(await sessions()).toBe(before);
   });
 
-  it("a tampered token redirects to /verify-email with error=invalid_token and verifies nobody", async () => {
+  it("a tampered token redirects to /verify-email with error=INVALID_TOKEN and verifies nobody", async () => {
     const email = newEmail();
     await signUp(email);
     const bad = linkPath(email).replace(/token=([^&]+)/, (_m, t: string) => `token=${t.slice(0, -4)}AAAA`);
@@ -91,11 +91,11 @@ describe("email verification", () => {
     expect(res.status).toBe(302);
     const loc = new URL(res.headers.location);
     expect(loc.origin + loc.pathname).toBe(`${origin()}/verify-email`);
-    expect(loc.searchParams.get("error")).toBe("invalid_token");
+    expect(loc.searchParams.get("error")).toBe("INVALID_TOKEN");
     expect((await userRow(email)).verified).toBe(false);
   });
 
-  it("an expired link redirects with error=token_expired", async () => {
+  it("an expired link redirects with error=TOKEN_EXPIRED", async () => {
     const short = await makeCtx({ verificationEmailExpiresSeconds: 1 });
     try {
       const email = newEmail();
@@ -103,7 +103,7 @@ describe("email verification", () => {
       const url = new URL(short.mails.find((m) => m.to === email)!.text.match(/https?:\/\/\S+/)![0]);
       await new Promise((r) => setTimeout(r, 2200));
       const res = await request(short.app).get(url.pathname + url.search);
-      expect(new URL(res.headers.location).searchParams.get("error")).toBe("token_expired");
+      expect(new URL(res.headers.location).searchParams.get("error")).toBe("TOKEN_EXPIRED");
     } finally { await short.close(); }
   });
 
