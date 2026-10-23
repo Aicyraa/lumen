@@ -27,7 +27,10 @@ export async function makeCtx(overrides = {}) {
     const tenantId = rows[0].org;
     const key = await auth.api.createApiKey({ body: { name: "test", organizationId: tenantId, userId: signUp.user.id } });
     tenants.push(tenantId);
-    return { email, userId: signUp.user.id, tenantId, apiKey: key.key };
+    // a dashboard session cookie, from a real email + password sign-in
+    const res = await auth.api.signInEmail({ body: { email, password: "correct-horse-battery" }, asResponse: true });
+    const cookie = res.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+    return { email, userId: signUp.user.id, tenantId, apiKey: key.key, cookie };
   }
 
   async function close() {
