@@ -1,0 +1,12 @@
+{
+  "ingestTimeoutMs": 120000,
+  "interruptedIngestAfterSeconds": 600,
+  "globalLlmCapPerMinute": 25,
+  "uploadMaxBytes": 10485760,
+  "queryMaxChars": 2000,
+  "uploadDir": "uploads",
+  "requestsPageSizeDefault": 50,
+  "requestsPageSizeMax": 200,
+  "queryTimeoutMs": 60000,
+  "ragDeleteTimeoutMs": 30000
+}

@@ -1,0 +1,15 @@
+import express from "express";
+import cors from "cors";
+import { toNodeHandler } from "better-auth/node";
+import { errorHandler, notFoundHandler } from "./errors.js";
+
+// Everything is injected so tests can pass a test database and a stubbed RAG client.
+export function createApp({ config, pool, auth, rag, log }) {
+  const app = express();
+  app.use(cors({ origin: config.dashboardOrigin, credentials: true }));
+  app.all("/api/auth/*splat", toNodeHandler(auth)); // Express 5 syntax; must come before express.json() (rule 5)
+  app.use(express.json());
+  app.use(notFoundHandler);
+  app.use(errorHandler(log));
+  return app;
+}

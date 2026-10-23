@@ -2,5 +2,26 @@
   "name": "@lumen/api",
   "private": true,
   "type": "module",
-  "scripts": {}
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "vitest run",
+    "auth:migrate": "node scripts/migrate.js"
+  },
+  "dependencies": {
+    "@better-auth/api-key": "^1.7.12",
+    "better-auth": "^1.7.12",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "multer": "^2.4.0",
+    "pg": "^8.23.1",
+    "pino": "^10.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "supertest": "^7.3.1",
+    "vitest": "^5.0.5"
+  }
 }
