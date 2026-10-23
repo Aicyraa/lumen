@@ -1,5 +1,6 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,14 +15,17 @@ vi.mock("../lib/auth-client", () => ({
 
 import { SignIn } from "./SignIn";
 
+const client = new QueryClient();
 const page = () =>
   render(
-    <MemoryRouter initialEntries={["/signin"]}>
-      <Routes>
-        <Route path="/signin" element={<SignIn />} />
-        <Route path="/dashboard/*" element={<div>dashboard home</div>} />
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={["/signin"]}>
+        <Routes>
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/dashboard/*" element={<div>dashboard home</div>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 
 describe("SignIn", () => {
@@ -75,5 +79,17 @@ describe("SignIn", () => {
     useSession.mockReturnValue({ data: { user: {} }, isPending: false });
     page();
     expect(screen.getByText("dashboard home")).toBeInTheDocument();
+  });
+
+  it("clears the whole query cache when sign-in succeeds, so nothing from an earlier account survives", async () => {
+    signInEmail.mockResolvedValue({ data: { user: {} }, error: null });
+    client.setQueryData(["documents", "orgA"], [{ filename: "a-secret.md" }]);
+    page();
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText("Email"), "b@b.test");
+    await user.type(screen.getByLabelText("Password"), "correct horse 123");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    await screen.findByText("dashboard home");
+    expect(client.getQueryCache().getAll()).toHaveLength(0);
   });
 });

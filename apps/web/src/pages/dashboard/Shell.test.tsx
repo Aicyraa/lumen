@@ -1,9 +1,10 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const signOut = vi.fn();
+vi.mock("../../lib/session", () => ({ useOrgId: () => "o1" }));
 vi.mock("../../lib/auth-client", () => ({
   authClient: {
     useSession: () => ({ data: { user: { email: "maya@campus.test", name: "Maya" }, session: { activeOrganizationId: "o1" } }, isPending: false }),
@@ -34,6 +35,16 @@ describe("Shell", () => {
     renderWithProviders(<Routes><Route path="/" element={<div>public home</div>} /><Route path="/dashboard" element={<Shell />}><Route path="documents" element={<div>docs page</div>} /></Route></Routes>, { route: "/dashboard/documents" });
     await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(signOut).toHaveBeenCalled();
+    expect(await screen.findByText("public home")).toBeInTheDocument();
+  });
+
+  it("clears every cached query on sign-out, even when signOut rejects", async () => {
+    signOut.mockRejectedValue(new Error("network down"));
+    mockFetch(() => ({ documents: { used: 0, max: 1 }, requests_per_minute: { used: 0, max: 1 }, requests_this_month: { used: 0, max: 1 } }));
+    const { client } = renderWithProviders(<Routes><Route path="/" element={<div>public home</div>} /><Route path="/dashboard" element={<Shell />}><Route path="documents" element={<div>docs page</div>} /></Route></Routes>, { route: "/dashboard/documents" });
+    client.setQueryData(["documents", "o1"], [{ filename: "a-secret.md" }]);
+    await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    await waitFor(() => expect(client.getQueryCache().getAll()).toHaveLength(0));
     expect(await screen.findByText("public home")).toBeInTheDocument();
   });
 });
