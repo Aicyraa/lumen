@@ -55,7 +55,7 @@ describe("Models", () => {
   });
 
   it("moves a model with the arrows (first model's up arrow is disabled) and removes it", async () => {
-    const { calls } = mockFetch(router((url, init) => (init?.method === "PATCH" ? base : init?.method === "DELETE" ? reply(204) : undefined)));
+    const { calls } = mockFetch(router((_url, init) => (init?.method === "PATCH" ? base : init?.method === "DELETE" ? reply(204) : undefined)));
     renderWithProviders(<Models />);
     const user = userEvent.setup();
     await screen.findByText("model-b");
@@ -82,7 +82,7 @@ describe("Models", () => {
   it("sends the key once and never puts it back in the page: not while saving, not after success", async () => {
     let release!: (v: unknown) => void;
     const gate = new Promise((r) => (release = r));
-    const { calls, fn } = mockFetch(router((url, init) => (init?.method === "POST" ? undefined : undefined)));
+    const { calls, fn } = mockFetch(router((_url, init) => (init?.method === "POST" ? undefined : undefined)));
     const orig = fn.getMockImplementation()!;
     fn.mockImplementation(async (input, init) => (init?.method === "POST" ? (calls.push({ url: String(input), init }), await gate, new Response(JSON.stringify({ model: m("z", "cheap", 2) }), { status: 201 })) : orig(input, init)));
     renderWithProviders(<Models />);
@@ -103,7 +103,7 @@ describe("Models", () => {
   });
 
   it("shows why Test & save failed and still does not keep the key in the page", async () => {
-    mockFetch(router((url, init) => (init?.method === "POST" ? reply(422, { error: { code: "provider_error", message: "The provider rejected the key (401)." } }) : undefined)));
+    mockFetch(router((_url, init) => (init?.method === "POST" ? reply(422, { error: { code: "provider_error", message: "The provider rejected the key (401)." } }) : undefined)));
     renderWithProviders(<Models />);
     const user = userEvent.setup();
     await fillForm(user);
@@ -124,7 +124,7 @@ describe("Models", () => {
   });
 
   it("leaves prices out when left empty", async () => {
-    const { calls } = mockFetch(router((url, init) => (init?.method === "POST" ? reply(201, { model: m("z", "cheap", 2) }) : undefined)));
+    const { calls } = mockFetch(router((_url, init) => (init?.method === "POST" ? reply(201, { model: m("z", "cheap", 2) }) : undefined)));
     renderWithProviders(<Models />);
     const user = userEvent.setup();
     await fillForm(user);
