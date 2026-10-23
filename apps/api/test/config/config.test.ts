@@ -6,6 +6,7 @@ const good = {
   BETTER_AUTH_SECRET: "s".repeat(32), BETTER_AUTH_URL: "http://localhost:3000", DASHBOARD_ORIGIN: "http://localhost:5173",
   INTERNAL_SECRET: "internal-SECRET", RAG_SERVICE_URL: "http://localhost:8000",
   MAX_DOCUMENTS_PER_TENANT: "7", RATE_LIMIT_PER_MINUTE: "5", MAX_REQUESTS_PER_MONTH: "99",
+  MODEL_KEY_ENCRYPTION_SECRET: "ab".repeat(32),
 };
 
 describe("loadConfig", () => {
@@ -24,6 +25,17 @@ describe("loadConfig", () => {
   it.each(["MAX_DOCUMENTS_PER_TENANT", "RATE_LIMIT_PER_MINUTE", "MAX_REQUESTS_PER_MONTH"])("refuses an empty or non-positive %s", (name) => {
     expect(() => loadConfig({ ...good, [name]: "" })).toThrow(name);
     expect(() => loadConfig({ ...good, [name]: "0" })).toThrow(name);
+  });
+
+  it.each([["", "empty"], ["ab".repeat(31), "too short"], ["zz".repeat(32), "not hex"], ["ab".repeat(33), "too long"]])(
+    "refuses to start when MODEL_KEY_ENCRYPTION_SECRET is %j (%s) without printing it", (value) => {
+      expect(() => loadConfig({ ...good, MODEL_KEY_ENCRYPTION_SECRET: value })).toThrow("MODEL_KEY_ENCRYPTION_SECRET");
+      try { loadConfig({ ...good, MODEL_KEY_ENCRYPTION_SECRET: value }); } catch (e) { if (value) expect((e as Error).message).not.toContain(value); }
+    });
+
+  it("treats NODE_ENV=production as production and anything else as not", () => {
+    expect(loadConfig({ ...good, NODE_ENV: "production" }).production).toBe(true);
+    expect(loadConfig({ ...good, NODE_ENV: "test" }).production).toBe(false);
   });
 
   it("defaults the global LLM cap to 8 per minute and lets GLOBAL_LLM_CAP_PER_MINUTE override it", () => {
