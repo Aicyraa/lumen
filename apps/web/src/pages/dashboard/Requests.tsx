@@ -75,7 +75,7 @@ function Drawer({ id, onClose }: { id: string; onClose: () => void }) {
         <div className="stack-sm">
           <p className="body">{d.data.query}</p>
           <RouteCard route={d.data.route} />
-          <UsageCard usage={d.data.usage}>
+          <UsageCard usage={d.data.usage} noModel={d.data.route.tier === "none"}>
             <div className="meta mono small muted-3">
               <span>{d.data.id}</span>
               <span>key · {d.data.api_key ? `${d.data.api_key.name ?? "Untitled key"} (${d.data.api_key.start ?? ""}••••)` : "none (Try it or a deleted key)"}</span>

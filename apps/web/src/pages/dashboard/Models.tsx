@@ -97,7 +97,7 @@ function ModelRow({ m, u, rank, first, last, onMove, onRemove }: { m: TenantMode
         <div className="mono small muted-3 ellipsis">{m.endpoint_url} · {m.key_hint}</div>
         <div className="small muted-3">
           {u ? <>
-            {fmtInt(u.requests)} requests · {fmtInt(u.tokens_in)} in / {fmtInt(u.tokens_out)} out tokens · {fails} failures{fails ? ` (${u.failures.error} error, ${u.failures.timeout} timeout, ${u.failures.rate_limited} rate limited)` : ""}
+            {fmtInt(u.requests)} {u.requests === 1 ? "request" : "requests"} · {fmtInt(u.tokens_in)} in / {fmtInt(u.tokens_out)} out tokens · {fails} failures{fails ? ` (${u.failures.error} error, ${u.failures.timeout} timeout, ${u.failures.rate_limited} rate limited)` : ""}
             {m.tier === "fallback" ? ` · ${u.fallback_uses} as fallback` : ` · ${u.backup_uses} as backup`} · median {fmtMs(u.median_latency_ms)}
           </> : "usage loading…"}
         </div>

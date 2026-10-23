@@ -3,7 +3,7 @@ export const fmtMs = (n: number | null | undefined) => (n == null ? "—" : `${f
 export const fmtScore = (n: number | null | undefined) => (n == null ? "—" : n.toFixed(2));
 
 // Estimated provider cost (the tenant's own, from the prices they entered). null means no price was set.
-export const fmtCost = (n: number | null | undefined) => (n == null ? "no price set" : n === 0 ? "$0" : `$${n < 1 ? n.toFixed(4) : n.toFixed(2)}`);
+export const fmtCost = (n: number | null | undefined) => (n == null ? "no price set" : n === 0 ? "$0" : n < 0.0001 ? "<$0.0001" : `$${n < 1 ? n.toFixed(4) : n.toFixed(2)}`);
 
 export const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 export const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });

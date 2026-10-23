@@ -79,7 +79,7 @@ export function TryIt() {
       {r && (
         <div className="stack-sm side fade-in">
           <RouteCard big route={{ tier: r.route.model_tier, k: r.route.k, escalated: r.route.escalated, difficulty: r.route.difficulty, top_score: r.route.top_score }} />
-          <UsageCard usage={r.usage} />
+          <UsageCard usage={r.usage} noModel={r.route.model_tier === "none"} />
         </div>
       )}
     </div>
