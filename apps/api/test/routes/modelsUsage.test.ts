@@ -31,7 +31,8 @@ beforeAll(async () => {
 afterAll(async () => { await ctx.close(); });
 
 const usage = (t: Tenant, q = "") => request(ctx.app).get(`/api/dashboard/models/usage${q}`).set("cookie", t.cookie);
-const byName = (body: { models: { model_id: string }[] }) => Object.fromEntries(body.models.map((m) => [m.model_id, m]));
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const byName = (body: { models: any[] }) => Object.fromEntries(body.models.map((m) => [m.model_id, m])) as Record<string, any>;
 
 describe("GET /api/dashboard/models/usage", () => {
   it("lists every model of the tenant (fallback and idle ones too) in tier then position order", async () => {
