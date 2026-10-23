@@ -59,4 +59,16 @@ describe("TryIt", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Add a model in the Models tab");
     expect(within(screen.getByRole("alert")).getByRole("link", { name: "Models tab" })).toHaveAttribute("href", "/dashboard/models");
   });
+
+  it("clamps the score bar to 0-100% even for an out-of-range score", async () => {
+    const r = result(null);
+    r.sources[0].score = 1.2;
+    r.sources[1].score = -0.1;
+    mockFetch(() => r);
+    const { container } = renderWithProviders(<TryIt />);
+    await userEvent.type(screen.getByLabelText("Question"), "hi{enter}");
+    await screen.findByText(/Enrollment closes/);
+    const widths = Array.from(container.querySelectorAll<HTMLElement>(".score-fill")).map((e) => e.style.width);
+    expect(widths).toEqual(["100%", "0%"]);
+  });
 });
