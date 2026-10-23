@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { ErrorText, PageHead, StatusDot } from "../../components/ui";
 import { api, ApiError } from "../../lib/api";
 import { fmtDate, fmtInt } from "../../lib/format";
+import { useOrgId } from "../../lib/session";
 import type { Doc, Usage } from "../../lib/types";
 
 const ALLOWED = /\.(pdf|txt|md)$/i;
@@ -15,17 +16,19 @@ export const docPollInterval = (docs: Doc[] | undefined, ms: number) => (docs?.s
 
 export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
   const qc = useQueryClient();
+  const org = useOrgId();
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
   const [drag, setDrag] = useState(false);
 
   const docs = useQuery({
-    queryKey: ["documents"],
+    queryKey: ["documents", org],
+    enabled: !!org,
     queryFn: () => api<{ documents: Doc[] }>("/api/dashboard/documents").then((r) => r.documents),
     refetchInterval: (q) => docPollInterval(q.state.data, pollMs),
   });
-  const usage = useQuery({ queryKey: ["usage"], queryFn: () => api<Usage>("/api/dashboard/usage") });
-  const refresh = () => { qc.invalidateQueries({ queryKey: ["documents"] }); qc.invalidateQueries({ queryKey: ["usage"] }); };
+  const usage = useQuery({ queryKey: ["usage", org], enabled: !!org, queryFn: () => api<Usage>("/api/dashboard/usage") });
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["documents", org] }); qc.invalidateQueries({ queryKey: ["usage", org] }); };
 
   const upload = useMutation({
     mutationFn: (file: File) => { const f = new FormData(); f.append("file", file); return api("/api/dashboard/documents", { method: "POST", body: f }); },

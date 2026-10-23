@@ -1,11 +1,13 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, vi, expect, it } from "vitest";
 import { mockFetch, renderWithProviders, reply } from "../../test/helpers";
 import { Documents } from "./Documents";
 
 const doc = (over: object) => ({ document_id: "d1", filename: "handbook.md", status: "processing", error: null, chunk_count: 0, created_at: "2026-10-23T10:00:00Z", ...over });
 const usage = { documents: { used: 1, max: 9 }, requests_per_minute: { used: 0, max: 5 }, requests_this_month: { used: 0, max: 5 } };
+
+vi.mock("../../lib/session", () => ({ useOrgId: () => "org_1" }));
 
 describe("Documents", () => {
   it("polls while a document is processing, shows ready, then stops polling", async () => {

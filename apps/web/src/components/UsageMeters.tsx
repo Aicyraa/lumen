@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
+import { useOrgId } from "../lib/session";
 import { fmtInt, isNearLimit } from "../lib/format";
 import type { Usage } from "../lib/types";
 
@@ -11,7 +12,8 @@ const ROWS = [
 
 // Sidebar USAGE panel. Every number, including the limits, comes from GET /api/dashboard/usage.
 export function UsageMeters() {
-  const { data } = useQuery({ queryKey: ["usage"], queryFn: () => api<Usage>("/api/dashboard/usage"), refetchInterval: 15000 });
+  const org = useOrgId();
+  const { data } = useQuery({ queryKey: ["usage", org], enabled: !!org, queryFn: () => api<Usage>("/api/dashboard/usage"), refetchInterval: 15000 });
   return (
     <div className="usage">
       <div className="label-sm">USAGE</div>

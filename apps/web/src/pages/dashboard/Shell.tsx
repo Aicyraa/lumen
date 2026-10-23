@@ -18,9 +18,14 @@ export function Shell() {
   const workspace = org?.name ?? "Workspace";
 
   async function signOut() {
-    await authClient.signOut();
-    qc.clear(); // nothing from this tenant stays cached for the next sign-in
-    navigate("/");
+    try {
+      await authClient.signOut();
+    } catch {
+      // the server call failed; still leave and drop every cached tenant response below
+    } finally {
+      qc.clear(); // nothing from this tenant stays cached for the next sign-in, even if sign-out failed
+      navigate("/");
+    }
   }
 
   return (

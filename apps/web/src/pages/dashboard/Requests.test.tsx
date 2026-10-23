@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, vi, expect, it } from "vitest";
 import { mockFetch, renderWithProviders } from "../../test/helpers";
 import { Requests } from "./Requests";
 
@@ -20,6 +20,8 @@ const detail = {
     { document_id: "d2", chunk_id: 2, score: 0.44, filename: null, document_deleted: true, passage: null },
   ],
 };
+
+vi.mock("../../lib/session", () => ({ useOrgId: () => "org_1" }));
 
 describe("Requests", () => {
   it("filters by tier through the API (all, cheap, expensive, none)", async () => {

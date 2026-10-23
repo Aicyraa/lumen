@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate, useNavigate } from "react-router";
 import { Logo } from "../components/Logo";
 import { ErrorText } from "../components/ui";
@@ -7,6 +8,7 @@ import { authClient } from "../lib/auth-client";
 export function SignIn() {
   const { data: session } = authClient.useSession();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [mode, setMode] = useState<"in" | "up">("in");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -31,7 +33,7 @@ export function SignIn() {
     try {
       const res = mode === "in" ? await authClient.signIn.email({ email, password }) : await authClient.signUp.email({ name: name.trim(), email, password });
       if (res.error) setError(res.error.message ?? "Something went wrong. Try again.");
-      else navigate("/dashboard");
+      else { qc.clear(); navigate("/dashboard"); } // nothing from an earlier account may survive a new sign-in
     } catch {
       setError("Could not reach the server. Try again.");
     } finally {

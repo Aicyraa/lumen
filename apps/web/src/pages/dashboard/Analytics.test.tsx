@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, vi, expect, it } from "vitest";
 import { mockFetch, renderWithProviders } from "../../test/helpers";
 import { Analytics } from "./Analytics";
 
@@ -20,6 +20,8 @@ const summary = (range: string) => ({
 const unanswered = { range: "7d", threshold: 0.3, total: 2, items: [{ id: "u1", query: "Is there visitor parking?", top_score: 0.09, tier: "none", time: "2026-10-23T10:00:00Z" }, { id: "u2", query: "Weak match question", top_score: null, tier: "none", time: "2026-10-23T11:00:00Z" }] };
 
 const handler = (url: string) => (url.includes("/unanswered") ? unanswered : summary(url.includes("range=30d") ? "30d" : "7d"));
+
+vi.mock("../../lib/session", () => ({ useOrgId: () => "org_1" }));
 
 describe("Analytics", () => {
   it("shows tiles, route mix with the failed bucket, unanswered questions, by-model and labelled estimated cost", async () => {

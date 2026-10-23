@@ -1,5 +1,5 @@
 import { screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, vi, expect, it } from "vitest";
 import { mockFetch, renderWithProviders } from "../test/helpers";
 import { UsageMeters } from "./UsageMeters";
 
@@ -8,6 +8,8 @@ const usage = (d: [number, number], r: [number, number], m: [number, number]) =>
   requests_per_minute: { used: r[0], max: r[1] },
   requests_this_month: { used: m[0], max: m[1] },
 });
+
+vi.mock("../lib/session", () => ({ useOrgId: () => "org_1" }));
 
 describe("UsageMeters", () => {
   it("shows used / max exactly as the API returns them (limits never live in the front end)", async () => {

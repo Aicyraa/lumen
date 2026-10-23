@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { ErrorText, PageHead, Segmented, StatusDot } from "../../components/ui";
 import { api, post } from "../../lib/api";
+import { useOrgId } from "../../lib/session";
 import { fmtCost, fmtDate, fmtInt, fmtMs } from "../../lib/format";
 import type { ModelsGrouped, ModelsUsage, ModelTier, ModelUsage, Provider, Range, TenantModel } from "../../lib/types";
 
@@ -29,12 +30,13 @@ function parsePrice(raw: string): number | undefined | "invalid" {
 
 export function Models() {
   const qc = useQueryClient();
+  const org = useOrgId();
   const [range, setRange] = useState<Range>("7d");
   const [open, setOpen] = useState(false);
-  const models = useQuery({ queryKey: ["models"], queryFn: () => api<{ models: ModelsGrouped }>("/api/dashboard/models").then((r) => r.models) });
-  const usage = useQuery({ queryKey: ["models-usage", range], queryFn: () => api<ModelsUsage>(`/api/dashboard/models/usage?range=${range}`) });
+  const models = useQuery({ queryKey: ["models", org], enabled: !!org, queryFn: () => api<{ models: ModelsGrouped }>("/api/dashboard/models").then((r) => r.models) });
+  const usage = useQuery({ queryKey: ["models-usage", org, range], enabled: !!org, queryFn: () => api<ModelsUsage>(`/api/dashboard/models/usage?range=${range}`) });
   const byId = new Map<string, ModelUsage>((usage.data?.models ?? []).map((u) => [u.id, u]));
-  const refresh = () => { qc.invalidateQueries({ queryKey: ["models"] }); qc.invalidateQueries({ queryKey: ["models-usage"] }); };
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["models", org] }); qc.invalidateQueries({ queryKey: ["models-usage", org] }); };
   const [rowError, setRowError] = useState("");
 
   const move = useMutation({

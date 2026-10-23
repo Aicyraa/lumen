@@ -1,5 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 
@@ -12,7 +13,7 @@ import { Home } from "./Home";
 import { Privacy } from "./Privacy";
 import { SignIn } from "./SignIn";
 
-const view = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>).container;
+const view = (ui: React.ReactElement) => render(<QueryClientProvider client={new QueryClient()}><MemoryRouter>{ui}</MemoryRouter></QueryClientProvider>).container;
 // Lumen has no pricing of its own and promises no retention period: none of this may appear on a public page.
 const FORBIDDEN = /retention|retain|saving|pricing|calculator|\$\s?\d/i;
 const NO_MONEY_AT_ALL = /cost|price|cheapest|\bfree\b/i;

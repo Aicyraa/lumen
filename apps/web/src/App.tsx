@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from "react-router";
+import { SessionCacheGuard } from "./components/SessionCacheGuard";
 import { RequireSession } from "./components/RequireSession";
 import { Docs } from "./pages/Docs";
 import { Home } from "./pages/Home";
@@ -14,6 +15,8 @@ import { TryIt } from "./pages/dashboard/TryIt";
 
 export function App() {
   return (
+    <>
+    <SessionCacheGuard />
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/docs" element={<Docs />} />
@@ -32,5 +35,6 @@ export function App() {
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }

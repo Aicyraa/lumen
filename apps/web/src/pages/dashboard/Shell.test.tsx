@@ -39,7 +39,7 @@ describe("Shell", () => {
   });
 
   it("clears every cached query on sign-out, even when signOut rejects", async () => {
-    signOut.mockRejectedValue(new Error("network down"));
+    signOut.mockImplementation(() => Promise.reject(new Error("network down")));
     mockFetch(() => ({ documents: { used: 0, max: 1 }, requests_per_minute: { used: 0, max: 1 }, requests_this_month: { used: 0, max: 1 } }));
     const { client } = renderWithProviders(<Routes><Route path="/" element={<div>public home</div>} /><Route path="/dashboard" element={<Shell />}><Route path="documents" element={<div>docs page</div>} /></Route></Routes>, { route: "/dashboard/documents" });
     client.setQueryData(["documents", "o1"], [{ filename: "a-secret.md" }]);

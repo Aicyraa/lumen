@@ -5,6 +5,7 @@ import { RouteCard } from "../../components/RouteCard";
 import { UsageCard } from "../../components/UsageCard";
 import { ErrorText, PageHead, Segmented, StatusDot } from "../../components/ui";
 import { api } from "../../lib/api";
+import { useOrgId } from "../../lib/session";
 import { fmtCost, fmtMs, fmtScore, fmtTime, tierTone } from "../../lib/format";
 import type { Range, RequestDetail, RequestRow, RequestsPage } from "../../lib/types";
 
@@ -16,9 +17,11 @@ export function Requests() {
   const [tier, setTier] = useState<TierFilter>("all");
   const [range, setRange] = useState<Range>("7d");
   const [openId, setOpenId] = useState<string | null>(null);
+  const org = useOrgId();
 
   const q = useInfiniteQuery({
-    queryKey: ["requests", tier, range],
+    queryKey: ["requests", org, tier, range],
+    enabled: !!org,
     initialPageParam: "",
     queryFn: ({ pageParam }) => api<RequestsPage>(`/api/dashboard/requests?range=${range}&tier=${tier}${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`),
     getNextPageParam: (last) => last.next_cursor ?? undefined, // null = last page
@@ -43,7 +46,7 @@ export function Requests() {
       </div>
       {q.isError && <ErrorText>{(q.error as Error).message}</ErrorText>}
       {q.hasNextPage && <div><button type="button" className="btn btn-outline" disabled={q.isFetchingNextPage} onClick={() => q.fetchNextPage()}>Load more</button></div>}
-      {openId && <Drawer id={openId} onClose={() => setOpenId(null)} />}
+      {openId && <Drawer org={org} id={openId} onClose={() => setOpenId(null)} />}
     </div>
   );
 }
@@ -64,8 +67,8 @@ function Row({ r, onOpen }: { r: RequestRow; onOpen: () => void }) {
   );
 }
 
-function Drawer({ id, onClose }: { id: string; onClose: () => void }) {
-  const d = useQuery({ queryKey: ["request", id], queryFn: () => api<RequestDetail>(`/api/dashboard/requests/${id}`) });
+function Drawer({ id, org, onClose }: { id: string; org: string; onClose: () => void }) {
+  const d = useQuery({ queryKey: ["request", org, id], queryFn: () => api<RequestDetail>(`/api/dashboard/requests/${id}`) });
   return (
     <Dialog title="Request" label="REQUEST DETAIL" variant="drawer" onClose={onClose}>
       <button type="button" className="btn btn-outline btn-sm drawer-close" onClick={onClose}>Close</button>

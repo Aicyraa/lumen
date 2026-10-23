@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { PageHead, Segmented, ErrorText } from "../../components/ui";
 import { api } from "../../lib/api";
+import { useOrgId } from "../../lib/session";
 import { fmtCost, fmtDay, fmtInt, fmtMs, fmtScore } from "../../lib/format";
 import type { Range, Summary, Unanswered } from "../../lib/types";
 
@@ -14,8 +15,9 @@ const MIX = [
 
 export function Analytics() {
   const [range, setRange] = useState<Range>("7d");
-  const summary = useQuery({ queryKey: ["summary", range], queryFn: () => api<Summary>(`/api/dashboard/analytics/summary?range=${range}`) });
-  const unanswered = useQuery({ queryKey: ["unanswered", range], queryFn: () => api<Unanswered>(`/api/dashboard/analytics/unanswered?range=${range}`) });
+  const org = useOrgId();
+  const summary = useQuery({ queryKey: ["summary", org, range], enabled: !!org, queryFn: () => api<Summary>(`/api/dashboard/analytics/summary?range=${range}`) });
+  const unanswered = useQuery({ queryKey: ["unanswered", org, range], enabled: !!org, queryFn: () => api<Unanswered>(`/api/dashboard/analytics/unanswered?range=${range}`) });
   const s = summary.data;
   const days = s?.per_day ?? [];
   const dayTotal = (d: Summary["per_day"][number]) => d.cheap + d.expensive + d.none + d.failed;

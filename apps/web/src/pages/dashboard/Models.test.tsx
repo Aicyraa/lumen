@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, vi, expect, it } from "vitest";
 import { mockFetch, renderWithProviders, reply } from "../../test/helpers";
 import { Models } from "./Models";
 
@@ -30,6 +30,8 @@ const router = (extra?: (url: string, init?: RequestInit) => unknown) => (url: s
   if (url.includes("/models/usage")) return usageBody;
   return base;
 };
+
+vi.mock("../../lib/session", () => ({ useOrgId: () => "org_1" }));
 
 describe("Models", () => {
   it("shows Cheap, Expensive and Fallback groups in order with rank, masked key, usage, limits and estimated cost", async () => {

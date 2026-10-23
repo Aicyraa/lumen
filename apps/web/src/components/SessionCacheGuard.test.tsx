@@ -35,7 +35,8 @@ describe("SessionCacheGuard", () => {
 
     session = { data: null, isPending: false }; // session expired
     rerender(tree(client));
-    await waitFor(() => expect(client.getQueryCache().getAll()).toHaveLength(0));
+    // mounted components keep (empty) query entries; what must be gone is every trace of A's data
+    await waitFor(() => expect(JSON.stringify(client.getQueryCache().getAll().map((q) => q.state.data))).not.toContain("a-secret.md"));
 
     session = as("userB", "orgB"); // B signs in without a page reload
     rerender(tree(client));

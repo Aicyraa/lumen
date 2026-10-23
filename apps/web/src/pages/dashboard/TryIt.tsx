@@ -6,6 +6,7 @@ import { UsageCard } from "../../components/UsageCard";
 import { ErrorText, PageHead } from "../../components/ui";
 import { ApiError, post } from "../../lib/api";
 import { fmtScore } from "../../lib/format";
+import { useOrgId } from "../../lib/session";
 import type { TryResponse } from "../../lib/types";
 
 // Marks [1]-style citations in the lime accent.
@@ -15,6 +16,7 @@ function Answer({ text }: { text: string }) {
 
 export function TryIt() {
   const qc = useQueryClient();
+  const org = useOrgId();
   const [query, setQuery] = useState("");
   const [rating, setRating] = useState<1 | -1 | 0>(0);
   const [feedbackError, setFeedbackError] = useState("");
@@ -22,7 +24,7 @@ export function TryIt() {
   const ask = useMutation({
     mutationFn: (q: string) => post<TryResponse>("/api/dashboard/try", { query: q }),
     onMutate: () => setRating(0),
-    onSettled: () => qc.invalidateQueries({ queryKey: ["usage"] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["usage", org] }),
   });
   const feedback = useMutation({
     mutationFn: (v: { id: string; rating: 1 | -1 }) => post("/api/dashboard/feedback", { request_id: v.id, rating: v.rating }),

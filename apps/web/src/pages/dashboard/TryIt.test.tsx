@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, vi, expect, it } from "vitest";
 import { mockFetch, renderWithProviders, reply } from "../../test/helpers";
 import { TryIt } from "./TryIt";
 
@@ -12,6 +12,8 @@ const result = (cost: number | null) => ({
   route: { model_tier: "cheap", k: 3, escalated: false, difficulty: 0, top_score: 0.78 },
   usage: { tokens_in: 812, tokens_out: 64, latency_ms: 620, cost_usd: cost },
 });
+
+vi.mock("../../lib/session", () => ({ useOrgId: () => "org_1" }));
 
 describe("TryIt", () => {
   it("asks through POST /api/dashboard/try and shows answer citations, sources, route and usage", async () => {
