@@ -5,7 +5,7 @@ import { requireSession, requireTenant } from "./middleware/requireSession.js";
 import { createLimiters } from "./middleware/rateLimit.js";
 import { loadTenantModels } from "./middleware/tenantModels.js";
 import { requireApiKey } from "./middleware/requireApiKey.js";
-import { devRouter } from "./routes/dev.js";
+import { devRouter, devVerifyHandler } from "./routes/dev.js";
 import { chatHandler } from "./routes/chat.js";
 import { feedbackHandler } from "./routes/feedback.js";
 import { modelsRouter } from "./routes/models.js";
@@ -63,7 +63,10 @@ export function createApp({ config, pool, auth, rag, log, resolveHost }: Omit<De
   dash.post("/try", ...llm, chatHandler(deps, { tryIt: true })); // same limiter instance as /v1/chat: one shared counter
   app.use("/api/dashboard", dash);
 
-  if (config.devRoutes) app.post("/dev/api-key", devRouter({ pool, auth, config }));
+  if (config.devRoutes) {
+    app.post("/dev/api-key", devRouter({ pool, auth, config }));
+    app.post("/dev/verify-email", devVerifyHandler({ pool, config }));
+  }
 
   app.use(notFoundHandler);
   app.use(errorHandler(log));
