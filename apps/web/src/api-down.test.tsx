@@ -41,3 +41,37 @@ describe("API unreachable", () => {
     expect(screen.queryByRole("button", { name: "Continue with Google" })).not.toBeInTheDocument();
   });
 });
+
+// Vite answers unknown paths with index.html (HTTP 200) when the web origin is used by mistake.
+describe("API misconfigured: an HTML answer instead of JSON", () => {
+  const html = () => new Response("<!doctype html><html><body>app</body></html>", { status: 200, headers: { "content-type": "text/html" } });
+  beforeEach(() => { vi.spyOn(console, "error").mockImplementation(() => {}); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("an HTML get-session answer is not a session: dashboard shows 'Cannot reach the server', public pages render", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => html()));
+    mount("/dashboard/documents");
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Cannot reach the server"));
+    expect(screen.queryByText(/Continue with Google/)).not.toBeInTheDocument();
+  });
+
+  it("an HTML answer to Continue with Google (wrong origin, 404) says the sign-in server is not reachable (dev builds)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => (String(input).includes("get-session") ? new Response("null", { status: 200, headers: { "content-type": "application/json" } }) : new Response("<!doctype html>", { status: 404, headers: { "content-type": "text/html" } }))));
+    mount("/signin");
+    await userEvent.click(await screen.findByRole("button", { name: "Continue with Google" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Sign-in server not reachable (check VITE_API_URL)");
+  });
+
+  it("a JSON error from the server is shown as the server's message", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => (String(input).includes("get-session") ? new Response("null", { status: 200, headers: { "content-type": "application/json" } }) : new Response(JSON.stringify({ message: "Provider not found", code: "PROVIDER_NOT_FOUND" }), { status: 404, headers: { "content-type": "application/json" } }))));
+    mount("/signin");
+    await userEvent.click(await screen.findByRole("button", { name: "Continue with GitHub" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Provider not found");
+  });
+
+  it("the dashboard fetch wrapper treats an HTML 200 as unreachable, not as data", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => html()));
+    const { api } = await import("./lib/api");
+    await expect(api("/api/dashboard/usage")).rejects.toMatchObject({ code: "network_error" });
+  });
+});
