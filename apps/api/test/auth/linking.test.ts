@@ -60,6 +60,10 @@ describe("explicit linking from a signed-in session", () => {
     const link = await googleLink(owner, p);
     expect(link.status).toBe(200);
     expect(await accounts(owner.userId)).toEqual(["credential", "google"]);
+    // what the Account page shows: authClient.listAccounts()
+    const listed = await request(ctx.app).get("/api/auth/list-accounts").set("cookie", owner.cookie);
+    expect(listed.body.map((x: { providerId: string }) => x.providerId).sort()).toEqual(["credential", "google"]);
+    expect(JSON.stringify(listed.body)).not.toMatch(/accessToken|idToken|password/i);
 
     const viaGoogle = await googleSignIn(p);
     expect(viaGoogle.status).toBe(200);

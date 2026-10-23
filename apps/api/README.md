@@ -13,8 +13,8 @@ pnpm test                               # tsc --noEmit, then Vitest + supertest,
 ```
 
 The server refuses to start while `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `DASHBOARD_ORIGIN`,
-`INTERNAL_SECRET`, `RAG_SERVICE_URL`, `MODEL_KEY_ENCRYPTION_SECRET` (exactly 64 hex characters; changing it makes stored model keys unreadable), `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE` or `MAX_REQUESTS_PER_MONTH`
-is missing. Google/GitHub sign-in is skipped while its client id/secret are empty; email + password always works.
+`INTERNAL_SECRET`, `RAG_SERVICE_URL`, `MODEL_KEY_ENCRYPTION_SECRET` (exactly 64 hex characters; changing it makes stored model keys unreadable), `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE`, `MAX_REQUESTS_PER_MONTH` or `MAX_PROJECTS_PER_USER`
+is missing. With `NODE_ENV=production` it also refuses to start without `SMTP_URL` and `MAIL_FROM`. Google/GitHub sign-in is skipped while its client id/secret are empty; email + password always works.
 
 Other tunables live in `config.json` (ingest timeout, interrupted-ingest cutoff, global LLM cap per minute, upload
 limit, page sizes). Each can be overridden by an upper-snake env var, for example `INGEST_TIMEOUT_MS`.
@@ -128,6 +128,111 @@ await authClient.apiKey.delete({ keyId });                                 // re
 membership and the `apiKey` permission of the member's role; the creator/owner role has all of them). The new key
 authenticates `/v1/*` as that tenant straight away.
 
+## Accounts, verification and projects (Phase 4B-1)
+
+### Environment
+
+| Variable | Meaning |
+| --- | --- |
+| `MAX_PROJECTS_PER_USER` | Required. How many projects (organizations) one user may own. The next one is `422 project_limit`. Counts owned projects only, not ones the user was added to |
+| `SMTP_URL` | Optional in development, **required in production** (the API refuses to start without it). An nodemailer connection URL such as `smtps://user:pass@smtp.example.com:465`. Never logged |
+| `MAIL_FROM` | Sender address, for example `Lumen <no-reply@example.com>`. Required in production; defaults to `Lumen <no-reply@localhost>` elsewhere |
+
+With `SMTP_URL` empty and `NODE_ENV=development`, the verification email is **not sent**: the API log prints it
+(`mail not sent (no SMTP_URL, development): open the link below`, with the link in the `text` field). With `SMTP_URL`
+empty in any other environment nothing is sent and no link is logged. New tunables in `config.json` (env-overridable):
+`projectNameMaxChars` (60), `projectDescriptionMaxChars` (500), `verificationResendWindowSeconds` (60),
+`verificationResendMax` (3), `verificationEmailExpiresSeconds` (3600).
+
+### Email verification (email + password accounts)
+
+- `signUp.email` creates the user **unverified** and starts **no session** (`data.token` is `null`). A verification email is sent.
+  Signing up with an address that already exists returns the same success shape (no enumeration).
+- `signIn.email` for an unverified user fails with **HTTP 403, `error.code: "EMAIL_NOT_VERIFIED"`** and sends a fresh email.
+- The email contains `${BETTER_AUTH_URL}/api/auth/verify-email?token=...&callbackURL=...`. The `callbackURL` is always forced to
+  `${DASHBOARD_ORIGIN}/verify-email?status=verified`, whatever the client sent. The browser lands on:
+  - success: `/verify-email?status=verified` (the first click also signs the user in; the session cookie is set on the API origin)
+  - failure: `/verify-email?status=verified&error=<CODE>`. **If `error` is present it is a failure and `status` must be ignored.** Codes:
+    `TOKEN_EXPIRED` (older than `verificationEmailExpiresSeconds`), `INVALID_TOKEN` (tampered or malformed), `USER_NOT_FOUND`.
+- "Works once": the link is a signed token, so it cannot be revoked, but it is idempotent. Once the user is verified, another click only
+  redirects to `status=verified` again: no new session, nothing changes.
+- Resend: `POST /api/auth/send-verification-email`, at most `verificationResendMax` per `verificationResendWindowSeconds` per client
+  address (IP, as seen by Express; behind a proxy set Express's `trust proxy`). Over the limit: `429 { error: { code: "rate_limited" } }`.
+  The response is the same for unknown and already-verified addresses and no mail is sent for them. Not done: a per-email limit.
+
+```ts
+await authClient.signUp.email({ email, password, name, callbackURL: `${location.origin}/verify-email` }); // no session; show "check your email"
+const { error } = await authClient.signIn.email({ email, password });
+if (error?.code === "EMAIL_NOT_VERIFIED") { /* offer Resend; a new email was already sent */ }
+await authClient.sendVerificationEmail({ email, callbackURL: `${location.origin}/verify-email` });      // Resend; error.status === 429 when throttled
+```
+
+(`callbackURL` is only needed to pass Better Auth's origin check; the API overrides where the link lands.)
+
+### Linking Google and GitHub (no implicit linking)
+
+`account.accountLinking.disableImplicitLinking` is on. Signing in with a provider whose email matches an existing user does **not**
+link and does not sign in: the browser redirect flow returns to the error callback with `?error=account_not_linked` (the id-token API
+answers `401 { message: "account not linked", code: "OAUTH_LINK_ERROR" }`). A brand-new email can still sign up with a provider, and
+a provider sign-up needs no verification email. A signed-in user links a provider explicitly, even if the provider's email differs
+from the account email (`allowDifferentEmails`); the provider account of another user cannot be taken over.
+
+```ts
+await authClient.signIn.social({ provider: "google", callbackURL: `${origin}/projects`, errorCallbackURL: `${origin}/sign-in` }); // errors land on /sign-in?error=account_not_linked
+await authClient.linkSocial({ provider: "github", callbackURL: `${origin}/account` });   // signed in; redirects to the provider and back
+const { data: accounts } = await authClient.listAccounts();                              // [{ providerId: "credential" | "google" | "github", ... }], no tokens
+```
+
+Not exercised by tests: the real browser redirect round trip with Google or GitHub (tests use a fake provider through the id-token path,
+which runs the same linking rules).
+
+### Projects (`/api/dashboard/workspaces`)
+
+A project is a Better Auth organization and is the tenant. No new table: the description is `organization.metadata.description`.
+The routes below need a session but **not** an active project. Every other `/api/dashboard/*` route needs one and answers
+`403 no_active_project` ("Choose a project first.") when the session has none or the user is no longer a member of it
+(for example after deleting it); the web app then sends the user to `/projects`.
+
+| Endpoint | Behaviour |
+| --- | --- |
+| `GET /workspaces` | every project the user belongs to, oldest first |
+| `POST /workspaces` `{ name, description? }` | `201 { workspace }`. Name 1 to `projectNameMaxChars`, description up to `projectDescriptionMaxChars`; the slug is generated (`shop-support-3fa9c1`); the creator is owner; the active project is **not** changed. `422 project_limit` at `MAX_PROJECTS_PER_USER` owned projects |
+| `PATCH /workspaces/:id` `{ name?, description? }` | owner or admin (`403 forbidden` for a member); `description: null` clears it. `200 { workspace }` |
+| `DELETE /workspaces/:id` `{ name }` | owner only (`403 forbidden`); the body must repeat the project's exact name (`422 name_mismatch`). One transaction removes `model_calls`, `request_logs`, `tenant_models`, `chunks`, `documents`, the project's API keys, invitations, members, clears it as any session's active project, then deletes the organization. `204`. All or nothing |
+
+Another user's project id, an unknown id and a malformed id are all `404 not_found`. Validation errors are `422 invalid_request`.
+
+```json
+{ "workspaces": [{
+  "id": "k3V...", "name": "My project", "slug": "personal-<userId>", "description": null,
+  "role": "owner", "created_at": "2026-10-24T08:00:00.000Z", "documents": 2, "requests_this_month": 14
+}] }
+```
+
+`requests_this_month` is the calendar month in UTC, the same boundary as `GET /usage`.
+
+Rules enforced inside Better Auth itself, so they hold for the client's own calls too: `organization.create` is capped by
+`MAX_PROJECTS_PER_USER` (`422`, `code: "PROJECT_LIMIT"`), and `organization.delete` is refused (`403`, `USE_WORKSPACE_DELETE`) because it
+would leave the tenant's data behind. Use `DELETE /workspaces/:id`.
+
+Every new user, whichever way they sign up, gets one default project named "My project" (renamable, deletable). A user who deleted
+all projects gets a new default one at their next sign-in, so a signed-in user is never without a tenant at sign-in time.
+
+```ts
+await authClient.organization.setActive({ organizationId });   // activates a project (the web "enter project" step); 403 if not a member,
+                                                               // and Better Auth then clears the active project (tenant routes answer 403 no_active_project)
+await authClient.getSession({ query: { disableCookieCache: true } }); // re-read session.activeOrganizationId after switching; clear cached query data
+await authClient.organization.list();                          // same projects without counts; prefer GET /workspaces
+// create / rename / delete: fetch(`${API}/api/dashboard/workspaces`, { method: "POST", credentials: "include", ... }) as above
+```
+
+### Dev-only helpers
+
+`POST /dev/verify-email` `{ email }` with the `x-internal-secret` header (mounted with `/dev/api-key`, only when `NODE_ENV=development`)
+marks an email + password user's address verified (`204`), so e2e runs can sign up and sign in without a mailbox.
+`/dev/api-key` is unchanged and does not need a verified user. Test helpers: `createTenant` in `test/helpers/ctx.ts` marks the new user verified;
+`ctx.mails` captures every email the app tried to send (a fake transport).
+
 ## Dev-only API key
 
 No browser needed. Sign up with email + password (`POST /api/auth/sign-up/email`), then:
@@ -153,8 +258,8 @@ src/
   db/                pool.ts, the pg pool
   auth/              auth.ts, Better Auth setup (organizations, API keys)
   middleware/        rateLimit, requireApiKey, requireSession, tenantModels
-  routes/            HTTP handlers: chat, documents, feedback, models, usage, requests, analytics, dev
-  services/          non-HTTP logic: rag.ts (rag-service client), provider.ts (Test & save call), modelCalls.ts (attempts, cost), modelUsage.ts (per-model figures), sweep.ts
+  routes/            HTTP handlers: chat, documents, feedback, models, usage, requests, analytics, workspaces, dev
+  services/          non-HTTP logic: rag.ts (rag-service client), provider.ts (Test & save call), modelCalls.ts (attempts, cost), modelUsage.ts (per-model figures), mailer.ts (nodemailer / dev log), projects.ts, sweep.ts
   lib/               errors.ts (error shape), range.ts (7d/30d, UTC month), crypto.ts (AES-256-GCM), endpointGuard.ts (SSRF guard), logger.ts (key redaction)
   types/             types.ts, shared types (Deps)
 test/                mirrors src: auth, config, middleware, routes, services; helpers/ and global-setup.ts
