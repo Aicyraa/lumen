@@ -263,6 +263,18 @@ describe("estimated provider cost", () => {
     expect((await chat(a)).body.usage.cost_usd).toBe(0.01);
   });
 
+  it("ignores reported_cost_usd unless the attempt succeeded and the value is a number >= 0", async () => {
+    const id = await ctx.seedModel(a, "cheap", "priced"); await setPrice(id, 0.15, 0.6);
+    for (const over of [{ outcome: "error", reported_cost_usd: 9 }, { outcome: "timeout", reported_cost_usd: 9 }, { outcome: "rate_limited", reported_cost_usd: 9 },
+      { outcome: "ok", reported_cost_usd: -1 }, { outcome: "ok", reported_cost_usd: "9" }]) {
+      ctx.stub.handlers.query = () => answerWith([attempt({ tenant_model_id: id, ...over })]);
+      const res = await chat(a);
+      // a failed attempt that still reports tokens is priced by estimate; the reported value never wins
+      expect(res.body.usage.cost_usd, JSON.stringify(over)).toBe(0.000179);
+      expect((await calls(a.tenantId)).at(-1)!.cost_source).toBe("estimated");
+    }
+  });
+
   it("Try it returns the same estimated usage.cost_usd", async () => {
     const id = await ctx.seedModel(a, "cheap", "priced"); await setPrice(id, 0.15, 0.6);
     ctx.stub.handlers.query = () => answerWith([attempt({ tenant_model_id: id })]);
