@@ -1,9 +1,11 @@
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { organization } from "better-auth/plugins";
 import { apiKey } from "@better-auth/api-key";
 import type { Config } from "../config/config.js";
 import type { Pool } from "../db/pool.js";
 import type { Logger } from "pino";
+import { ownedProjectCount } from "../services/projects.js";
 import type { Mailer } from "../services/mailer.js";
 
 export type Auth = ReturnType<typeof createAuth>;
@@ -18,10 +20,10 @@ export function createAuth({ pool, config, mailer, log, social }: { pool: Pool; 
 
   // A signed-in user must always have a tenant: create the personal organization once, reuse it afterwards.
   let createOrganization: (body: { name: string; slug: string; userId: string }) => Promise<{ id: string }>;
-  async function ensurePersonalOrg(userId: string, name?: string | null): Promise<string> {
+  async function ensurePersonalOrg(userId: string): Promise<string> {
     const found = await pool.query(`SELECT "organizationId" FROM member WHERE "userId" = $1 ORDER BY "createdAt" LIMIT 1`, [userId]);
     if (found.rows[0]) return found.rows[0].organizationId;
-    const org = await createOrganization({ name: `${name || "My"} workspace`, slug: `personal-${userId.toLowerCase()}`, userId });
+    const org = await createOrganization({ name: "My project", slug: `personal-${userId.toLowerCase()}`, userId });
     return org.id;
   }
 
@@ -37,13 +39,12 @@ export function createAuth({ pool, config, mailer, log, social }: { pool: Pool; 
       accountLinking: { enabled: true, disableImplicitLinking: true, allowDifferentEmails: true },
     },
     databaseHooks: {
-      user: { create: { after: async (user) => { await ensurePersonalOrg(user.id, user.name); } } },
+      user: { create: { after: async (user) => { await ensurePersonalOrg(user.id); } } },
       // Also covers users created before the hook existed: no session ever starts without an active tenant.
       session: {
         create: {
           before: async (session) => {
-            const { rows } = await pool.query(`SELECT name FROM "user" WHERE id = $1`, [session.userId]);
-            const activeOrganizationId = await ensurePersonalOrg(session.userId, rows[0]?.name);
+            const activeOrganizationId = await ensurePersonalOrg(session.userId);
             return { data: { ...session, activeOrganizationId } };
           },
         },
@@ -68,7 +69,18 @@ export function createAuth({ pool, config, mailer, log, social }: { pool: Pool; 
       },
     },
     plugins: [
-      organization(),
+      organization({
+        organizationHooks: {
+          // The cap holds for every way of creating a project, including the client's organization.create call.
+          beforeCreateOrganization: async ({ user }) => {
+            if (user?.id && await ownedProjectCount(pool, user.id) >= config.maxProjectsPerUser) throw new APIError("UNPROCESSABLE_ENTITY", { message: "Project limit reached.", code: "PROJECT_LIMIT" });
+          },
+          // Deleting only the organization row would orphan the tenant's documents, logs and keys; DELETE /api/dashboard/workspaces/:id does it all in one transaction.
+          beforeDeleteOrganization: async () => {
+            throw new APIError("FORBIDDEN", { message: "Delete a project with DELETE /api/dashboard/workspaces/:id.", code: "USE_WORKSPACE_DELETE" });
+          },
+        },
+      }),
       // Keys belong to an organization (the tenant). The plugin's own per-key limit (default 10/day) is
       // off: the per-tenant limiter in middleware/rateLimit.js is the only one.
       apiKey({ references: "organization", rateLimit: { enabled: false } }),

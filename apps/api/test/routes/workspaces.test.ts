@@ -167,8 +167,8 @@ describe("activating a project", () => {
 
     const foreign = await as(u).auth("/organization/set-active", { organizationId: b.tenantId });
     expect(foreign.status).toBeGreaterThanOrEqual(400);
-    expect(await activeOf(u)).toBe(w.id);
-    expect(await names()).toEqual(["only-in-second.md"]);
+    expect(await activeOf(u)).toBeNull(); // Better Auth clears the active project on a refused switch: never B's, never the old one
+    expect((await as(u).get("/documents")).body.error.code).toBe("no_active_project");
   });
 
   it("a session whose active project the user no longer belongs to gets 403 no_active_project on every tenant route, but can still list and create projects", async () => {
@@ -207,13 +207,14 @@ describe("DELETE /api/dashboard/workspaces/:id", () => {
     const w = await create(u, "Doomed");
     await seed(u, w.id); await seed(u, u.tenantId); await seed(b, b.tenantId);
     const before = await counts(w.id);
+    const keepOwn = await counts(u.tenantId), keepOther = await counts(b.tenantId);
     expect(before).toMatchObject({ request_logs: 1, model_calls: 1, tenant_models: 1, chunks: 1, documents: 1, apikey: 1, member: 1, organization: 1 });
 
     const res = await as(u).delete(`/workspaces/${w.id}`, { name: "Doomed" });
     expect(res.status).toBe(204);
     expect(Object.values(await counts(w.id))).toEqual(TABLES.map(() => 0));
-    expect(await counts(u.tenantId)).toMatchObject({ request_logs: 1, model_calls: 1, tenant_models: 1, chunks: 1, documents: 1, apikey: 2, member: 1, organization: 1 });
-    expect(await counts(b.tenantId)).toMatchObject({ request_logs: 1, model_calls: 1, tenant_models: 1, chunks: 1, documents: 1, organization: 1 });
+    expect(await counts(u.tenantId)).toEqual(keepOwn); // the user's other project is untouched
+    expect(await counts(b.tenantId)).toEqual(keepOther); // so is another user's
     expect((await as(u).get("/workspaces")).body.workspaces.map((x: { id: string }) => x.id)).toEqual([u.tenantId]);
   });
 

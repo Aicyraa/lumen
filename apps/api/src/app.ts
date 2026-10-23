@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { toNodeHandler } from "better-auth/node";
-import { requireSession } from "./middleware/requireSession.js";
+import { requireSession, requireTenant } from "./middleware/requireSession.js";
 import { createLimiters } from "./middleware/rateLimit.js";
 import { loadTenantModels } from "./middleware/tenantModels.js";
 import { requireApiKey } from "./middleware/requireApiKey.js";
@@ -9,6 +9,7 @@ import { devRouter } from "./routes/dev.js";
 import { chatHandler } from "./routes/chat.js";
 import { feedbackHandler } from "./routes/feedback.js";
 import { modelsRouter } from "./routes/models.js";
+import { workspacesRouter } from "./routes/workspaces.js";
 import { usageHandler } from "./routes/usage.js";
 import { requestsRouter } from "./routes/requests.js";
 import { analyticsRouter } from "./routes/analytics.js";
@@ -45,7 +46,9 @@ export function createApp({ config, pool, auth, rag, log, resolveHost }: Omit<De
 
   // Dashboard API: session cookie, tenant = active organization.
   const dash = express.Router();
-  dash.use(requireSession(auth));
+  dash.use(requireSession(auth, pool));
+  dash.use("/workspaces", workspacesRouter(deps, auth)); // projects of the user; no active project needed
+  dash.use(requireTenant);
   dash.get("/documents", async (req, res) => {
     const { rows } = await pool.query(
       "SELECT id, filename, status, error, chunk_count, created_at FROM documents WHERE tenant_id = $1 ORDER BY created_at DESC", [req.tenantId]);
