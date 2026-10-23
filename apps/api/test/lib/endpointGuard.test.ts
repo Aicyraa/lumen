@@ -20,7 +20,8 @@ describe("assertEndpoint: scheme and shape", () => {
     await expect(assertEndpoint("http://localhost:11434/v1", { production: true })).rejects.toThrow();
   });
   it("does not make https://localhost or http://127.0.0.1 an exception", async () => {
-    await expect(assertEndpoint("https://localhost/v1", dev)).rejects.toThrow();
+    const loop = async () => [{ address: "127.0.0.1", family: 4 }]; // what the OS resolver says for localhost
+    await expect(assertEndpoint("https://localhost/v1", { production: false, resolve: loop })).rejects.toThrow();
     await expect(assertEndpoint("http://127.0.0.1:11434/v1", dev)).rejects.toThrow();
   });
 });
