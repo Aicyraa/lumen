@@ -46,3 +46,30 @@ describe("dev-only API key route", () => {
     } finally { await prod.close(); }
   });
 });
+
+describe("dev-only verify-email route (for e2e runs: sign up with email + password, then verify without a mailbox)", () => {
+  const devVerify = (app: Ctx["app"], secret: string | null, body: object) => {
+    const req = request(app).post("/dev/verify-email");
+    if (secret) req.set("x-internal-secret", secret);
+    return req.send(body);
+  };
+  const signUp = (email: string) => request(ctx.app).post("/api/auth/sign-up/email").set("origin", ctx.config.dashboardOrigin).send({ email, password: "correct-horse-battery", name: "E2E" });
+  const signIn = (email: string) => request(ctx.app).post("/api/auth/sign-in/email").set("origin", ctx.config.dashboardOrigin).send({ email, password: "correct-horse-battery" });
+
+  it("marks the user's email verified so password sign-in works, and keeps /dev/api-key working for that user", async () => {
+    const email = `e2e-${Date.now()}@example.test`;
+    await signUp(email);
+    expect((await signIn(email)).status).toBe(403);
+    const res = await devVerify(ctx.app, ctx.config.internalSecret, { email });
+    expect(res.status).toBe(204);
+    expect((await signIn(email)).status).toBe(200);
+    expect((await devKey(ctx.app, ctx.config.internalSecret, { email })).status).toBe(200);
+  });
+
+  it("needs the internal secret and an existing user, and is not mounted unless devRoutes is on", async () => {
+    expect((await devVerify(ctx.app, null, { email: a.email })).status).toBe(401);
+    expect((await devVerify(ctx.app, ctx.config.internalSecret, { email: "nobody@example.test" })).status).toBe(404);
+    const prod = await makeCtx({ devRoutes: false });
+    try { expect((await devVerify(prod.app, prod.config.internalSecret, { email: a.email })).status).toBe(404); } finally { await prod.close(); }
+  });
+});

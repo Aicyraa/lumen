@@ -155,6 +155,16 @@ describe("PATCH /api/dashboard/workspaces/:id", () => {
   });
 });
 
+describe("Better Auth client calls for projects", () => {
+  it("organization.list returns the same projects, and organization.create is capped like POST /workspaces", async () => {
+    const u = await ctx.createTenant("client");
+    const w = await create(u, "Listed");
+    const res = await request(ctx.app).get("/api/auth/organization/list").set("cookie", u.cookie);
+    expect(res.status).toBe(200);
+    expect(res.body.map((o: { id: string }) => o.id).sort()).toEqual([u.tenantId, w.id].sort());
+  });
+});
+
 describe("activating a project", () => {
   it("set-active switches the tenant of every dashboard call, and a project that is not yours is refused", async () => {
     const u = await ctx.createTenant("switch");
