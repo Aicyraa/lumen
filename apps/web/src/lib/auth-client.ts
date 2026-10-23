@@ -1,8 +1,11 @@
 import { apiKeyClient } from "@better-auth/api-key/client";
 import { organizationClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
+import { apiBase } from "./config";
+import { guardedFetch } from "./guardedFetch";
 
 export const authClient = createAuthClient({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: apiBase,
+  fetchOptions: { customFetchImpl: guardedFetch },
   plugins: [organizationClient(), apiKeyClient()],
 });

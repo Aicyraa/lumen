@@ -37,3 +37,9 @@ pnpm bootstrap      # rag-service: create .venv and install requirements
 pnpm test           # every app's tests via turbo
 pnpm dev            # every app's dev server
 ```
+
+## Dashboard (apps/web)
+
+`pnpm --filter @lumen/web dev` serves the dashboard at http://localhost:5173 (or run everything with `pnpm dev`). It talks to the API at `VITE_API_URL`.
+
+Vite reads environment variables only from `apps/web/` (`apps/web/.env`), not from the repo-root `.env`, and only the ones that start with `VITE_` reach the browser. In development `VITE_API_URL` defaults to `http://localhost:3000`, so `cp apps/web/.env.example apps/web/.env` is optional; do it when the API runs elsewhere. A production build has no default: `vite build` output with `VITE_API_URL` unset shows a "Missing VITE_API_URL" screen instead of the app. The API's `DASHBOARD_ORIGIN` must be the dashboard's origin for sign-in cookies and CORS to work.
