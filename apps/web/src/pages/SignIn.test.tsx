@@ -9,17 +9,18 @@ const social = vi.fn();
 const signInEmail = vi.fn();
 const signUpEmail = vi.fn();
 const useSession = vi.fn();
+const resend = vi.fn();
 vi.mock("../lib/auth-client", () => ({
-  authClient: { useSession: () => useSession(), signIn: { social: (a: unknown) => social(a), email: (a: unknown) => signInEmail(a) }, signUp: { email: (a: unknown) => signUpEmail(a) } },
+  authClient: { useSession: () => useSession(), signIn: { social: (a: unknown) => social(a), email: (a: unknown) => signInEmail(a) }, signUp: { email: (a: unknown) => signUpEmail(a) }, sendVerificationEmail: (a: unknown) => resend(a) },
 }));
 
 import { SignIn } from "./SignIn";
 
 const client = new QueryClient();
-const page = () =>
+const page = (route = "/signin") =>
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={["/signin"]}>
+      <MemoryRouter initialEntries={[route]}>
         <Routes>
           <Route path="/signin" element={<SignIn />} />
           <Route path="/projects" element={<div>dashboard home</div>} />
@@ -29,7 +30,7 @@ const page = () =>
   );
 
 describe("SignIn", () => {
-  beforeEach(() => { [social, signInEmail, signUpEmail, useSession].forEach((f) => f.mockReset()); useSession.mockReturnValue({ data: null, isPending: false }); });
+  beforeEach(() => { [social, signInEmail, signUpEmail, useSession, resend].forEach((f) => f.mockReset()); useSession.mockReturnValue({ data: null, isPending: false }); });
 
   it("starts Google and GitHub sign-in with a callback to Projects", async () => {
     page();
@@ -90,5 +91,69 @@ describe("SignIn", () => {
     await user.click(screen.getByRole("button", { name: "Sign in" }));
     await screen.findByText("dashboard home");
     expect(client.getQueryCache().getAll()).toHaveLength(0);
+  });
+
+  async function signUpAs(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole("button", { name: "Create an account" }));
+    await user.type(screen.getByLabelText("Name"), "Maya");
+    await user.type(screen.getByLabelText("Email"), "maya@campus.test");
+    await user.type(screen.getByLabelText("Password"), "correct horse 123");
+    await user.click(screen.getByRole("button", { name: "Sign up" }));
+  }
+
+  it("after sign-up shows 'Check your email' with the address and does not enter the dashboard", async () => {
+    signUpEmail.mockResolvedValue({ data: { token: null, user: { id: "u" } }, error: null });
+    page();
+    await signUpAs(userEvent.setup());
+    expect(await screen.findByRole("heading", { name: "Check your email" })).toBeInTheDocument();
+    expect(screen.getByText(/maya@campus.test/)).toBeInTheDocument();
+    expect(screen.queryByText("dashboard home")).not.toBeInTheDocument();
+  });
+
+  it("Resend sends a new verification email and says so", async () => {
+    signUpEmail.mockResolvedValue({ data: { token: null }, error: null });
+    resend.mockResolvedValue({ data: { status: true }, error: null });
+    page();
+    const user = userEvent.setup();
+    await signUpAs(user);
+    await user.click(await screen.findByRole("button", { name: "Resend email" }));
+    expect(resend).toHaveBeenCalledWith({ email: "maya@campus.test", callbackURL: `${window.location.origin}/verify-email` });
+    expect(await screen.findByRole("status")).toHaveTextContent(/sent/i);
+  });
+
+  it("Resend handles the 429 rate limit", async () => {
+    signUpEmail.mockResolvedValue({ data: { token: null }, error: null });
+    resend.mockResolvedValue({ data: null, error: { status: 429, message: "Too many requests" } });
+    page();
+    const user = userEvent.setup();
+    await signUpAs(user);
+    await user.click(await screen.findByRole("button", { name: "Resend email" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/too many|wait/i);
+  });
+
+  it("signing in with an unverified account shows the email_not_verified state with Resend", async () => {
+    signInEmail.mockResolvedValue({ data: null, error: { status: 403, code: "EMAIL_NOT_VERIFIED", message: "Email not verified" } });
+    resend.mockResolvedValue({ data: {}, error: null });
+    page();
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText("Email"), "maya@campus.test");
+    await user.type(screen.getByLabelText("Password"), "correct horse 123");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(await screen.findByRole("heading", { name: "Verify your email" })).toBeInTheDocument();
+    expect(screen.queryByText("dashboard home")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Resend email" }));
+    expect(resend).toHaveBeenCalledWith({ email: "maya@campus.test", callbackURL: `${window.location.origin}/verify-email` });
+  });
+
+  it("explains account_not_linked", () => {
+    page("/signin?error=account_not_linked");
+    expect(screen.getByRole("alert")).toHaveTextContent(/sign in with your original method, then link this one in Account settings/i);
+  });
+
+  it("has Google, GitHub and mail icons next to the sign-in options", () => {
+    page();
+    expect(screen.getByRole("button", { name: "Continue with Google" }).querySelector("svg")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Continue with GitHub" }).querySelector("svg")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Sign in" }).querySelector("svg")).not.toBeNull();
   });
 });
