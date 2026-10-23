@@ -17,7 +17,7 @@ const isUuid = (v: unknown): v is string => typeof v === "string" && z.uuid().sa
 
 // Shared by POST /v1/chat (API key) and POST /api/dashboard/try (session). Tenant is req.tenantId.
 export function chatHandler({ pool, rag, config, log }: Deps, { tryIt = false } = {}): RequestHandler {
-  const body = z.object({ query: z.string().min(1).max(config.queryMaxChars), session_id: z.string().max(200).optional() });
+  const body = z.object({ query: z.string().min(1).max(config.queryMaxChars), session_id: z.string().max(config.sessionIdMaxChars).optional() });
 
   // Ids and scores only: never chunk text, never the answer (section 5).
   const insertLog = (req: Request, id: string | null, q: z.infer<typeof body>, r: LogInput) =>
@@ -44,14 +44,14 @@ export function chatHandler({ pool, rag, config, log }: Deps, { tryIt = false } 
     const known = req.tenantModels?.known ?? new Map<string, KnownModel>();
     // Attempts are bookkeeping: a failure here must not replace the answer or the real error.
     const book = async (requestId: string, attempts: Attempt[]) =>
-      recordAttempts(pool, req.tenantId, requestId, attempts).catch((e: Error) => log.error({ err: e.message }, "model_calls write failed"));
+      recordAttempts(pool, req.tenantId, requestId, attempts, config).catch((e: Error) => log.error({ err: e.message }, "model_calls write failed"));
 
     let result: ChatResponse;
     try {
       result = await rag.query(req.tenantId, q.query, q.session_id, { models: req.tenantModels?.payload, includeSnippets: tryIt });
     } catch (err) {
       const failedId = randomUUID();
-      const { attempts, total } = priceAttempts(err instanceof RagError ? err.attempts : [], known);
+      const { attempts, total } = priceAttempts(err instanceof RagError ? err.attempts : [], known, config);
       await insertLog(req, failedId, q, { status: "provider_error", usage: { latency_ms: Date.now() - started }, cost: total })
         .catch((e: Error) => log.error({ err: e.message }, "request_logs insert failed"));
       await book(failedId, attempts);
@@ -61,7 +61,7 @@ export function chatHandler({ pool, rag, config, log }: Deps, { tryIt = false } 
       if (err instanceof RagError && err.code === "no_models_configured") throw new ApiError(422, "no_models_configured", "No models are configured. Add a model in the Models tab.");
       throw new ApiError(502, "provider_error", "The language model provider failed. Try again shortly.");
     }
-    const { attempts, total } = priceAttempts(result.attempts ?? [], known);
+    const { attempts, total } = priceAttempts(result.attempts ?? [], known, config);
     // A failed log write must not throw away an answer that was already paid for.
     await insertLog(req, result.request_id, q, { ...result, cost: total }).catch((err) => log.error({ err: err.message }, "request_logs insert failed"));
     await book(result.request_id, attempts);

@@ -57,7 +57,7 @@ export async function assertEndpoint(raw: string, o: GuardOptions): Promise<URL>
 // POST that re-checks the address at connect time (via `lookup`), so a DNS answer that changes between
 // assertEndpoint and connect (rebinding) is still refused. Redirects are never followed.
 // shortcut: one overall timeout (plus socket idle timeout) instead of separate connect/read timers.
-export async function guardedPost(raw: string, o: GuardOptions & { timeoutMs: number; headers: Record<string, string>; body: string }):
+export async function guardedPost(raw: string, o: GuardOptions & { timeoutMs: number; maxBodyBytes: number; headers: Record<string, string>; body: string }):
   Promise<{ status: number; headers: Record<string, string>; body: string }> {
   const url = await assertEndpoint(raw, o);
   const resolve = o.resolve ?? defaultResolve;
@@ -74,7 +74,7 @@ export async function guardedPost(raw: string, o: GuardOptions & { timeoutMs: nu
       headers: { ...o.headers, "content-length": Buffer.byteLength(o.body) },
     }, (res) => {
       const chunks: Buffer[] = []; let size = 0;
-      res.on("data", (c: Buffer) => { size += c.length; if (size <= 65536) chunks.push(c); }); // cap what we keep
+      res.on("data", (c: Buffer) => { size += c.length; if (size <= o.maxBodyBytes) chunks.push(c); }); // cap what we keep
       res.on("end", () => {
         clearTimeout(timer);
         resolveP({ status: res.statusCode ?? 0, headers: res.headers as Record<string, string>, body: Buffer.concat(chunks).toString("utf8") });

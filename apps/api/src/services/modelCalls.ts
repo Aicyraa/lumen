@@ -1,14 +1,16 @@
 // Turns the Python service's internal `attempts` into model_calls rows, tenant_models status/rate limits and
 // the tenant's estimated provider cost. Everything the service sends is validated: it is never trusted with an id.
 import { z } from "zod";
+import type { Config } from "../config/config.js";
 import type { Pool } from "../db/pool.js";
 import type { RawAttempt } from "./rag.js";
 
+type Limits = Pick<Config, "modelAttemptsMax" | "rateLimitHeadersMax" | "providerNameMaxChars" | "modelIdMaxChars">;
 export interface KnownModel { provider: string; model_id: string; tier: string; inputPrice: number | null; outputPrice: number | null }
 
-const attemptSchema = z.object({
-  provider: z.string().max(100),
-  model_id: z.string().max(300),
+const attemptSchema = (c: Limits) => z.object({
+  provider: z.string().max(c.providerNameMaxChars),
+  model_id: z.string().max(c.modelIdMaxChars),
   tenant_model_id: z.string().nullish().catch(null),
   tier: z.enum(["cheap", "expensive", "fallback", "default"]).catch("default"),
   outcome: z.enum(["ok", "error", "timeout", "rate_limited"]).catch("error"),
@@ -18,15 +20,16 @@ const attemptSchema = z.object({
   rate_limits: z.record(z.string(), z.union([z.string(), z.number()])).nullish().catch(null),
   reported_cost_usd: z.number().finite().nonnegative().nullish().catch(null),
 });
-export type Attempt = z.infer<typeof attemptSchema> & { cost_usd: number | null; cost_source: "estimated" | "provider" | null; known?: string };
+export type Attempt = z.infer<ReturnType<typeof attemptSchema>> & { cost_usd: number | null; cost_source: "estimated" | "provider" | null; known?: string };
 
 const round6 = (n: number) => Math.round(n * 1e6) / 1e6; // NUMERIC(12, 6)
 
 // Parses, links to the tenant's own models only, and prices each attempt. Returns the attempts and the request's total.
-export function priceAttempts(raw: RawAttempt[], known: Map<string, KnownModel>): { attempts: Attempt[]; total: number | null } {
+export function priceAttempts(raw: RawAttempt[], known: Map<string, KnownModel>, limits: Limits): { attempts: Attempt[]; total: number | null } {
   const attempts: Attempt[] = [];
-  for (const r of raw.slice(0, 50)) {
-    const p = attemptSchema.safeParse(r);
+  const schema = attemptSchema(limits);
+  for (const r of raw.slice(0, limits.modelAttemptsMax)) {
+    const p = schema.safeParse(r);
     if (!p.success) continue;
     const a = p.data;
     const id = a.tenant_model_id && known.has(a.tenant_model_id) ? a.tenant_model_id : undefined; // another tenant's id is ignored
@@ -46,7 +49,7 @@ export function priceAttempts(raw: RawAttempt[], known: Map<string, KnownModel>)
 }
 
 // One model_calls row per attempt, then each of the tenant's models gets its status and last-seen limits.
-export async function recordAttempts(pool: Pool, tenantId: string, requestId: string, attempts: Attempt[]) {
+export async function recordAttempts(pool: Pool, tenantId: string, requestId: string, attempts: Attempt[], cfg: Pick<Limits, "rateLimitHeadersMax">) {
   for (const a of attempts) {
     await pool.query(
       `INSERT INTO model_calls (tenant_id, request_id, tenant_model_id, provider, model_id, tier, outcome, tokens_in, tokens_out, latency_ms, cost_usd, cost_source)
@@ -57,7 +60,7 @@ export async function recordAttempts(pool: Pool, tenantId: string, requestId: st
   for (const a of attempts) {
     if (!a.known) continue;
     const prev = last.get(a.known);
-    const limits = a.rate_limits && Object.keys(a.rate_limits).length ? Object.fromEntries(Object.entries(a.rate_limits).slice(0, 30)) : (prev?.limits ?? null);
+    const limits = a.rate_limits && Object.keys(a.rate_limits).length ? Object.fromEntries(Object.entries(a.rate_limits).slice(0, cfg.rateLimitHeadersMax)) : (prev?.limits ?? null);
     last.set(a.known, { ok: a.outcome === "ok", limits });
   }
   for (const [id, s] of last) {

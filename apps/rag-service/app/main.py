@@ -4,7 +4,7 @@ import os
 import tempfile
 import time
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from types import SimpleNamespace
 from pathlib import Path
 from typing import Annotated
 from uuid import UUID, uuid4
@@ -23,7 +23,7 @@ from app.config import load_config, router_cfg
 from app.embeddings import embed  # loads the model at import, before the server starts listening
 from app.env import load_env
 from app.extract import extract_text
-from app.llm import ProviderError, build_prompt, make_llm
+from app.llm import build_prompt, call_model
 from app.router import decide
 
 load_env()  # DATABASE_URL etc. from the repo-root .env; real environment variables win
@@ -31,29 +31,17 @@ load_env()  # DATABASE_URL etc. from the repo-root .env; real environment variab
 log = logging.getLogger("lumen.rag")  # never log secrets, keys or document text
 
 
-@dataclass
-class Settings:
-    internal_secret: str
-    llm_base_url: str
-    llm_api_key: str
-    model_cheap: str
-    model_expensive: str
-
-
-def load_settings() -> Settings:
-    names = ["INTERNAL_SECRET", "LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL_CHEAP", "LLM_MODEL_EXPENSIVE", "DATABASE_URL"]
+def load_settings() -> dict:
+    names = ["INTERNAL_SECRET", "DATABASE_URL"]
     missing = [n for n in names if not os.environ.get(n)]
     if missing:  # names only: never print values
         raise RuntimeError(f"missing required environment variables: {', '.join(missing)}")
-    return Settings(*(os.environ[n] for n in names[:5]))
+    return {"internal_secret": os.environ["INTERNAL_SECRET"]}
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    settings = load_settings()  # refuse to start when anything is missing
-    app.state.settings = settings
-    models = {"cheap": settings.model_cheap, "expensive": settings.model_expensive}
-    app.state.llm = make_llm(settings.llm_base_url, settings.llm_api_key, models, load_config()["llm"])
+    app.state.settings = SimpleNamespace(**load_settings())  # refuse to start when anything is missing
     yield
 
 
@@ -97,8 +85,8 @@ def require_secret(request: Request, x_internal_secret: Annotated[str | None, He
         raise ApiError(401, "unauthorized", "Missing or invalid X-Internal-Secret.")
 
 
-def get_llm(request: Request):
-    return request.app.state.llm
+def get_caller():
+    return lambda m, tier, system, user: call_model(m, tier, system, user, load_config()["llm"], False)
 
 
 internal = APIRouter(prefix="/internal", dependencies=[Depends(require_secret)])
@@ -158,7 +146,7 @@ def query_response(started: float, answer: str, sources: list, route: dict, toke
 
 
 @internal.post("/query")
-def query(req: QueryRequest, llm=Depends(get_llm)):
+def query(req: QueryRequest, caller=Depends(get_caller)):
     # plain def: embedding and database calls block, so FastAPI runs this in its thread pool
     started = time.perf_counter()
     messages = load_config()["messages"]
@@ -174,10 +162,7 @@ def query(req: QueryRequest, llm=Depends(get_llm)):
     route = {**decide(req.query, best_score, cfg), "top_score": best_score}
     hits = store.search(req.tenant_id, qvec, route["k"])
     system, user = build_prompt(req.query, [content for _, _, content, _ in hits])
-    try:
-        result = llm.complete(route["model_tier"], system, user)
-    except ProviderError:
-        raise ApiError(502, "provider_error", "The language model provider failed. Try again shortly.")
+    result = caller({"provider": "openai_compatible", "model_id": "x", "endpoint_url": "https://x.test", "api_key": "k", "tenant_model_id": None}, "default", system, user)
     sources = [{"document_id": doc_id, "chunk_id": chunk_id, "score": score} for chunk_id, doc_id, _, score in hits]
     log.info("query tenant=%s tier=%s k=%d top=%.3f", req.tenant_id, route["model_tier"], route["k"], best_score)
     return query_response(started, result.text, sources, route, result.tokens_in, result.tokens_out)

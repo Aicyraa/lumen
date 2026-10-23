@@ -64,7 +64,7 @@ describe("guardedPost", () => {
     port = (server.address() as { port: number }).port;
   });
   afterAll(() => { server.closeAllConnections(); server.close(); });
-  const opts = { production: false, timeoutMs: 400, headers: {}, body: "{}" };
+  const opts = { production: false, timeoutMs: 400, maxBodyBytes: 4096, headers: {}, body: "{}" };
 
   it("posts and returns status, headers and body", async () => {
     const res = await guardedPost(`http://localhost:${port}/ok`, opts);
@@ -88,7 +88,7 @@ describe("guardedPost", () => {
   it("re-checks the address at connect time (DNS rebinding): a name that later resolves to a private IP is refused", async () => {
     let calls = 0;
     const rebinding = async () => (++calls === 1 ? [{ address: "93.184.216.34", family: 4 }] : [{ address: "127.0.0.1", family: 4 }]);
-    const o = { production: true, resolve: rebinding, timeoutMs: 400, headers: {}, body: "{}" };
+    const o = { production: true, resolve: rebinding, timeoutMs: 400, maxBodyBytes: 4096, headers: {}, body: "{}" };
     await assertEndpoint("https://rebind.example.com/v1", o);
     await expect(guardedPost("https://rebind.example.com/v1", o)).rejects.toThrow(/private|internal|not allowed/i);
   });

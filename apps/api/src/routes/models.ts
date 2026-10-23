@@ -10,23 +10,22 @@ import "../types/types.js";
 const TIERS = ["cheap", "expensive", "fallback"] as const;
 // Never select api_key_encrypted here: the list and every response are built from these columns only.
 const PUBLIC = "id, tier, position, provider, model_id, endpoint_url, key_hint, status, input_price_per_1m::float8 AS input_price_per_1m, output_price_per_1m::float8 AS output_price_per_1m";
-// tenant-entered price per 1M tokens (their own provider's rate, used only for the estimated provider cost); NUMERIC(12, 6)
-const price = z.number().min(0).max(999999);
 const RANGES: Record<string, string> = { "7d": "7 days", "30d": "30 days" };
-
-const addBody = z.object({
-  provider: z.enum(["openai", "anthropic", "google", "openai_compatible"]),
-  model_id: z.string().trim().min(1).max(200),
-  endpoint_url: z.string().trim().min(1).max(2048),
-  api_key: z.string().trim().min(8).max(1000), // min 8 so the masked hint can never reveal the whole key
-  tier: z.enum(TIERS),
-  input_price_per_1m: price.nullish(),
-  output_price_per_1m: price.nullish(),
-}); // unknown fields (such as tenant_id) are ignored: the tenant is always req.tenantId
 
 // Dashboard Models tab. Every statement filters by tenant_id; another tenant's id is a 404.
 export function modelsRouter({ pool, config }: Deps) {
   const r = Router();
+  // tenant-entered price per 1M tokens (their own provider's rate, used only for the estimated provider cost); NUMERIC(12, 6)
+  const price = z.number().min(0).max(config.maxPricePerMillion);
+  const addBody = z.object({
+    provider: z.enum(["openai", "anthropic", "google", "openai_compatible"]),
+    model_id: z.string().trim().min(1).max(config.modelIdMaxChars),
+    endpoint_url: z.string().trim().min(1).max(config.endpointUrlMaxChars),
+    api_key: z.string().trim().min(config.apiKeyMinChars).max(config.apiKeyMaxChars), // the minimum keeps the masked hint from revealing the key
+    tier: z.enum(TIERS),
+    input_price_per_1m: price.nullish(),
+    output_price_per_1m: price.nullish(),
+  }); // unknown fields (such as tenant_id) are ignored: the tenant is always req.tenantId
 
   async function grouped(tenantId: string) {
     const { rows } = await pool.query(`SELECT ${PUBLIC} FROM tenant_models WHERE tenant_id = $1 ORDER BY tier, position`, [tenantId]);

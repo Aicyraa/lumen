@@ -3,7 +3,7 @@
 // publish OpenAI-compatible endpoints). The key goes only into this request and never into a message.
 import type { Config } from "../config/config.js";
 import { ApiError } from "../lib/errors.js";
-import { EndpointError, guardedPost } from "../lib/endpointGuard.js";
+import { EndpointError, guardedPost, type GuardOptions } from "../lib/endpointGuard.js";
 
 export interface ModelTarget { provider: string; model_id: string; endpoint_url: string; api_key: string }
 
@@ -14,13 +14,13 @@ const why = (status: number) =>
     : `The provider answered with status ${status}.`;
 
 // One tiny completion. Throws ApiError 422 model_test_failed (never including the key or the provider's body).
-export async function testCompletion(m: ModelTarget, config: Pick<Config, "production" | "modelTestTimeoutMs">): Promise<void> {
+export async function testCompletion(m: ModelTarget, config: Pick<Config, "production" | "modelTestTimeoutMs" | "modelTestMaxTokens" | "endpointResponseMaxBytes">, resolve?: GuardOptions["resolve"]): Promise<void> {
   // OpenAI's newer models reject max_tokens; other OpenAI-compatible servers still expect it.
-  const limit = m.provider === "openai" ? { max_completion_tokens: 16 } : { max_tokens: 16 };
+  const limit = m.provider === "openai" ? { max_completion_tokens: config.modelTestMaxTokens } : { max_tokens: config.modelTestMaxTokens };
   let res;
   try {
     res = await guardedPost(`${m.endpoint_url.replace(/\/+$/, "")}/chat/completions`, {
-      production: config.production, timeoutMs: config.modelTestTimeoutMs,
+      production: config.production, resolve, timeoutMs: config.modelTestTimeoutMs, maxBodyBytes: config.endpointResponseMaxBytes,
       headers: { "content-type": "application/json", authorization: `Bearer ${m.api_key}` },
       body: JSON.stringify({ model: m.model_id, messages: [{ role: "user", content: "Reply with OK." }], ...limit }),
     });
