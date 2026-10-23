@@ -74,3 +74,31 @@ def test_another_tenants_document_looks_like_a_missing_one(client):
 def test_document_id_must_be_a_uuid(client):
     resp = post(client, "tenant_a", "not-a-uuid")
     assert resp.status_code == 422 and resp.json()["error"]["code"] == "invalid_request"
+
+
+def test_nul_byte_in_text_is_422_no_text_extracted_and_writes_nothing(client):
+    doc_id = store.add_document("tenant_a", "nul.txt")
+    resp = post(client, "tenant_a", doc_id, "nul.txt", b"hello\x00world " * 20)
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "no_text_extracted"  # Postgres text cannot hold NUL
+    assert chunk_count("tenant_a", doc_id) == 0
+
+
+def test_ingesting_the_same_document_twice_keeps_chunk_count(client):
+    doc_id = store.add_document("tenant_a", "notes.txt")
+    first = post(client, "tenant_a", doc_id).json()["chunk_count"]
+    second = post(client, "tenant_a", doc_id).json()["chunk_count"]
+    assert second == first
+    assert chunk_count("tenant_a", doc_id) == first
+    stored = db_rows("SELECT chunk_count FROM documents WHERE tenant_id = %s AND id = %s", "tenant_a", doc_id)
+    assert stored == [(first,)]
+
+
+def test_reingest_does_not_touch_other_documents_chunks(client):
+    keep = store.add_document("tenant_a", "keep.txt")
+    other = store.add_document("tenant_a", "other.txt")
+    post(client, "tenant_a", keep)
+    kept = chunk_count("tenant_a", keep)
+    post(client, "tenant_a", other)
+    post(client, "tenant_a", other)
+    assert chunk_count("tenant_a", keep) == kept
