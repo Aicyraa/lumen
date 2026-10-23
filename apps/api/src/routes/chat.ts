@@ -1,12 +1,22 @@
+import type { Request, RequestHandler } from "express";
 import { z } from "zod";
 import { ApiError } from "../errors.js";
+import type { ChatResponse } from "../rag.js";
+import type { Deps } from "../types.js";
+
+interface LogInput {
+  sources?: Partial<ChatResponse["sources"][number]>[];
+  route?: Partial<ChatResponse["route"]>;
+  usage?: Partial<ChatResponse["usage"]>;
+  status?: string;
+}
 
 // Shared by POST /v1/chat (API key) and POST /api/dashboard/try (session). Tenant is req.tenantId.
-export function chatHandler({ pool, rag, config, log }) {
+export function chatHandler({ pool, rag, config, log }: Deps): RequestHandler {
   const body = z.object({ query: z.string().min(1).max(config.queryMaxChars), session_id: z.string().max(200).optional() });
 
   // Ids and scores only: never chunk text, never the answer (section 5).
-  const insertLog = (req, id, q, r) =>
+  const insertLog = (req: Request, id: string | null, q: z.infer<typeof body>, r: LogInput) =>
     pool.query(
       `INSERT INTO request_logs (id, tenant_id, api_key_id, session_id, query, sources, model_tier, k, escalated,
                                  difficulty, top_score, tokens_in, tokens_out, cost_usd, latency_ms, status)
@@ -27,14 +37,14 @@ export function chatHandler({ pool, rag, config, log }) {
     if (n >= config.maxRequestsPerMonth) throw new ApiError(429, "monthly_limit", "Monthly request allowance reached.");
 
     const started = Date.now();
-    let result;
+    let result: ChatResponse;
     try {
       result = await rag.query(req.tenantId, q.query, q.session_id);
     } catch (err) {
       // a logging failure must not replace the real error
       await insertLog(req, null, q, { status: "provider_error", usage: { latency_ms: Date.now() - started } })
-        .catch((e) => log.error({ err: e.message }, "request_logs insert failed"));
-      log.warn({ code: err.code }, "chat failed");
+        .catch((e: Error) => log.error({ err: e.message }, "request_logs insert failed"));
+      log.warn({ code: (err as { code?: string }).code }, "chat failed");
       throw err instanceof ApiError ? err : new ApiError(502, "provider_error", "The language model provider failed. Try again shortly.");
     }
     // A failed log write must not throw away an answer that was already paid for.

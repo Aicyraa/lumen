@@ -1,9 +1,11 @@
+import type { RequestHandler } from "express";
 import { z } from "zod";
+import type { Deps } from "../types.js";
 import { ApiError } from "../errors.js";
 
 const body = z.object({ request_id: z.uuid(), rating: z.union([z.literal(1), z.literal(-1)]) });
 
-export const feedbackHandler = ({ pool }) => async (req, res) => {
+export const feedbackHandler = ({ pool }: Deps): RequestHandler => async (req, res) => {
   const parsed = body.safeParse(req.body);
   if (!parsed.success) throw new ApiError(422, "invalid_request", `Invalid request: ${parsed.error.issues[0].path.join(".") || "body"}.`);
   const { rowCount } = await pool.query(

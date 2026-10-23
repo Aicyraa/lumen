@@ -2,18 +2,18 @@ import "./env.js";
 import pino from "pino";
 import { createApp } from "./app.js";
 import { createAuth } from "./auth.js";
-import { loadConfig } from "./config.js";
+import { loadConfig, type Config } from "./config.js";
 import { createPool } from "./db.js";
 import { createRagClient } from "./rag.js";
 import { sweepInterrupted } from "./sweep.js";
 
 const log = pino({ redact: ["req.headers.authorization", "req.headers.cookie", "req.headers['x-api-key']"] });
 
-let config;
+let config: Config;
 try {
   config = loadConfig();
 } catch (err) {
-  log.fatal(err.message); // names only, never values
+  log.fatal((err as Error).message); // names only, never values
   process.exit(1);
 }
 

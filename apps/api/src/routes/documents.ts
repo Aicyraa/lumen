@@ -3,16 +3,19 @@ import { mkdirSync } from "node:fs";
 import { unlink } from "node:fs/promises";
 import { extname } from "node:path";
 import { Router } from "express";
+import type { Request, Response } from "express";
 import multer from "multer";
 import { z } from "zod";
 import { ApiError } from "../errors.js";
+import type { Deps } from "../types.js";
+import "../types.js";
 
 const ALLOWED = new Set([".pdf", ".txt", ".md"]);
-const isUuid = (v) => z.uuid().safeParse(v).success;
+const isUuid = (v: string) => z.uuid().safeParse(v).success;
 const notFound = () => new ApiError(404, "not_found", "Document not found.");
 
 // Shared by /v1/documents (API key) and /api/dashboard/documents (session): the tenant is req.tenantId.
-export function documentsRouter({ pool, rag, config, log, pending }) {
+export function documentsRouter({ pool, rag, config, log, pending }: Deps) {
   const r = Router();
   mkdirSync(config.uploadDir, { recursive: true });
   const uploadFile = multer({
@@ -24,16 +27,16 @@ export function documentsRouter({ pool, rag, config, log, pending }) {
         : cb(new ApiError(415, "unsupported_type", "Only PDF, .txt and .md files are supported.")),
   }).single("file");
 
-  const parseUpload = (req, res) =>
-    new Promise((resolve, reject) =>
-      uploadFile(req, res, (err) => {
-        if (err?.code === "LIMIT_FILE_SIZE") err = new ApiError(413, "file_too_large", "The file is larger than the upload limit.");
+  const parseUpload = (req: Request, res: Response) =>
+    new Promise<void>((resolve, reject) =>
+      uploadFile(req, res, (err: unknown) => {
+        if ((err as { code?: string } | undefined)?.code === "LIMIT_FILE_SIZE") err = new ApiError(413, "file_too_large", "The file is larger than the upload limit.");
         else if (err && !(err instanceof ApiError)) err = new ApiError(422, "invalid_request", "Upload must be multipart with one 'file' field.");
         err ? reject(err) : resolve();
       }));
 
   // Insert under a per-tenant advisory lock so two uploads cannot both slip under the limit.
-  async function insertWithinLimit(tenantId, filename) {
+  async function insertWithinLimit(tenantId: string, filename: string): Promise<string> {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -53,13 +56,14 @@ export function documentsRouter({ pool, rag, config, log, pending }) {
   }
 
   // Runs after the 202 has been sent. Python writes chunks in one transaction, so a failure leaves none.
-  async function ingest(tenantId, id, path, filename) {
+  async function ingest(tenantId: string, id: string, path: string, filename: string): Promise<void> {
     try {
       const { chunk_count } = await rag.ingest(tenantId, id, path, filename);
       await pool.query(
         "UPDATE documents SET status = 'ready', chunk_count = $3 WHERE id = $1 AND tenant_id = $2 AND status = 'processing'",
         [id, tenantId, chunk_count]);
-    } catch (err) {
+    } catch (e) {
+      const err = e as Error & { code?: string };
       const reason = (err.code ? `${err.code}: ${err.message}` : err.message).slice(0, 500);
       await pool.query(
         "UPDATE documents SET status = 'failed', error = $3 WHERE id = $1 AND tenant_id = $2 AND status = 'processing'",

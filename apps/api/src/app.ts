@@ -8,12 +8,14 @@ import { devRouter } from "./routes/dev.js";
 import { chatHandler } from "./routes/chat.js";
 import { feedbackHandler } from "./routes/feedback.js";
 import { documentsRouter } from "./routes/documents.js";
+import type { Auth } from "./auth.js";
+import type { Deps } from "./types.js";
 import { errorHandler, notFoundHandler } from "./errors.js";
 
 // Everything is injected so tests can pass a test database and a stubbed RAG client.
-export function createApp({ config, pool, auth, rag, log }) {
+export function createApp({ config, pool, auth, rag, log }: Omit<Deps, "pending"> & { auth: Auth }) {
   const app = express();
-  const pending = new Set(); // background ingests still running
+  const pending = new Set<Promise<void>>(); // background ingests still running
   app.locals.idle = () => Promise.allSettled([...pending]);
   app.use(cors({ origin: config.dashboardOrigin, credentials: true }));
   app.all("/api/auth/*splat", toNodeHandler(auth)); // Express 5 syntax; must come before express.json() (rule 5)
@@ -35,7 +37,7 @@ export function createApp({ config, pool, auth, rag, log }) {
   dash.get("/documents", async (req, res) => {
     const { rows } = await pool.query(
       "SELECT id, filename, status, error, chunk_count, created_at FROM documents WHERE tenant_id = $1 ORDER BY created_at DESC", [req.tenantId]);
-    res.json({ documents: rows.map((d) => ({ document_id: d.id, filename: d.filename, status: d.status, error: d.error, chunk_count: d.chunk_count, created_at: d.created_at })) });
+    res.json({ documents: rows.map((d: { id: string; filename: string; status: string; error: string | null; chunk_count: number; created_at: Date }) => ({ document_id: d.id, filename: d.filename, status: d.status, error: d.error, chunk_count: d.chunk_count, created_at: d.created_at })) });
   });
   dash.use("/documents", documentsRouter(deps));
   dash.post("/try", ...limiters.llm, chatHandler(deps)); // same limiter instance as /v1/chat: one shared counter
