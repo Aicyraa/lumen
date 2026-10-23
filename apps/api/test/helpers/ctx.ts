@@ -9,6 +9,7 @@ import { createPool } from "../../src/db/pool.js";
 import { createRagClient } from "../../src/services/rag.js";
 import { testConfig } from "./env.js";
 import { startRagStub } from "./ragStub.js";
+import type { Mail } from "../../src/services/mailer.js";
 
 // Builds the real app against lumen_test and a stubbed RAG service.
 export interface Tenant {
@@ -25,9 +26,11 @@ export async function makeCtx(overrides: Partial<Config> = {}) {
   const stub = await startRagStub(base.internalSecret);
   const config = { ...base, ragUrl: stub.url, ...overrides };
   const pool = createPool(config.databaseUrl);
-  const auth = createAuth({ pool, config });
   const logLines: string[] = []; // everything the app logs, so tests can prove no key or snippet is in it
   const log = createLogger(new Writable({ write(chunk, _enc, cb) { logLines.push(String(chunk)); cb(); } }), "debug");
+  const mails: Mail[] = []; // every email the app tried to send (a fake transport: nothing leaves the process)
+  const mailer = async (mail: Mail) => { mails.push(mail); };
+  const auth = createAuth({ pool, config, mailer, log });
   const rag = createRagClient(config);
   // Fake DNS: every name is public except `localhost` (the provider stub) and names a test points elsewhere.
   const dns = new Map<string, string>();
@@ -39,12 +42,15 @@ export async function makeCtx(overrides: Partial<Config> = {}) {
   const app = createApp({ config, pool, auth, rag, log, resolveHost });
   const tenants: string[] = [];
 
+  const verifyEmail = (email: string) => pool.query(`UPDATE "user" SET "emailVerified" = true WHERE email = $1`, [email]);
+
   // A real sign-up, then an organization-owned API key through the plugin.
   async function createTenant(label = "t"): Promise<Tenant> {
     const email = `${label}-${randomUUID()}@example.test`;
     const signUp = await auth.api.signUpEmail({ body: { email, password: "correct-horse-battery", name: label } });
     const { rows } = await pool.query(`SELECT "organizationId" AS org FROM member WHERE "userId" = $1`, [signUp.user.id]);
     const tenantId = rows[0].org;
+    await verifyEmail(email); // sign-in needs a verified email; the verification flow itself is tested in test/auth/verification.test.ts
     const key = await auth.api.createApiKey({ body: { name: "test", organizationId: tenantId, userId: signUp.user.id } });
     tenants.push(tenantId);
     // a dashboard session cookie, from a real email + password sign-in
@@ -74,5 +80,5 @@ export async function makeCtx(overrides: Partial<Config> = {}) {
     await pool.end();
   }
 
-  return { app, pool, auth, config, stub, rag, logLines, dns, dnsCalls, seedModel, createTenant, close };
+  return { app, pool, auth, config, stub, mails, verifyEmail, rag, logLines, dns, dnsCalls, seedModel, createTenant, close };
 }
