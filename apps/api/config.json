@@ -11,6 +11,7 @@
   "ragDeleteTimeoutMs": 30000,
   "modelTestTimeoutMs": 15000,
   "snippetMaxChars": 200,
+  "passageMaxChars": 300,
   "modelAttemptsMax": 20,
   "rateLimitHeadersMax": 30,
   "modelTestMaxTokens": 16,

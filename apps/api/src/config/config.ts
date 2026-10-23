@@ -15,6 +15,7 @@ interface Tunables {
   ragDeleteTimeoutMs: number;
   modelTestTimeoutMs: number;
   snippetMaxChars: number;
+  passageMaxChars: number;
   modelAttemptsMax: number;
   rateLimitHeadersMax: number;
   modelTestMaxTokens: number;
