@@ -2,7 +2,19 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { z } from "zod";
 
-const tunables = JSON.parse(readFileSync(new URL("../config.json", import.meta.url), "utf8"));
+interface Tunables {
+  ingestTimeoutMs: number;
+  interruptedIngestAfterSeconds: number;
+  globalLlmCapPerMinute: number;
+  uploadMaxBytes: number;
+  queryMaxChars: number;
+  uploadDir: string;
+  requestsPageSizeDefault: number;
+  requestsPageSizeMax: number;
+  queryTimeoutMs: number;
+  ragDeleteTimeoutMs: number;
+}
+const tunables: Tunables = JSON.parse(readFileSync(new URL("../config.json", import.meta.url), "utf8"));
 const posInt = z.coerce.number().int().positive();
 const required = z.object({
   DATABASE_URL: z.string().min(1),
@@ -16,19 +28,38 @@ const required = z.object({
   MAX_REQUESTS_PER_MONTH: posInt,
 });
 
+export interface OAuthCredentials {
+  clientId?: string;
+  clientSecret?: string;
+}
+export type Config = Tunables & {
+  databaseUrl: string;
+  authSecret: string;
+  authUrl: string;
+  dashboardOrigin: string;
+  internalSecret: string;
+  ragUrl: string;
+  maxDocuments: number;
+  ratePerMinute: number;
+  maxRequestsPerMonth: number;
+  google: OAuthCredentials;
+  github: OAuthCredentials;
+  devRoutes: boolean;
+};
+
 // Throws naming the missing variables (never their values) so the server refuses to start.
-export function loadConfig(env = process.env, overrides = {}) {
+export function loadConfig(env: NodeJS.ProcessEnv = process.env, overrides: Partial<Config> = {}): Config {
   const parsed = required.safeParse(env);
   if (!parsed.success) {
-    const names = [...new Set(parsed.error.issues.map((i) => i.path[0]))];
+    const names = [...new Set(parsed.error.issues.map((i) => String(i.path[0])))];
     throw new Error(`missing or invalid environment variables: ${names.join(", ")}`);
   }
   const e = parsed.data;
   // Tunables: config.json defaults, each overridable by an upper-snake env var of the same name.
-  const t = { ...tunables };
-  for (const k of Object.keys(t)) {
+  const t: Tunables = { ...tunables };
+  for (const k of Object.keys(t) as (keyof Tunables)[]) {
     const v = env[k.replace(/[A-Z]/g, (c) => "_" + c).toUpperCase()];
-    if (v) t[k] = typeof t[k] === "number" ? Number(v) : v;
+    if (v) (t as unknown as Record<string, number | string>)[k] = typeof t[k] === "number" ? Number(v) : v;
   }
   return {
     databaseUrl: e.DATABASE_URL,

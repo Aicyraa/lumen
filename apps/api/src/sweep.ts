@@ -1,9 +1,12 @@
 import { readdir, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
+import type { Logger } from "pino";
+import type { Config } from "./config.js";
+import type { Pool } from "./db.js";
 
 // At startup: a restart loses any background ingest, so rows still 'processing' past the cutoff are failed.
 // Runs per organization so every documents/chunks statement still carries tenant_id (rule 1).
-export async function sweepInterrupted({ pool, config, log }) {
+export async function sweepInterrupted({ pool, config, log }: { pool: Pool; config: Pick<Config, "interruptedIngestAfterSeconds" | "uploadDir">; log: Pick<Logger, "info" | "warn"> }): Promise<number> {
   const { rows: orgs } = await pool.query("SELECT id FROM organization");
   let swept = 0;
   for (const { id: tenantId } of orgs) {
