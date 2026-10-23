@@ -8,10 +8,12 @@ import "../types/types.js";
 const TIERS = ["all", "cheap", "expensive", "none"];
 // created_at as text keeps microseconds, which a JS Date would cut to milliseconds and break the keyset.
 const TS = `to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
+const ISO_US = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/;
 const decodeCursor = (v: string): { ts: string; id: string } => {
   try {
     const [ts, id] = JSON.parse(Buffer.from(v, "base64url").toString());
-    if (typeof ts === "string" && !Number.isNaN(Date.parse(ts)) && z.uuid().safeParse(id).success) return { ts, id };
+    // exactly what TS produces; the date check also catches impossible days such as 02-31
+    if (typeof ts === "string" && ISO_US.test(ts) && new Date(ts.slice(0, 23) + "Z").toISOString().slice(0, 19) === ts.slice(0, 19) && z.uuid().safeParse(id).success) return { ts, id };
   } catch { /* falls through to the error */ }
   throw new ApiError(422, "invalid_request", "cursor is not valid.");
 };
