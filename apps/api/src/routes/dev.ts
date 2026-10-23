@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import type { RequestHandler } from "express";
 import { z } from "zod";
-import type { Auth } from "../auth.js";
+import type { Auth } from "../auth/auth.js";
 import type { Deps } from "../types.js";
 import { ApiError } from "../errors.js";
 

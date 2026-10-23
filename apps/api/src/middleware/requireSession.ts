@@ -1,6 +1,6 @@
 import type { RequestHandler } from "express";
 import { fromNodeHeaders } from "better-auth/node";
-import type { Auth } from "../auth.js";
+import type { Auth } from "../auth/auth.js";
 import { ApiError } from "../errors.js";
 import "../types.js";
 

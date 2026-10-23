@@ -1,9 +1,9 @@
-import "./env.js";
+import "./config/env.js";
 import pino from "pino";
 import { createApp } from "./app.js";
-import { createAuth } from "./auth.js";
-import { loadConfig, type Config } from "./config.js";
-import { createPool } from "./db.js";
+import { createAuth } from "./auth/auth.js";
+import { loadConfig, type Config } from "./config/config.js";
+import { createPool } from "./db/pool.js";
 import { createRagClient } from "./rag.js";
 import { sweepInterrupted } from "./sweep.js";
 

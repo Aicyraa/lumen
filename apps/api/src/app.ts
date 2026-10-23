@@ -8,7 +8,7 @@ import { devRouter } from "./routes/dev.js";
 import { chatHandler } from "./routes/chat.js";
 import { feedbackHandler } from "./routes/feedback.js";
 import { documentsRouter } from "./routes/documents.js";
-import type { Auth } from "./auth.js";
+import type { Auth } from "./auth/auth.js";
 import type { Deps } from "./types.js";
 import { errorHandler, notFoundHandler } from "./errors.js";
 

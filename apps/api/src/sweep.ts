@@ -1,8 +1,8 @@
 import { readdir, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import type { Logger } from "pino";
-import type { Config } from "./config.js";
-import type { Pool } from "./db.js";
+import type { Config } from "./config/config.js";
+import type { Pool } from "./db/pool.js";
 
 // At startup: a restart loses any background ingest, so rows still 'processing' past the cutoff are failed.
 // Runs per organization so every documents/chunks statement still carries tenant_id (rule 1).

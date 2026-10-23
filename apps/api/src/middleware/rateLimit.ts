@@ -1,6 +1,6 @@
 import { MemoryStore, rateLimit } from "express-rate-limit";
 import type { Request, Response } from "express";
-import type { Config } from "../config.js";
+import type { Config } from "../config/config.js";
 import "../types.js";
 import { sendError } from "../errors.js";
 

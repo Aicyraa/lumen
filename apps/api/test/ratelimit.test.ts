@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import request from "supertest";
-import type { Config } from "../src/config.js";
+import type { Config } from "../src/config/config.js";
 import { makeCtx, type Ctx, type Tenant } from "./helpers/ctx.js";
 
 async function withCtx(overrides: Partial<Config>, fn: (ctx: Ctx) => Promise<void>) {
