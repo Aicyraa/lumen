@@ -134,4 +134,20 @@ describe("Models", () => {
     expect(body).not.toHaveProperty("input_price_per_1m");
     expect(body).not.toHaveProperty("output_price_per_1m");
   });
+
+  it("leaves no api_key in the TanStack mutation cache after a save or a failed save", async () => {
+    let fail = false;
+    mockFetch(router((_url, init) => (init?.method === "POST" ? (fail ? reply(422, { error: { code: "provider_error", message: "nope" } }) : reply(201, { model: m("z", "cheap", 2) })) : undefined)));
+    const { client } = renderWithProviders(<Models />);
+    const user = userEvent.setup();
+    await fillForm(user);
+    await user.click(screen.getByRole("button", { name: "Test & save" }));
+    await waitFor(() => expect(screen.queryByLabelText("API key")).not.toBeInTheDocument());
+    await waitFor(() => expect(JSON.stringify(client.getMutationCache().getAll().map((x) => [x.state.variables, x.state.data]))).not.toContain(SECRET));
+    fail = true;
+    await fillForm(user);
+    await user.click(screen.getByRole("button", { name: "Test & save" }));
+    await screen.findByRole("alert");
+    expect(JSON.stringify(client.getMutationCache().getAll().map((x) => [x.state.variables, x.state.data]))).not.toContain(SECRET);
+  });
 });

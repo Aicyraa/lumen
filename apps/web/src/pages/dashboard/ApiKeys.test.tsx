@@ -70,4 +70,20 @@ describe("ApiKeys", () => {
     expect(del).toHaveBeenCalledWith({ keyId: "k1" });
     expect(await screen.findByText(/No keys/)).toBeInTheDocument();
   });
+
+  it("keeps the full key out of the TanStack mutation cache, while the dialog is open and after it closes", async () => {
+    list.mockResolvedValue({ data: { apiKeys: [], total: 0 }, error: null });
+    create.mockResolvedValue({ data: { id: "k9", key: FULL_KEY, start: "lum_S", name: "Prod" }, error: null });
+    const { client } = renderWithProviders(<ApiKeys />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Create key" }));
+    await user.click(screen.getByRole("button", { name: "Create" }));
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByText(FULL_KEY);
+    const cached = () => JSON.stringify([...client.getMutationCache().getAll().map((x) => [x.state.variables, x.state.data]), client.getQueryCache().getAll().map((q) => q.state.data)]);
+    expect(cached()).not.toContain(FULL_KEY);
+    await user.click(within(dialog).getByRole("button", { name: "I've saved it" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(cached()).not.toContain(FULL_KEY);
+  });
 });

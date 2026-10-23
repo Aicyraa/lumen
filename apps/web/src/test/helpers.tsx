@@ -6,11 +6,12 @@ import { vi } from "vitest";
 
 export function renderWithProviders(ui: ReactElement, { route = "/" } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const result = render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>
     </QueryClientProvider>,
   );
+  return { ...result, client };
 }
 
 type Handler = (url: string, init?: RequestInit) => unknown;
