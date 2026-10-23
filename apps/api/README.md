@@ -35,3 +35,22 @@ curl -s localhost:3000/dev/api-key -H "x-internal-secret: $INTERNAL_SECRET" \
 
 The route needs the internal secret and is mounted only when `NODE_ENV=development` (unset or any other value: not mounted). `pnpm dev` does not set it; start with `NODE_ENV=development`.
 Real keys are made in the dashboard with the API key plugin.
+
+## Layout
+
+```
+config.json          tunable defaults (overridable by env vars)
+scripts/migrate.ts   `auth:migrate`, creates/updates Better Auth's tables
+src/
+  server.ts          entry: load config, start listening, run the startup ingest sweep
+  app.ts             builds the Express app, mounts middleware and routes
+  config/            config.ts (env + config.json -> Config), env.ts (loads the repo-root .env)
+  db/                pool.ts, the pg pool
+  auth/              auth.ts, Better Auth setup (organizations, API keys)
+  middleware/        rateLimit, requireApiKey, requireSession
+  routes/            HTTP handlers: chat, documents, feedback, dev
+  services/          non-HTTP logic: rag.ts (rag-service client), sweep.ts (interrupted-ingest sweep)
+  lib/               errors.ts, the shared error shape and handlers
+  types/             types.ts, shared types (Deps)
+test/                mirrors src: auth, config, middleware, routes, services; helpers/ and global-setup.ts
+```

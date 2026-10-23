@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadConfig } from "../src/config/config.js";
+import { loadConfig } from "../../src/config/config.js";
 
 const good = {
   DATABASE_URL: "postgresql://u:pw-SECRET@localhost:5433/x",

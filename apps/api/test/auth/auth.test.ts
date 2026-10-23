@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
-import { makeCtx, type Ctx, type Tenant } from "./helpers/ctx.js";
+import { makeCtx, type Ctx, type Tenant } from "../helpers/ctx.js";
 
 let ctx: Ctx;
 beforeAll(async () => { ctx = await makeCtx(); });
