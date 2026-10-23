@@ -53,14 +53,22 @@ describe("POST /v1/documents", () => {
     ctx.stub.handlers.ingest = () => ({ status: 200, body: { chunk_count: 3 } });
   });
 
-  it("marks the document failed when ingest exceeds the configured timeout, and asks the service to drop any chunks", async () => {
-    ctx.stub.calls.length = 0;
-    ctx.stub.handlers.ingest = () => new Promise(() => {}); // never answers
+  it("marks the document failed on timeout, keeps the failed row visible and leaves no chunks", async () => {
+    // like the real service: it had committed a chunk, then never answered; its DELETE endpoint removes the document row too
+    ctx.stub.handlers.ingest = async ({ body }) => {
+      await ctx.pool.query("INSERT INTO chunks (tenant_id, document_id, content, embedding) VALUES ($1, $2, 'partial', $3)",
+        [body.tenant_id, body.document_id, `[${new Array(384).fill(0).join(",")}]`]);
+      return new Promise(() => {});
+    };
+    ctx.stub.handlers.delete = async ({ query, params }) => {
+      await ctx.pool.query("DELETE FROM documents WHERE id = $1 AND tenant_id = $2", [params.id, query.tenant_id]);
+      return { status: 200, body: { deleted_chunks: 1 } };
+    };
     const res = await upload(a, "slow.txt");
     const final = await settle(a, res.body.document_id);
     expect(final.status).toBe("failed");
-    expect(ctx.stub.calls.some((c) => c.name === "delete" && c.query.tenant_id === a.tenantId && c.params.id === res.body.document_id)).toBe(true);
-    ctx.stub.handlers.ingest = () => ({ status: 200, body: { chunk_count: 3 } });
+    expect((await ctx.pool.query("SELECT 1 FROM chunks WHERE document_id = $1", [res.body.document_id])).rowCount).toBe(0);
+    ctx.stub.reset();
   });
 
   it("does not leave the uploaded file on disk once ingest has finished", async () => {

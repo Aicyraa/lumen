@@ -25,11 +25,16 @@ describe("interrupted-ingest sweep", () => {
     const oldB = await insert(b.tenantId, "processing", 30);
     await ctx.pool.query("INSERT INTO chunks (tenant_id, document_id, content, embedding) VALUES ($1, $2, 'partial', $3)", [a.tenantId, oldA, zero]);
     ctx.stub.calls.length = 0;
+    // like the real service, its DELETE endpoint removes the document row as well as the chunks
+    ctx.stub.handlers.delete = async ({ query, params }) => {
+      await ctx.pool.query("DELETE FROM documents WHERE id = $1 AND tenant_id = $2", [params.id, query.tenant_id]);
+      return { status: 200, body: { deleted_chunks: 0 } };
+    };
     await sweep();
+    ctx.stub.reset();
     expect(await row(oldA)).toEqual({ status: "failed", error: "ingest interrupted" });
     expect(await row(oldB)).toEqual({ status: "failed", error: "ingest interrupted" });
     expect((await ctx.pool.query("SELECT 1 FROM chunks WHERE document_id = $1", [oldA])).rowCount).toBe(0);
-    expect(ctx.stub.calls.map((c) => [c.query.tenant_id, c.params.id]).sort()).toEqual([[a.tenantId, oldA], [b.tenantId, oldB]].sort());
   });
 
   it("leaves recent processing rows and finished rows alone", async () => {
