@@ -24,9 +24,7 @@ def _is_public(ip) -> bool:
     if ip.version == 6 and ip.ipv4_mapped:  # ::ffff:10.0.0.1 is the IPv4 address
         ip = ip.ipv4_mapped
     # is_global is false for private, loopback, link-local (incl. 169.254.169.254), CGNAT and reserved ranges
-    return ip.is_global and not ip.is_multicast and ip.version == 4 or (
-        ip.version == 6 and ip.is_global and not ip.is_multicast and ip not in NAT64
-    )
+    return ip.is_global and not ip.is_multicast and not (ip.version == 6 and ip in NAT64)
 
 
 def assert_endpoint(url: str, production: bool, resolve=_resolve) -> None:
