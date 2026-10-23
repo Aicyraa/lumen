@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { Logo } from "../../components/Logo";
 import { UsageMeters } from "../../components/UsageMeters";
@@ -17,15 +18,22 @@ export function Shell() {
   const email = session?.user.email ?? "";
   const workspace = org?.name ?? "Workspace";
 
+  const [signOutError, setSignOutError] = useState(false);
+
+  // Only leave when sign-out really worked: no throw, no error result, and no session afterwards.
   async function signOut() {
+    setSignOutError(false);
+    let ok = false;
     try {
-      await authClient.signOut();
+      const res = await authClient.signOut();
+      ok = !res?.error && !(await authClient.getSession())?.data;
     } catch {
-      // the server call failed; still leave and drop every cached tenant response below
+      ok = false;
     } finally {
-      qc.clear(); // nothing from this tenant stays cached for the next sign-in, even if sign-out failed
-      navigate("/");
+      qc.clear(); // nothing from this tenant stays cached, whatever happened
     }
+    if (ok) navigate("/");
+    else setSignOutError(true);
   }
 
   return (
@@ -43,6 +51,11 @@ export function Shell() {
           <div className="chip-text"><div className="ellipsis">{workspace}</div><div className="small muted-3 ellipsis">{email}</div></div>
         </div>
         <button type="button" className="signout mono" onClick={() => void signOut()}>Sign out</button>
+        {signOutError && (
+          <div role="alert" className="error-text signout-error">
+            Could not sign out, please try again <button type="button" className="link-btn red" onClick={() => void signOut()}>Retry</button>
+          </div>
+        )}
       </aside>
       <main className="content"><Outlet /></main>
     </div>

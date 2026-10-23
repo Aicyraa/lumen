@@ -3,7 +3,7 @@ import { CodeBlock, PublicLayout, SectionLabel } from "../components/PublicLayou
 const ERRORS = [
   ["401", "invalid_api_key", "The x-api-key header is missing, wrong or revoked."],
   ["404", "not_found", "The document or request id does not exist in your workspace. Another workspace's ids look the same as missing ones."],
-  ["413", "file_too_large", "The uploaded file is over the 10 MB limit."],
+  ["413", "file_too_large", "The uploaded file exceeds the server's upload size limit."],
   ["415", "unsupported_type", "Only PDF, .txt and .md files are supported."],
   ["422", "invalid_request", "The body is not valid, for example an empty query or one over 2000 characters."],
   ["422", "no_models_configured", "Your workspace has no model yet. Add one in the Models tab of the dashboard."],
@@ -57,7 +57,7 @@ export function Docs() {
         </section>
 
         <section aria-labelledby="d-docs"><SectionLabel>04 — DOCUMENTS</SectionLabel><h2 id="d-docs" className="h2s">Documents</h2>
-          <div className="endpoint"><span className="mono">POST /v1/documents</span> Multipart form with one <span className="mono">file</span> field (PDF, .txt or .md, at most 10 MB). Returns <span className="mono">202</span>:</div>
+          <div className="endpoint"><span className="mono">POST /v1/documents</span> Multipart form with one <span className="mono">file</span> field (PDF, .txt or .md; the server enforces an upload size limit). Returns <span className="mono">202</span>:</div>
           <CodeBlock>{`{ "document_id": "c1a2…", "status": "processing" }`}</CodeBlock>
           <div className="endpoint"><span className="mono">GET /v1/documents/:id</span> Returns <span className="mono">200</span>. Poll until <span className="mono">status</span> is <span className="mono">ready</span> or <span className="mono">failed</span>; <span className="mono">error</span> says why a file failed, for example a scanned PDF with no text.</div>
           <CodeBlock>{`{ "document_id": "c1a2…", "status": "ready", "chunk_count": 14, "error": null }`}</CodeBlock>

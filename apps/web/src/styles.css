@@ -272,3 +272,4 @@ label.btn:focus-within { outline: 2px solid var(--lime); outline-offset: 2px; }
   .keys-cols { grid-template-columns: minmax(0, 1fr) 80px; } .keys-cols > :nth-child(n+2):not(:last-child) { display: none; }
   .stat-value { font-size: 36px; }
 }
+.signout-error { padding: 4px 12px 0; }
