@@ -7,8 +7,9 @@ Express + Better Auth (ES modules). Reads configuration from the repo-root `.env
 ```sh
 pnpm db:up                          # from the repo root: start Postgres
 pnpm --filter @lumen/api auth:migrate   # create/update Better Auth's tables (re-run after adding a plugin)
-pnpm --filter @lumen/api dev            # http://localhost:3000
-pnpm test                               # Vitest + supertest, uses the lumen_test database only
+pnpm --filter @lumen/api dev            # http://localhost:3000 (runs src/server.ts with tsx; no build step)
+pnpm --filter @lumen/api typecheck
+pnpm test                               # tsc --noEmit, then Vitest + supertest, uses the lumen_test database only
 ```
 
 The server refuses to start while `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `DASHBOARD_ORIGIN`,
