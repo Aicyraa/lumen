@@ -1,17 +1,26 @@
 import hmac
 import logging
 import os
+import tempfile
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Annotated
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, FastAPI, Header, Request
+import psycopg
+from fastapi import APIRouter, Depends, FastAPI, Form, Header, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pypdf.errors import PyPdfError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app import store
+from app.chunking import chunk
 from app.config import load_config
+from app.embeddings import embed  # loads the model at import, before the server starts listening
 from app.env import load_env
+from app.extract import extract_text
 from app.llm import make_llm
 
 load_env()  # DATABASE_URL etc. from the repo-root .env; real environment variables win
@@ -98,8 +107,28 @@ async def health():
 
 
 @internal.post("/ingest")
-def ingest():
-    raise ApiError(501, "not_implemented", "not built yet")
+def ingest(tenant_id: Annotated[str, Form(min_length=1)], document_id: Annotated[UUID, Form()], file: UploadFile):
+    # plain def: FastAPI runs it in its thread pool, so the blocking embed does not stall /internal/health
+    suffix = Path(file.filename or "").suffix.lower()  # only the extension is used; the name never touches disk
+    with tempfile.NamedTemporaryFile(suffix=suffix) as tmp:
+        tmp.write(file.file.read())
+        tmp.flush()
+        try:
+            text = extract_text(tmp.name)
+        except (UnicodeDecodeError, PyPdfError):  # UnicodeDecodeError is a ValueError, so catch it first
+            text = ""
+        except ValueError:
+            raise ApiError(415, "unsupported_type", "Only PDF, .txt and .md files are supported.")
+    chunks = chunk(text) if text.strip() else []
+    if not chunks:
+        raise ApiError(422, "no_text_extracted", "No text could be extracted from the file.")
+    vectors = embed(chunks)
+    try:  # one transaction: a failure leaves no chunks
+        store.add_chunks(tenant_id, str(document_id), chunks, vectors)
+    except psycopg.errors.ForeignKeyViolation:  # no such document for this tenant
+        raise ApiError(404, "not_found", "Document not found.")
+    log.info("ingested tenant=%s document=%s chunks=%d", tenant_id, document_id, len(chunks))
+    return {"chunk_count": len(chunks)}
 
 
 @internal.post("/query")
