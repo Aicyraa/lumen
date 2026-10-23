@@ -59,5 +59,56 @@ export function modelsRouter({ pool, config }: Deps) {
     }
   });
 
+  // Runs fn inside a transaction holding the tenant's models lock (ordering changes must not interleave).
+  async function locked<T>(tenantId: string, fn: (q: (sql: string, p: unknown[]) => Promise<{ rows: any[] }>) => Promise<T>): Promise<T> {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["models:" + tenantId]);
+      const out = await fn((sql, p) => client.query(sql, p));
+      await client.query("COMMIT");
+      return out;
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+  const notFound = () => new ApiError(404, "not_found", "Model not found.");
+  const idOf = (v: string) => { if (!z.uuid().safeParse(v).success) throw notFound(); return v; };
+
+  r.patch("/:id", async (req, res) => {
+    const id = idOf(req.params.id);
+    const parsed = z.object({ direction: z.enum(["up", "down"]) }).safeParse(req.body);
+    if (!parsed.success) throw new ApiError(422, "invalid_request", "Invalid request: direction must be up or down.");
+    await locked(req.tenantId, async (q) => {
+      const { rows: [me] } = await q("SELECT id, tier, position FROM tenant_models WHERE id = $1 AND tenant_id = $2", [id, req.tenantId]);
+      if (!me) throw notFound();
+      const { rows: [other] } = await q(
+        `SELECT id, position FROM tenant_models WHERE tenant_id = $1 AND tier = $2 AND position ${parsed.data.direction === "up" ? "<" : ">"} $3
+         ORDER BY position ${parsed.data.direction === "up" ? "DESC" : "ASC"} LIMIT 1`, [req.tenantId, me.tier, me.position]);
+      if (!other) return; // already first or last
+      // three steps through -1 so UNIQUE (tenant_id, tier, position) holds after every statement
+      await q("UPDATE tenant_models SET position = -1 WHERE id = $1 AND tenant_id = $2", [me.id, req.tenantId]);
+      await q("UPDATE tenant_models SET position = $3 WHERE id = $1 AND tenant_id = $2", [other.id, req.tenantId, me.position]);
+      await q("UPDATE tenant_models SET position = $3 WHERE id = $1 AND tenant_id = $2", [me.id, req.tenantId, other.position]);
+    });
+    res.json({ models: await grouped(req.tenantId) });
+  });
+
+  r.delete("/:id", async (req, res) => {
+    const id = idOf(req.params.id);
+    await locked(req.tenantId, async (q) => {
+      const { rows: [gone] } = await q("DELETE FROM tenant_models WHERE id = $1 AND tenant_id = $2 RETURNING tier, position", [id, req.tenantId]);
+      if (!gone) throw notFound();
+      // close the gap; go through negative numbers because UNIQUE is checked row by row
+      const after = "WHERE tenant_id = $1 AND tier = $2 AND position > $3";
+      await q(`UPDATE tenant_models SET position = -position - 1 ${after}`, [req.tenantId, gone.tier, gone.position]);
+      await q("UPDATE tenant_models SET position = -position - 2 WHERE tenant_id = $1 AND tier = $2 AND position < 0", [req.tenantId, gone.tier]);
+    });
+    res.status(204).end();
+  });
+
   return r;
 }
