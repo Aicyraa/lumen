@@ -20,6 +20,8 @@ export async function startRagStub(secret) {
     }),
     delete: () => ({ status: 200, body: { deleted_chunks: 3 } }),
   };
+  const defaults = { ...handlers };
+  const reset = () => { Object.assign(handlers, defaults); calls.length = 0; };
   const app = express();
   app.use((req, res, next) => {
     if (req.get("x-internal-secret") !== secret) {
@@ -39,5 +41,5 @@ export async function startRagStub(secret) {
   const server = await new Promise((resolve) => {
     const s = app.listen(0, "127.0.0.1", () => resolve(s));
   });
-  return { url: `http://127.0.0.1:${server.address().port}`, calls, handlers, close: () => server.close() };
+  return { url: `http://127.0.0.1:${server.address().port}`, calls, handlers, reset, close: () => server.close() };
 }

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { makeCtx } from "./helpers/ctx.js";
 
@@ -10,6 +10,7 @@ beforeAll(async () => {
   b = await ctx.createTenant("b");
 });
 afterAll(async () => { await ctx.close(); });
+afterEach(() => ctx.stub.reset());
 
 const chat = (tenant, body) => request(ctx.app).post("/v1/chat").set("x-api-key", tenant.apiKey).send(body);
 const logs = (tenantId) => ctx.pool.query("SELECT * FROM request_logs WHERE tenant_id = $1 ORDER BY created_at", [tenantId]);
