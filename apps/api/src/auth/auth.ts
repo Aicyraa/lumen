@@ -9,7 +9,7 @@ import type { Mailer } from "../services/mailer.js";
 export type Auth = ReturnType<typeof createAuth>;
 
 // mailer and log are only needed to send mail; the migration script builds the same auth without them.
-export function createAuth({ pool, config, mailer, log }: { pool: Pool; config: Config; mailer?: Mailer; log?: Logger }) {
+export function createAuth({ pool, config, mailer, log, social }: { pool: Pool; config: Config; mailer?: Mailer; log?: Logger; social?: Record<string, object> }) {
   // A provider without credentials is skipped, so dev works with email + password only.
   const socialProviders: Partial<Record<"google" | "github", { clientId: string; clientSecret: string }>> = {};
   const { google, github } = config;

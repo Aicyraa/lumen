@@ -21,7 +21,8 @@ export interface Tenant {
 }
 export type Ctx = Awaited<ReturnType<typeof makeCtx>>;
 
-export async function makeCtx(overrides: Partial<Config> = {}) {
+// `social` replaces the Google/GitHub providers (fake id-token verification, no network) for account-linking tests.
+export async function makeCtx(overrides: Partial<Config> = {}, extra: { social?: Parameters<typeof createAuth>[0]["social"] } = {}) {
   const base = testConfig();
   const stub = await startRagStub(base.internalSecret);
   const config = { ...base, ragUrl: stub.url, ...overrides };
@@ -30,7 +31,7 @@ export async function makeCtx(overrides: Partial<Config> = {}) {
   const log = createLogger(new Writable({ write(chunk, _enc, cb) { logLines.push(String(chunk)); cb(); } }), "debug");
   const mails: Mail[] = []; // every email the app tried to send (a fake transport: nothing leaves the process)
   const mailer = async (mail: Mail) => { mails.push(mail); };
-  const auth = createAuth({ pool, config, mailer, log });
+  const auth = createAuth({ pool, config, mailer, log, social: extra.social });
   const rag = createRagClient(config);
   // Fake DNS: every name is public except `localhost` (the provider stub) and names a test points elsewhere.
   const dns = new Map<string, string>();
