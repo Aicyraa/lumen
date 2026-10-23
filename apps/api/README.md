@@ -18,6 +18,10 @@ is missing. Google/GitHub sign-in is skipped while its client id/secret are empt
 Other tunables live in `config.json` (ingest timeout, interrupted-ingest cutoff, global LLM cap per minute, upload
 limit, page sizes). Each can be overridden by an upper-snake env var, for example `INGEST_TIMEOUT_MS`.
 
+`globalLlmCapPerMinute` defaults to 8 (`GLOBAL_LLM_CAP_PER_MINUTE`). Groq documents base limits of 30 requests per
+minute and 8K tokens per minute for `openai/gpt-oss-20b` and `openai/gpt-oss-120b`. One chat call uses roughly
+700-1500 tokens, so tokens per minute, not requests, is the binding limit.
+
 ## Dev-only API key
 
 No browser needed. Sign up with email + password (`POST /api/auth/sign-up/email`), then:
@@ -28,5 +32,5 @@ curl -s localhost:3000/dev/api-key -H "x-internal-secret: $INTERNAL_SECRET" \
 # {"tenant_id":"<organization id>","api_key":"..."}   use as: -H "x-api-key: ..."
 ```
 
-The route needs the internal secret and is not mounted when `NODE_ENV=production`.
+The route needs the internal secret and is mounted only when `NODE_ENV=development` (unset or any other value: not mounted). `pnpm dev` does not set it; start with `NODE_ENV=development`.
 Real keys are made in the dashboard with the API key plugin.

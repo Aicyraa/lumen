@@ -5,7 +5,7 @@ import { makeCtx } from "./helpers/ctx.js";
 
 let ctx, a, b;
 beforeAll(async () => {
-  ctx = await makeCtx({ ratePerMinute: 1000, maxRequestsPerMonth: 5 });
+  ctx = await makeCtx({ ratePerMinute: 1000, globalLlmCapPerMinute: 1000, maxRequestsPerMonth: 5 });
   a = await ctx.createTenant("a");
   b = await ctx.createTenant("b");
 });

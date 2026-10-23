@@ -31,7 +31,9 @@ export function chatHandler({ pool, rag, config, log }) {
     try {
       result = await rag.query(req.tenantId, q.query, q.session_id);
     } catch (err) {
-      await insertLog(req, null, q, { status: "provider_error", usage: { latency_ms: Date.now() - started } });
+      // a logging failure must not replace the real error
+      await insertLog(req, null, q, { status: "provider_error", usage: { latency_ms: Date.now() - started } })
+        .catch((e) => log.error({ err: e.message }, "request_logs insert failed"));
       log.warn({ code: err.code }, "chat failed");
       throw err instanceof ApiError ? err : new ApiError(502, "provider_error", "The language model provider failed. Try again shortly.");
     }

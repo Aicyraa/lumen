@@ -24,7 +24,7 @@ await sweepInterrupted({ pool, config, log });
 
 const app = createApp({ config, pool, auth, rag, log });
 const port = Number(process.env.PORT || new URL(config.authUrl).port || 3000);
-const server = app.listen(port, () => log.info({ port, production: config.production }, "api listening"));
+const server = app.listen(port, () => log.info({ port, devRoutes: config.devRoutes }, "api listening"));
 
 for (const sig of ["SIGINT", "SIGTERM"]) {
   process.on(sig, () => server.close(async () => { await app.locals.idle(); await pool.end(); process.exit(0); }));

@@ -41,7 +41,7 @@ export function createApp({ config, pool, auth, rag, log }) {
   dash.post("/try", ...limiters.llm, chatHandler(deps)); // same limiter instance as /v1/chat: one shared counter
   app.use("/api/dashboard", dash);
 
-  if (!config.production) app.post("/dev/api-key", devRouter({ pool, auth, config }));
+  if (config.devRoutes) app.post("/dev/api-key", devRouter({ pool, auth, config }));
 
   app.use(notFoundHandler);
   app.use(errorHandler(log));

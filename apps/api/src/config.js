@@ -42,7 +42,7 @@ export function loadConfig(env = process.env, overrides = {}) {
     maxRequestsPerMonth: e.MAX_REQUESTS_PER_MONTH,
     google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET },
     github: { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET },
-    production: env.NODE_ENV === "production",
+    devRoutes: env.NODE_ENV === "development", // dev-only routes are an explicit opt-in
     ...t,
     uploadDir: resolve(new URL("..", import.meta.url).pathname, t.uploadDir), // relative to apps/api
     ...overrides,
