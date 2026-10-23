@@ -46,6 +46,7 @@ export function createApp({ config, pool, auth, rag, log, resolveHost }: Omit<De
     res.json({ documents: rows.map((d: { id: string; filename: string; status: string; error: string | null; chunk_count: number; created_at: Date }) => ({ document_id: d.id, filename: d.filename, status: d.status, error: d.error, chunk_count: d.chunk_count, created_at: d.created_at })) });
   });
   dash.get("/usage", usageHandler(deps, limiters.used));
+  dash.post("/feedback", feedbackHandler(deps)); // same logic as /v1/feedback; the tenant is the session's organization
   dash.use("/analytics", analyticsRouter(deps));
   dash.use("/requests", requestsRouter(deps));
   dash.use("/documents", documentsRouter(deps));
