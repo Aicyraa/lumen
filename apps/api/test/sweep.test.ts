@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { makeCtx, type Ctx, type Tenant } from "./helpers/ctx.js";
-import { sweepInterrupted } from "../src/sweep.js";
+import { sweepInterrupted } from "../src/services/sweep.js";
 
 let ctx: Ctx, a: Tenant, b: Tenant;
 beforeAll(async () => {

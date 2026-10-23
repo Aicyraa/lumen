@@ -4,8 +4,8 @@ import { createApp } from "./app.js";
 import { createAuth } from "./auth/auth.js";
 import { loadConfig, type Config } from "./config/config.js";
 import { createPool } from "./db/pool.js";
-import { createRagClient } from "./rag.js";
-import { sweepInterrupted } from "./sweep.js";
+import { createRagClient } from "./services/rag.js";
+import { sweepInterrupted } from "./services/sweep.js";
 
 const log = pino({ redact: ["req.headers.authorization", "req.headers.cookie", "req.headers['x-api-key']"] });
 

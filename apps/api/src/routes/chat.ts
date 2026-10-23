@@ -1,7 +1,7 @@
 import type { Request, RequestHandler } from "express";
 import { z } from "zod";
 import { ApiError } from "../lib/errors.js";
-import type { ChatResponse } from "../rag.js";
+import type { ChatResponse } from "../services/rag.js";
 import type { Deps } from "../types/types.js";
 
 interface LogInput {
