@@ -8,6 +8,8 @@ import { Privacy } from "./pages/Privacy";
 import { SignIn } from "./pages/SignIn";
 import { AppFrame } from "./components/AppFrame";
 import { NoProjectRedirect } from "./components/NoProjectRedirect";
+import { Account } from "./pages/Account";
+import { VerifyEmail } from "./pages/VerifyEmail";
 import { Projects } from "./pages/Projects";
 import { ProjectShell } from "./pages/dashboard/ProjectShell";
 import { Settings } from "./pages/dashboard/Settings";
@@ -28,11 +30,13 @@ export function App() {
         <Route path="/docs" element={<Docs />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/signin" element={<SignIn />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/sign-in" element={<Navigate to="/signin" replace />} />
         <Route path="/dashboard/*" element={<Navigate to="/projects" replace />} />
         <Route element={<RequireSession />}>
           <Route element={<AppFrame />}>
             <Route path="/projects" element={<Projects />} />
+            <Route path="/account" element={<Account />} />
           </Route>
           <Route path="/projects/:slug" element={<ProjectShell />}>
             <Route index element={<Navigate to="documents" replace />} />
