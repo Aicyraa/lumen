@@ -31,4 +31,15 @@ describe("infra/sql/002_tenant_models.sql", () => {
     await expect(row("exploded")).rejects.toThrow(/check/);
     await pool.query("DELETE FROM model_calls WHERE tenant_id = $1", [tenant]);
   });
+  it("stores optional per-1M-token prices on a model (null means unpriced) and cost on a call", async () => {
+    await pool.query("UPDATE tenant_models SET input_price_per_1m = 0.15, output_price_per_1m = 0.6 WHERE tenant_id = $1 AND tier = 'cheap'", [tenant]);
+    const { rows } = await pool.query("SELECT input_price_per_1m, output_price_per_1m FROM tenant_models WHERE tenant_id = $1 AND tier = 'expensive'", [tenant]);
+    expect(rows[0]).toEqual({ input_price_per_1m: null, output_price_per_1m: null });
+    const call = (source: string) => pool.query(
+      `INSERT INTO model_calls (tenant_id, request_id, provider, model_id, tier, outcome, cost_usd, cost_source) VALUES ($1, gen_random_uuid(), 'p', 'm', 'default', 'ok', 0.000123, $2)`, [tenant, source]);
+    await call("estimated");
+    await call("provider");
+    await expect(call("guess")).rejects.toThrow(/check/);
+    await pool.query("DELETE FROM model_calls WHERE tenant_id = $1", [tenant]);
+  });
 });
