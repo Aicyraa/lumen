@@ -51,3 +51,11 @@
   7. "Read the docs" and Docs/Privacy links on the home page: no docs or privacy page is specified anywhere.
   8. Global LLM cap (Phase 3) only protects the shared dev default key once tenants bring their own keys; per-tenant limits remain.
 - apps/api reorganized by responsibility (config, db, auth, middleware, routes, services, lib, types; tests mirror src). No behaviour change: 74 api + 81 rag-service tests pass (lead ran root pnpm test).
+
+### Decisions on the website-guide conflicts (2026-10-23)
+- Sign-in: keep email and password alongside Google and GitHub.
+- Pricing (Phase 7): dropped from the plan, marked "reconsidering". Tenants bring their own models. The no-cost rules in AGENTS.md stay.
+- FAQ: postponed (also removes the retention-wording problem for now).
+- Request ids: UUIDs, as the service already returns.
+- /docs and /privacy pages: built with the website in Phase 4.
+- Still open (needs the human): Try it sources contract (guide item 3), Requests drawer passages (item 4), global LLM cap meaning (item 8).

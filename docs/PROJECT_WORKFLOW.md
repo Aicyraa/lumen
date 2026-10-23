@@ -36,7 +36,7 @@ The values shown are examples. In the database:
 
 A new customer goes from the home page to a working API key and a searchable document set in these steps.
 
-1. A visitor opens the public home page (no login). It shows how it works, a demo, a quickstart (cURL, Node, Python), security notes and an FAQ. The savings calculator is added last, in Phase 7.
+1. A visitor opens the public home page (no login). It shows how it works, a demo, a quickstart (cURL, Node, Python), security notes (the FAQ is postponed), plus /docs and /privacy pages. The savings calculator is on hold while pricing is reconsidered.
 2. They click **Sign in with Google** or **Sign in with GitHub**. Better Auth runs the OAuth flow.
 3. On first login Better Auth creates the `user` and sets the session cookie, and a hook creates a personal organization for them. That organization is the tenant.
 4. In the dashboard they open **API keys** and create one with the API key plugin. It is shown once, stored only as a hash, and belongs to their organization.
@@ -207,10 +207,10 @@ Each phase is one prompt in section 8 or 9 of the AI build brief.
 | 2 Python service | FastAPI endpoints, router, model calls | `curl` returns the full response shape and tests pass |
 | 3 Express and Better Auth | Login, organizations, keys, upload, chat, logs | Sign in, upload and chat work with an API key |
 | 3B Tenant models | Models table with encrypted provider keys, Models endpoints, per-tier fallback in the Python service (from `docs/WEBSITE_GUIDE.md`) | A tenant's own key answers, a failing primary falls back, no key ever leaks |
-| 4 Dashboard | Home page (steps, demo, quickstart, security, FAQ), sign-in, keys, documents, analytics, requests, usage meters. Follows `docs/DESIGN.md` | A new account gets a working key in under 5 minutes |
+| 4 Dashboard | Home page (steps, demo, quickstart, security; FAQ postponed), /docs and /privacy pages, sign-in (Google, GitHub, email and password), keys, documents, analytics, requests, usage meters. Follows `docs/DESIGN.md` | A new account gets a working key in under 5 minutes |
 | 5 Proof | Isolation suite, three-way comparison (no test website) | Zero leaks and a `results.csv` |
 | 6 Classifier | Train from labeled questions, only if the rules fall short | Beats the rules on held-out questions |
-| 7 Pricing (last) | Prices in `config.yaml`, cost per request, cost and estimated savings in analytics and Requests, savings calculator, cost column in `results.csv`, provider spending caps, cost-spike alert | Costs match a hand calculation, and all earlier tests still pass |
+| 7 Pricing (reconsidering, not planned) | Prices in `config.yaml`, cost per request, cost and estimated savings in analytics and Requests, savings calculator, cost column in `results.csv`, provider spending caps, cost-spike alert | Costs match a hand calculation, and all earlier tests still pass |
 
 ## Security and isolation checklist
 

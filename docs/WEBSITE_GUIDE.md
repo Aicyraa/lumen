@@ -3,7 +3,7 @@
 What each page, tab and section of the Claude Design file `Lumen Website.dc.html`
 does. `support.js` in that project is only the design-canvas runtime and has no
 product content. Build rules live in `AI_BUILD_BRIEF.md` and `DESIGN.md`; if they
-disagree with this guide, the brief wins, except that the Models tab (06) is in scope: backend in Phase 3B, UI in Phase 4. The sign-in page lists Google and GitHub only; the brief also enables email and password (an open difference, see docs/NOTES.md).
+disagree with this guide, the brief wins, except that the Models tab (06) is in scope: backend in Phase 3B, UI in Phase 4. Sign-in also offers email and password (decided 2026-10-23, kept). Pricing, the Savings section and the FAQ are on hold (see docs/NOTES.md).
 
 > **Money comes last.** The design shows cost, savings, a calculator and example
 > prices (Savings section, COST and EST. SAVINGS stats, cost columns, `cost_usd` in
@@ -27,7 +27,7 @@ page) and the **dashboard** (six tabs behind sign-in).
 | 05 | Savings **(Phase 7)** | Sliders for requests per month and share of easy questions; compares always-large-model against routed cost. |
 | 06 | Built in | Three feature cards: cost-aware routing, tenant isolation, honest "no answer". |
 | 07 | Security | Four cards: isolated per workspace, keys shown once (hashed), no document text in logs, documents treated as data (prompt-injection safe). |
-| 08 | FAQ | Accordion: file types and limits, what happens with no answer, cross-customer visibility, how savings are calculated, question retention. |
+| 08 | FAQ (postponed) | Accordion: file types and limits, what happens with no answer, cross-customer visibility, how savings are calculated, question retention. |
 | end | CTA and footer | "Ask your documents anything." plus Sign in; footer links Docs, Pricing, Privacy. |
 
 The first design version (1a) had only sections 01-04 (Built in was 04). Version 2a
@@ -35,8 +35,8 @@ is the current one.
 
 ### Sign in
 
-One screen: "One login. Your own tenant." with **Continue with Google** and
-**Continue with GitHub** only (no passwords). A personal workspace (tenant) is
+One screen: "One login. Your own tenant." with **Continue with Google**,
+**Continue with GitHub** and an email and password form (added 2026-10-23). A personal workspace (tenant) is
 created on first sign-in.
 
 ## Dashboard
@@ -79,7 +79,7 @@ Traffic and routing overview with a **7D / 30D** toggle.
 ### 05 Requests (request log)
 One row per call: time, query, route, `k`, latency (and cost, **Phase 7**).
 - Filter chips: ALL / CHEAP / EXPENSIVE / NO ANSWER.
-- Click a row for the detail drawer: route explanation, difficulty, escalated, top score, `k`, token and latency usage, request id (`req_...`), the API key used, and the source passages with scores.
+- Click a row for the detail drawer: route explanation, difficulty, escalated, top score, `k`, token and latency usage, request id (a UUID), the API key used, and the source passages with scores.
 - Logs hold the question, route and metadata, never document text.
 
 ### 06 Models

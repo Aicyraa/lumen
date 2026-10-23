@@ -68,7 +68,7 @@ Fluid builds use `clamp()`: section H2 `clamp(32px,3.6vw,52px)`, feature title `
 Everything that shows money (savings calculator, cost and savings stats, cost columns, `$` figures, pricing copy) is built in Phase 7, after the rest is tested. Until then omit the calculator section (keep the other sections' numbering as shown, so adding it later changes nothing), show no cost or savings stat, and leave cost columns out of the Requests table and detail cards. Everything below describes the final design.
 
 ### Home section order
-01 Hero → image slot (560px, striped placeholder) → 02 How it works (3 steps) → 03 Demo (Easy / Hard / No answer request-response pair) → 04 Quickstart (cURL / Node / Python tabs + Copy) → 05 Savings calculator → 06 Built in (feature rows) → 07 Security (4 columns) → 08 FAQ (accordion) → closing CTA → footer.
+01 Hero → image slot (560px, striped placeholder) → 02 How it works (3 steps) → 03 Demo (Easy / Hard / No answer request-response pair) → 04 Quickstart (cURL / Node / Python tabs + Copy) → 05 Savings calculator → 06 Built in (feature rows) → 07 Security (4 columns) → 08 FAQ (accordion; postponed, omit for now) → closing CTA → footer.
 
 ### Dashboard nav
 01 Documents · 02 API keys · 03 Try it · 04 Analytics · 05 Requests · 06 Models. Sidebar bottom: USAGE meters (Documents, Requests / min, This month), then workspace + email.

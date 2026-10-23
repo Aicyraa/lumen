@@ -512,7 +512,7 @@ Report using the format in section 9.
 ```text
 Do Phase 4 only. Build the React dashboard in apps/web/ per sections 4 and 6.
 - Follow docs/DESIGN.md for every screen.
-- A public home page (no login), sections in the order of docs/DESIGN.md: hero with a Sign in button, how it works in three steps, a demo (easy, hard and no-answer example), Quickstart (cURL, Node and Python tabs with a Copy button, using the real `POST /v1/chat` contract), built-in features, Security, and an FAQ. Leave out the savings calculator (Phase 7) and make no cost, savings or pricing claims in any copy. Security and FAQ copy may only state what the product actually does. In particular, do not say tenants can choose a retention period.
+- A public home page (no login), sections in the order of docs/DESIGN.md: hero with a Sign in button, how it works in three steps, a demo (easy, hard and no-answer example), Quickstart (cURL, Node and Python tabs with a Copy button, using the real `POST /v1/chat` contract), built-in features and Security. The FAQ section is postponed (decided 2026-10-23); leave it out for now. Leave out the savings calculator (pricing is being reconsidered, see Phase 7) and make no cost, savings or pricing claims in any copy. Security copy (and the FAQ when it returns) may only state what the product actually does. In particular, do not say tenants can choose a retention period.
 - A sign-in page with Continue with Google and Continue with GitHub using authClient.signIn.social.
 - A protected dashboard shell that redirects to sign-in when there is no session.
 - An API keys page using the API key plugin's client methods: create (show the key once), list, revoke.
@@ -521,6 +521,7 @@ Do Phase 4 only. Build the React dashboard in apps/web/ per sections 4 and 6.
 - An Analytics page: requests per day, route mix, median latency, and the unanswered-questions list, all from the dashboard analytics endpoints.
 - A Requests page: the request log from GET /api/dashboard/requests with a tier filter, and a detail view per request from GET /api/dashboard/requests/:id showing route, usage and sources with filenames.
 - Usage meters in the sidebar (documents, requests per minute, requests this month) from GET /api/dashboard/usage. The limits come from config, never from the front end.
+- - A public Docs page at /docs (quickstart, authentication with the x-api-key header, the POST /v1/chat and document endpoints with request and response examples, error codes) and a Privacy page at /privacy, both linked from the home page hero ("Read the docs") and footer, in the same design. Write them from the real contracts in section 6; the Privacy page may only state what the product does (queries are logged for analytics, full document text is never logged, provider keys are stored encrypted) and must not promise a retention period.
 - A Models page (Phase 3B endpoints): Cheap, Expensive and Fallback groups, models in order with provider, endpoint, masked key and status, reorder arrows, Remove, and an Add model form (provider, model id, endpoint URL, API key, tier) with Test & save. The key field is write-only. See docs/WEBSITE_GUIDE.md section 06.
 Dashboard nav order: Documents, API keys, Try it, Analytics, Requests, Models.
 Add any missing dashboard endpoints from section 6 to apps/api/ (including the `sources` column on request_logs, written by the chat route), always filtered by tenant, with a supertest case that tenant A cannot read tenant B's request id (404).
@@ -532,7 +533,7 @@ Use plain CSS or one small component library. Report using the format in section
 - [ ] The analytics page shows real numbers after a few requests
 - [ ] The Requests page lists those requests, the tier filter works, and a detail view shows sources with real filenames
 - [ ] The usage meters match the configured limits, and changing a limit in the environment changes the meter
-- [ ] The home page has Quickstart, calculator, Security and FAQ sections, and no copy mentions a retention period, cost, savings or pricing
+- [ ] The home page has Quickstart and Security sections (FAQ postponed), /docs and /privacy exist and are linked, and no copy mentions a retention period, cost, savings or pricing
 - [ ] Two different accounts never see each other's documents, keys, requests or analytics
 
 **Design versus brief.** The design mockups go beyond the first Phase 4 scope (Quickstart, calculator, Security, FAQ, the Requests page and the usage meters) and those are now in scope as written above. Where the mockups still differ, follow this brief:
@@ -571,11 +572,11 @@ Do Phase 6 only. Using tools/eval/questions.csv with cheap_ok and expensive_ok f
 - [ ] The cost ratio in `docs/NOTES.md` is dated before the results
 - [ ] The classifier beats the rules on held-out questions, or the report says plainly that it does not
 
-### Phase 7: pricing (last, after everything else is tested)
+### Phase 7: pricing (reconsidering; not planned for now)
 
 Do this only when Phases 0 to 5 pass (and 6, if you did it). Before starting, the human copies Groq's current prices into `config.yaml` and chooses any spending caps.
 
-**OPEN (conflict with tenant models):** tenants now bring their own models, so one set of prices in `config.yaml` cannot price their requests. Decide before this phase how prices are stored (for example price fields on each `tenant_models` row, entered by the tenant in the Models form), and rewrite the bullets below to match. The savings estimate compares the routed cost with always using the tenant's expensive tier.
+**(Reconsidering, decided 2026-10-23.)** Tenants bring their own models, so one set of prices in `config.yaml` cannot price their requests. Pricing is dropped from the plan for now. Nothing below is scheduled, and no phase should build it. The bullets are kept only as a record; rewrite them before any pricing work. Until then the money rules in `AGENTS.md` stay in force: no prices, no cost, no savings or calculator copy anywhere.
 
 ```text
 Do Phase 7 only. Add everything about money, following rule 9 of AGENTS.md.
