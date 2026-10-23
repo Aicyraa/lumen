@@ -1,5 +1,5 @@
-import "../../src/env.js";
-import { loadConfig, type Config } from "../../src/config.js";
+import "../../src/config/env.js";
+import { loadConfig, type Config } from "../../src/config/config.js";
 
 // Same environment as dev, but the database is always lumen_test and the RAG URL is replaced per test.
 export function testConfig(overrides: Partial<Config> = {}) {

@@ -9,9 +9,9 @@ declare global {
   }
 }
 import type { Logger } from "pino";
-import type { Config } from "./config.js";
-import type { Pool } from "./db.js";
-import type { RagClient } from "./rag.js";
+import type { Config } from "../config/config.js";
+import type { Pool } from "../db/pool.js";
+import type { RagClient } from "../services/rag.js";
 
 // What the route factories need; one object built in createApp.
 export interface Deps {

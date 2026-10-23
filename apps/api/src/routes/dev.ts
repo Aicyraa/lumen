@@ -1,9 +1,9 @@
 import { timingSafeEqual } from "node:crypto";
 import type { RequestHandler } from "express";
 import { z } from "zod";
-import type { Auth } from "../auth.js";
-import type { Deps } from "../types.js";
-import { ApiError } from "../errors.js";
+import type { Auth } from "../auth/auth.js";
+import type { Deps } from "../types/types.js";
+import { ApiError } from "../lib/errors.js";
 
 // DEV ONLY (not mounted in production): mint an API key for an existing user's organization, without a browser.
 // Guarded by the internal secret so a stray dev server is not an open key dispenser.

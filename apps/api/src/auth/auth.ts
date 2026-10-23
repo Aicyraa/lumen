@@ -1,8 +1,8 @@
 import { betterAuth } from "better-auth";
 import { organization } from "better-auth/plugins";
 import { apiKey } from "@better-auth/api-key";
-import type { Config } from "./config.js";
-import type { Pool } from "./db.js";
+import type { Config } from "../config/config.js";
+import type { Pool } from "../db/pool.js";
 
 export type Auth = ReturnType<typeof createAuth>;
 

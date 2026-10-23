@@ -8,9 +8,9 @@ import { devRouter } from "./routes/dev.js";
 import { chatHandler } from "./routes/chat.js";
 import { feedbackHandler } from "./routes/feedback.js";
 import { documentsRouter } from "./routes/documents.js";
-import type { Auth } from "./auth.js";
-import type { Deps } from "./types.js";
-import { errorHandler, notFoundHandler } from "./errors.js";
+import type { Auth } from "./auth/auth.js";
+import type { Deps } from "./types/types.js";
+import { errorHandler, notFoundHandler } from "./lib/errors.js";
 
 // Everything is injected so tests can pass a test database and a stubbed RAG client.
 export function createApp({ config, pool, auth, rag, log }: Omit<Deps, "pending"> & { auth: Auth }) {

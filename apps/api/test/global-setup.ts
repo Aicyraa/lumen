@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
-import "../src/env.js";
-import { createPool } from "../src/db.js";
+import "../src/config/env.js";
+import { createPool } from "../src/db/pool.js";
 import { migrateAuth } from "../scripts/migrate.js";
 import { testConfig } from "./helpers/env.js";
 

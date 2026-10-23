@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import pino from "pino";
-import type { Config } from "../../src/config.js";
-import { createAuth } from "../../src/auth.js";
+import type { Config } from "../../src/config/config.js";
+import { createAuth } from "../../src/auth/auth.js";
 import { createApp } from "../../src/app.js";
-import { createPool } from "../../src/db.js";
-import { createRagClient } from "../../src/rag.js";
+import { createPool } from "../../src/db/pool.js";
+import { createRagClient } from "../../src/services/rag.js";
 import { testConfig } from "./env.js";
 import { startRagStub } from "./ragStub.js";
 

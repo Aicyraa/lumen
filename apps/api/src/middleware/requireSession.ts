@@ -1,8 +1,8 @@
 import type { RequestHandler } from "express";
 import { fromNodeHeaders } from "better-auth/node";
-import type { Auth } from "../auth.js";
-import { ApiError } from "../errors.js";
-import "../types.js";
+import type { Auth } from "../auth/auth.js";
+import { ApiError } from "../lib/errors.js";
+import "../types/types.js";
 
 // /api/dashboard/*: the tenant is the session's active organization (set at sign-in, never from the request).
 export const requireSession = (auth: Auth): RequestHandler => async (req, _res, next) => {

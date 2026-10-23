@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import request from "supertest";
-import type { Config } from "../src/config.js";
-import { makeCtx, type Ctx, type Tenant } from "./helpers/ctx.js";
+import type { Config } from "../../src/config/config.js";
+import { makeCtx, type Ctx, type Tenant } from "../helpers/ctx.js";
 
 async function withCtx(overrides: Partial<Config>, fn: (ctx: Ctx) => Promise<void>) {
   const ctx = await makeCtx({ maxRequestsPerMonth: 100000, ...overrides });

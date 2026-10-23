@@ -36,7 +36,7 @@ The values shown are examples. In the database:
 
 A new customer goes from the home page to a working API key and a searchable document set in these steps.
 
-1. A visitor opens the public home page (no login). It shows how it works, a demo, a quickstart (cURL, Node, Python), security notes and an FAQ. The savings calculator is added last, in Phase 7.
+1. A visitor opens the public home page (no login). It shows how it works, a demo, a quickstart (cURL, Node, Python), security notes (the FAQ is postponed), plus /docs and /privacy pages. The savings calculator is on hold while pricing is reconsidered.
 2. They click **Sign in with Google** or **Sign in with GitHub**. Better Auth runs the OAuth flow.
 3. On first login Better Auth creates the `user` and sets the session cookie, and a hook creates a personal organization for them. That organization is the tenant.
 4. In the dashboard they open **API keys** and create one with the API key plugin. It is shown once, stored only as a hash, and belongs to their organization.
@@ -103,7 +103,7 @@ Use the development column to start. The production column is what you swap or a
 | Backend (public) | Node.js LTS with ES modules, Express, `zod` (input validation), `multer` (uploads), `dotenv` | Add `helmet` (security headers), `express-rate-limit`, `cors` locked to your dashboard origin with credentials, `pino` (structured logs) |
 | Auth and tenants | `better-auth` with Google and GitHub social providers, the `organization` plugin (tenants) and `@better-auth/api-key` (customer keys), using your Postgres database | Same, with HTTPS-only cookies, trusted origins set to your production domains, and secondary storage for API key lookups if traffic grows (the API key plugin supports it) |
 | AI service | Python 3.11 or newer, FastAPI, `uvicorn`, `sentence-transformers`, `pypdf` (PDF text), `psycopg[binary]`, `pgvector`, `numpy`, `pydantic`, `pyyaml` | Run with several workers behind the same private network, add `tenacity` for provider retries |
-| LLM providers | `openai` SDK pointed at an OpenAI-compatible endpoint, free tiers while testing | Paid tiers with spending caps, a provider fallback, bring-your-own-key support later |
+| LLM providers | `openai` SDK pointed at an OpenAI-compatible endpoint, free tiers while testing | Paid tiers with spending caps, a provider fallback, bring-your-own-key support (now in scope: Phase 3B and the Models tab) |
 | Classifier (offline) | `scikit-learn`, `pandas`, a notebook | A saved model file loaded by `router.py`, retrained from logs on a schedule |
 | Database | Postgres 16 with pgvector in Docker | Managed Postgres that supports pgvector (Neon and Supabase both do), backups on, HNSW index when needed |
 | File storage | A local `uploads/` folder | An S3-compatible bucket (S3 or Cloudflare R2) |
@@ -114,6 +114,8 @@ Use the development column to start. The production column is what you swap or a
 | Monitoring | Console logs | Error tracking (for example Sentry), an uptime check, an alert on cost spikes |
 
 ## Models and hosting choices
+
+The table and notes below describe the dev/test default models Lumen itself uses. In the product, each tenant adds its own cheap, expensive and fallback models and keys in the Models tab (`docs/WEBSITE_GUIDE.md`); Lumen supplies only the embedding model.
 
 RAG uses two kinds of model. The embedding model turns text into vectors, for every chunk at upload and for every question at chat. It never writes answers. The chat models write the answers. You need one of the first and two of the second.
 
@@ -204,10 +206,11 @@ Each phase is one prompt in section 8 or 9 of the AI build brief.
 | 1 RAG core | Chunk, embed, store and search, with the tenant test | `pytest` passes and `ask.py` finds the right chunk |
 | 2 Python service | FastAPI endpoints, router, model calls | `curl` returns the full response shape and tests pass |
 | 3 Express and Better Auth | Login, organizations, keys, upload, chat, logs | Sign in, upload and chat work with an API key |
-| 4 Dashboard | Home page (steps, demo, quickstart, security, FAQ), sign-in, keys, documents, analytics, requests, usage meters. Follows `docs/DESIGN.md` | A new account gets a working key in under 5 minutes |
+| 3B Tenant models | Models table with encrypted provider keys, Models endpoints, per-tier fallback in the Python service (from `docs/WEBSITE_GUIDE.md`) | A tenant's own key answers, a failing primary falls back, no key ever leaks |
+| 4 Dashboard | Home page (steps, demo, quickstart, security; FAQ postponed), /docs and /privacy pages, sign-in (Google, GitHub, email and password), keys, documents, analytics, requests, usage meters. Follows `docs/DESIGN.md` | A new account gets a working key in under 5 minutes |
 | 5 Proof | Isolation suite, three-way comparison (no test website) | Zero leaks and a `results.csv` |
 | 6 Classifier | Train from labeled questions, only if the rules fall short | Beats the rules on held-out questions |
-| 7 Pricing (last) | Prices in `config.yaml`, cost per request, cost and estimated savings in analytics and Requests, savings calculator, cost column in `results.csv`, provider spending caps, cost-spike alert | Costs match a hand calculation, and all earlier tests still pass |
+| 7 Pricing (reconsidering, not planned) | Prices in `config.yaml`, cost per request, cost and estimated savings in analytics and Requests, savings calculator, cost column in `results.csv`, provider spending caps, cost-spike alert | Costs match a hand calculation, and all earlier tests still pass |
 
 ## Security and isolation checklist
 
