@@ -46,4 +46,11 @@ describe("loadConfig", () => {
   it("lets an environment variable override a config.json tunable", () => {
     expect(loadConfig({ ...good, INGEST_TIMEOUT_MS: "1234" }).ingestTimeoutMs).toBe(1234);
   });
+
+  it("has the dashboard tunables in config.json and lets the environment override them", () => {
+    const c = loadConfig(good);
+    expect([c.unansweredScoreBelow, c.unansweredPageSize, c.passageMaxChars]).toEqual([0.3, 50, 300]);
+    const o = loadConfig({ ...good, UNANSWERED_SCORE_BELOW: "0.45", UNANSWERED_PAGE_SIZE: "7", PASSAGE_MAX_CHARS: "120" });
+    expect([o.unansweredScoreBelow, o.unansweredPageSize, o.passageMaxChars]).toEqual([0.45, 7, 120]);
+  });
 });
