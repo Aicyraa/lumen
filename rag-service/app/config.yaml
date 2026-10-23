@@ -1,2 +1,25 @@
 embedding:
   model: all-MiniLM-L6-v2   # 384 numbers; changing it means changing VECTOR(384) and re-embedding
+
+# All numbers are placeholders to calibrate on the evaluation set, not tuned values.
+router:
+  k_cheap: 3
+  k_expensive: 8
+  long_query_words: 25
+  hard_words: [compare, difference, versus, vs, "which applies", both, why, exception, unless, except]
+  weak_score: 0.30        # below this, the match is weak
+  no_answer_score: 0.15   # below this, do not call any model
+  escalate_at: 0.25       # low on purpose: a missed escalation costs more than an extra one
+  hard_at: 0.50           # at or above this the question is clearly hard
+
+models: {}                # names come from LLM_MODEL_CHEAP / LLM_MODEL_EXPENSIVE
+
+llm:
+  timeout_seconds: 30
+  max_output_tokens: 512
+  temperature: 0
+  rate_limit_retry_seconds: 2   # wait before the single retry after a provider 429
+
+messages:
+  no_documents: No documents have been uploaded yet.
+  not_found: I could not find that in the documents.
