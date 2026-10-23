@@ -182,8 +182,9 @@ def query(req: QueryRequest, llm=Depends(get_llm)):
 
 
 @internal.delete("/documents/{document_id}")
-def delete_document(document_id: str):
-    raise ApiError(501, "not_implemented", "not built yet")
+def delete_document(document_id: UUID, tenant_id: str):
+    # tenant_id is a required query parameter; another tenant's id simply matches nothing
+    return {"deleted_chunks": store.delete_document(tenant_id, str(document_id))}
 
 
 app.include_router(internal)
