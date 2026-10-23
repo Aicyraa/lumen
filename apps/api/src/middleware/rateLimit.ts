@@ -21,6 +21,10 @@ export function createLimiters(config: Pick<Config, "ratePerMinute" | "globalLlm
     skip: (req) => !!req.tenantModels, // the cap protects the shared default key; a tenant's own keys are never throttled by it
   });
   // The usage meter reads the same store the limiter writes.
-  const used = async (tenantId: string) => (await store.get(tenantId))?.totalHits ?? 0;
+  // The store keeps an entry after its window ends until a sweep, so an ended window counts as 0.
+  const used = async (tenantId: string) => {
+    const hit = await store.get(tenantId);
+    return hit && hit.resetTime && hit.resetTime.getTime() > Date.now() ? hit.totalHits : 0;
+  };
   return { perTenant, globalCap, used };
 }

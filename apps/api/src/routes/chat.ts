@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Request, RequestHandler } from "express";
 import { z } from "zod";
 import { ApiError } from "../lib/errors.js";
+import { MONTH_START_SQL } from "../lib/range.js";
 import { priceAttempts, recordAttempts, type Attempt, type KnownModel } from "../services/modelCalls.js";
 import { RagError, type ChatResponse, type ChatSource } from "../services/rag.js";
 import type { Deps } from "../types/types.js";
@@ -37,7 +38,7 @@ export function chatHandler({ pool, rag, config, log }: Deps, { tryIt = false } 
     const q = parsed.data;
 
     const { rows: [{ n }] } = await pool.query(
-      "SELECT count(*)::int AS n FROM request_logs WHERE tenant_id = $1 AND created_at >= date_trunc('month', now())", [req.tenantId]);
+      `SELECT count(*)::int AS n FROM request_logs WHERE tenant_id = $1 AND created_at >= ${MONTH_START_SQL}`, [req.tenantId]);
     if (n >= config.maxRequestsPerMonth) throw new ApiError(429, "monthly_limit", "Monthly request allowance reached.");
 
     const started = Date.now();
