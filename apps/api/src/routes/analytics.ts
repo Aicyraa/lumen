@@ -5,7 +5,7 @@ import type { Deps } from "../types/types.js";
 import "../types/types.js";
 
 // Dashboard Analytics tab. Every statement filters by tenant_id. Days are UTC days; cost is the tenant's estimated provider cost.
-export function analyticsRouter({ pool }: Deps) {
+export function analyticsRouter({ pool, config }: Deps) {
   const r = Router();
 
   r.get("/summary", async (req, res) => {
@@ -51,6 +51,20 @@ export function analyticsRouter({ pool }: Deps) {
       total_cost_usd, // sum of request_logs.cost_usd; null when no priced model answered
       by_model: byModel.models,
     });
+  });
+
+  // Questions the documents could not answer: no model was called, or the best match scored below the threshold.
+  r.get("/unanswered", async (req, res) => {
+    const { range, days } = parseRange(req.query.range);
+    const where = "tenant_id = $1 AND created_at >= $2 AND (model_tier = 'none' OR top_score < $3)";
+    const args = [req.tenantId, rangeStart(days), config.unansweredScoreBelow];
+    const [list, count] = await Promise.all([
+      pool.query(
+        `SELECT id, query, top_score, model_tier AS tier, to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS time
+         FROM request_logs WHERE ${where} ORDER BY created_at DESC, id DESC LIMIT $4`, [...args, config.unansweredPageSize]),
+      pool.query(`SELECT count(*)::int AS n FROM request_logs WHERE ${where}`, args),
+    ]);
+    res.json({ range, threshold: config.unansweredScoreBelow, total: count.rows[0].n, items: list.rows });
   });
 
   return r;

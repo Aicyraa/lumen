@@ -12,6 +12,8 @@
   "modelTestTimeoutMs": 15000,
   "snippetMaxChars": 200,
   "passageMaxChars": 300,
+  "unansweredScoreBelow": 0.3,
+  "unansweredPageSize": 50,
   "modelAttemptsMax": 20,
   "rateLimitHeadersMax": 30,
   "modelTestMaxTokens": 16,

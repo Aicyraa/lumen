@@ -16,6 +16,8 @@ interface Tunables {
   modelTestTimeoutMs: number;
   snippetMaxChars: number;
   passageMaxChars: number;
+  unansweredScoreBelow: number;
+  unansweredPageSize: number;
   modelAttemptsMax: number;
   rateLimitHeadersMax: number;
   modelTestMaxTokens: number;
