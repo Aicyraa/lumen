@@ -43,5 +43,5 @@ export async function makeCtx(overrides = {}) {
     await pool.end();
   }
 
-  return { app, pool, auth, config, stub, createTenant, close };
+  return { app, pool, auth, config, stub, rag, createTenant, close };
 }
