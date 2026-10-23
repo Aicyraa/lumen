@@ -8,7 +8,7 @@ import { startProviderStub } from "../helpers/providerStub.js";
 const good = {
   DATABASE_URL: "postgresql://u:pw@localhost:5433/x", BETTER_AUTH_SECRET: "s".repeat(32), BETTER_AUTH_URL: "http://localhost:3000",
   DASHBOARD_ORIGIN: "http://localhost:5173", INTERNAL_SECRET: "i", RAG_SERVICE_URL: "http://localhost:8000",
-  MAX_DOCUMENTS_PER_TENANT: "7", RATE_LIMIT_PER_MINUTE: "5", MAX_REQUESTS_PER_MONTH: "99", MODEL_KEY_ENCRYPTION_SECRET: "ab".repeat(32),
+  MAX_DOCUMENTS_PER_TENANT: "7", RATE_LIMIT_PER_MINUTE: "5", MAX_REQUESTS_PER_MONTH: "99", MAX_PROJECTS_PER_USER: "5", MODEL_KEY_ENCRYPTION_SECRET: "ab".repeat(32),
 };
 const TUNABLES: [string, string][] = [
   ["modelAttemptsMax", "MODEL_ATTEMPTS_MAX"], ["rateLimitHeadersMax", "RATE_LIMIT_HEADERS_MAX"], ["modelTestMaxTokens", "MODEL_TEST_MAX_TOKENS"],

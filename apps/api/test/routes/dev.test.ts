@@ -19,7 +19,7 @@ const devKey = (app: Ctx["app"], secret: string | null, body: object) => {
 describe("dev-only API key route", () => {
   it.each([["development", true], ["production", false], ["test", false], ["staging", false], [undefined, false]])(
     "NODE_ENV=%s mounts it: %s (explicit opt-in)", (nodeEnv: string | undefined, mounted: boolean) => {
-      const env: NodeJS.ProcessEnv = { ...process.env, DATABASE_URL: "postgresql://x/y", RAG_SERVICE_URL: "http://x" };
+      const env: NodeJS.ProcessEnv = { ...process.env, DATABASE_URL: "postgresql://x/y", RAG_SERVICE_URL: "http://x", SMTP_URL: "smtp://x", MAIL_FROM: "a@b.test" };
       if (nodeEnv) env.NODE_ENV = nodeEnv; else delete env.NODE_ENV;
       expect(loadConfig(env).devRoutes).toBe(mounted);
     });

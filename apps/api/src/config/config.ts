@@ -18,6 +18,11 @@ interface Tunables {
   passageMaxChars: number;
   unansweredScoreBelow: number;
   unansweredPageSize: number;
+  projectNameMaxChars: number;
+  projectDescriptionMaxChars: number;
+  verificationResendWindowSeconds: number;
+  verificationResendMax: number;
+  verificationEmailExpiresSeconds: number;
   modelAttemptsMax: number;
   rateLimitHeadersMax: number;
   modelTestMaxTokens: number;
@@ -43,6 +48,7 @@ const required = z.object({
   MAX_DOCUMENTS_PER_TENANT: posInt,
   RATE_LIMIT_PER_MINUTE: posInt,
   MAX_REQUESTS_PER_MONTH: posInt,
+  MAX_PROJECTS_PER_USER: posInt,
   MODEL_KEY_ENCRYPTION_SECRET: z.string().regex(/^[0-9a-fA-F]{64}$/), // 32 bytes as hex
 });
 
@@ -60,6 +66,9 @@ export type Config = Tunables & {
   maxDocuments: number;
   ratePerMinute: number;
   maxRequestsPerMonth: number;
+  maxProjectsPerUser: number;
+  smtpUrl: string; // empty in development: the verification link is printed in the log instead
+  mailFrom: string;
   google: OAuthCredentials;
   github: OAuthCredentials;
   devRoutes: boolean;
@@ -69,7 +78,10 @@ export type Config = Tunables & {
 
 // Throws naming the missing variables (never their values) so the server refuses to start.
 export function loadConfig(env: NodeJS.ProcessEnv = process.env, overrides: Partial<Config> = {}): Config {
-  const parsed = required.safeParse(env);
+  const production = env.NODE_ENV === "production";
+  // Production cannot verify emails without a mail server.
+  const schema = production ? required.extend({ SMTP_URL: z.string().min(1), MAIL_FROM: z.string().min(1) }) : required;
+  const parsed = schema.safeParse(env);
   if (!parsed.success) {
     const names = [...new Set(parsed.error.issues.map((i) => String(i.path[0])))];
     throw new Error(`missing or invalid environment variables: ${names.join(", ")}`);
@@ -91,10 +103,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, overrides: Part
     maxDocuments: e.MAX_DOCUMENTS_PER_TENANT,
     ratePerMinute: e.RATE_LIMIT_PER_MINUTE,
     maxRequestsPerMonth: e.MAX_REQUESTS_PER_MONTH,
+    maxProjectsPerUser: e.MAX_PROJECTS_PER_USER,
+    smtpUrl: env.SMTP_URL ?? "",
+    mailFrom: env.MAIL_FROM || "Lumen <no-reply@localhost>",
     google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET },
     github: { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET },
     modelKeySecret: e.MODEL_KEY_ENCRYPTION_SECRET,
-    production: env.NODE_ENV === "production",
+    production,
     devRoutes: env.NODE_ENV === "development", // dev-only routes are an explicit opt-in
     ...t,
     uploadDir: resolve(new URL("../..", import.meta.url).pathname, t.uploadDir), // relative to apps/api

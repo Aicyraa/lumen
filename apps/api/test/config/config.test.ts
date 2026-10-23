@@ -34,7 +34,7 @@ describe("loadConfig", () => {
     });
 
   it("treats NODE_ENV=production as production and anything else as not", () => {
-    expect(loadConfig({ ...good, NODE_ENV: "production" }).production).toBe(true);
+    expect(loadConfig({ ...good, NODE_ENV: "production", SMTP_URL: "smtp://x", MAIL_FROM: "a@b.test" }).production).toBe(true);
     expect(loadConfig({ ...good, NODE_ENV: "test" }).production).toBe(false);
   });
 
