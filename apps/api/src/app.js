@@ -4,6 +4,7 @@ import { toNodeHandler } from "better-auth/node";
 import { requireSession } from "./middleware/requireSession.js";
 import { createLimiters } from "./middleware/rateLimit.js";
 import { requireApiKey } from "./middleware/requireApiKey.js";
+import { devRouter } from "./routes/dev.js";
 import { chatHandler } from "./routes/chat.js";
 import { feedbackHandler } from "./routes/feedback.js";
 import { documentsRouter } from "./routes/documents.js";
@@ -39,6 +40,8 @@ export function createApp({ config, pool, auth, rag, log }) {
   dash.use("/documents", documentsRouter(deps));
   dash.post("/try", ...limiters.llm, chatHandler(deps)); // same limiter instance as /v1/chat: one shared counter
   app.use("/api/dashboard", dash);
+
+  if (!config.production) app.post("/dev/api-key", devRouter({ pool, auth, config }));
 
   app.use(notFoundHandler);
   app.use(errorHandler(log));
