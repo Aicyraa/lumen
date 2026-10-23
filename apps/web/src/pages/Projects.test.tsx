@@ -29,7 +29,7 @@ describe("Projects", () => {
   });
 
   it("creates a project from the dialog and shows it", async () => {
-    let list = [P1];
+    let list: object[] = [P1];
     const { calls } = mockFetch((_url, init) => {
       if (init?.method === "POST") { list = [...list, { ...P2, id: "p3", name: "Docs bot", slug: "docs-bot-1" }]; return reply(201, { workspace: list[1] }); }
       return { workspaces: list };

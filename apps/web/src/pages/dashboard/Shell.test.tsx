@@ -9,41 +9,49 @@ let signOutImpl: () => unknown = () => signOut(); // a plain function: vitest 5 
 vi.mock("../../lib/session", () => ({ useOrgId: () => "o1" }));
 vi.mock("../../lib/auth-client", () => ({
   authClient: {
-    useSession: () => ({ data: { user: { email: "maya@campus.test", name: "Maya" }, session: { activeOrganizationId: "o1" } }, isPending: false }),
+    useSession: () => ({ data: { user: { id: "u1", email: "maya@campus.test", name: "Maya" }, session: { activeOrganizationId: "o1" } }, isPending: false }),
     useActiveOrganization: () => ({ data: { id: "o1", name: "Maya's workspace" } }),
     signOut: () => signOutImpl(),
     getSession: () => getSessionImpl(),
   },
 }));
 
+import { ProjectContext } from "../../lib/projects";
 import { mockFetch, renderWithProviders } from "../../test/helpers";
 import { Shell } from "./Shell";
+
+const PROJECT = { id: "o1", name: "Maya's workspace", slug: "mayas", description: null, role: "owner" as const, created_at: "2026-10-24T08:00:00Z", documents: 0, requests_this_month: 0 };
+const tree = (extra?: React.ReactNode) => (
+  <Routes>{extra}<Route path="/" element={<div>public home</div>} /><Route path="/projects/:slug" element={<ProjectContext.Provider value={PROJECT}><Shell /></ProjectContext.Provider>}><Route path="documents" element={<div>docs page</div>} /></Route></Routes>
+);
+const usage = { documents: { used: 0, max: 1 }, requests_per_minute: { used: 0, max: 1 }, requests_per_minute_x: 0, requests_this_month: { used: 0, max: 1 } };
+const handler = (url: string) => (url.endsWith("/workspaces") ? { workspaces: [PROJECT] } : usage);
 
 describe("Shell", () => {
   beforeEach(() => { signOut.mockReset().mockResolvedValue({ data: { success: true } }); signOutImpl = () => signOut(); getSessionImpl = () => Promise.resolve({ data: null }); });
 
   it("lists the tabs in the required order, the workspace chip and the usage meters", async () => {
-    mockFetch(() => ({ documents: { used: 1, max: 5 }, requests_per_minute: { used: 0, max: 5 }, requests_this_month: { used: 0, max: 5 } }));
-    renderWithProviders(<Routes><Route path="/dashboard" element={<Shell />}><Route path="documents" element={<div>docs page</div>} /></Route></Routes>, { route: "/dashboard/documents" });
+    mockFetch(handler);
+    renderWithProviders(tree(), { route: "/projects/mayas/documents" });
     const nav = screen.getByRole("navigation", { name: "Dashboard" });
-    expect(within(nav).getAllByRole("link").map((a) => a.textContent?.replace(/\d+$/, ""))).toEqual(["Documents", "API keys", "Try it", "Analytics", "Requests", "Models"]);
+    expect(within(nav).getAllByRole("link").map((a) => a.textContent?.replace(/\d+$/, ""))).toEqual(["Documents", "API keys", "Try it", "Analytics", "Requests", "Models", "Settings"]);
     expect(screen.getByText("docs page")).toBeInTheDocument();
-    expect(screen.getByText("Maya's workspace")).toBeInTheDocument();
+    expect(screen.getAllByText("Maya's workspace").length).toBeGreaterThan(0); // switcher option and chip
     expect(screen.getByText("maya@campus.test")).toBeInTheDocument();
     expect(await screen.findByRole("meter", { name: "Documents" })).toBeInTheDocument();
   });
 
   it("signs out and leaves the dashboard", async () => {
-    mockFetch(() => ({ documents: { used: 0, max: 1 }, requests_per_minute: { used: 0, max: 1 }, requests_this_month: { used: 0, max: 1 } }));
-    renderWithProviders(<Routes><Route path="/" element={<div>public home</div>} /><Route path="/dashboard" element={<Shell />}><Route path="documents" element={<div>docs page</div>} /></Route></Routes>, { route: "/dashboard/documents" });
+    mockFetch(handler);
+    renderWithProviders(tree(), { route: "/projects/mayas/documents" });
     await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(signOut).toHaveBeenCalled();
     expect(await screen.findByText("public home")).toBeInTheDocument();
   });
 
   const mount = () => {
-    mockFetch(() => ({ documents: { used: 0, max: 1 }, requests_per_minute: { used: 0, max: 1 }, requests_this_month: { used: 0, max: 1 } }));
-    const r = renderWithProviders(<Routes><Route path="/" element={<div>public home</div>} /><Route path="/dashboard" element={<Shell />}><Route path="documents" element={<div>docs page</div>} /></Route></Routes>, { route: "/dashboard/documents" });
+    mockFetch(handler);
+    const r = renderWithProviders(tree(), { route: "/projects/mayas/documents" });
     r.client.setQueryData(["documents", "o1"], [{ filename: "a-secret.md" }]);
     return r;
   };

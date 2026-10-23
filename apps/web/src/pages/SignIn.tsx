@@ -24,14 +24,14 @@ export function SignIn() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  if (session) return <Navigate to="/dashboard" replace />;
+  if (session) return <Navigate to="/projects" replace />;
   // The API lives on another origin, so the callback after OAuth must be an absolute URL of this app.
-  const callbackURL = `${window.location.origin}/dashboard`;
+  const callbackURL = `${window.location.origin}/projects`;
 
   async function social(provider: "google" | "github") {
     setError("");
     try {
-      const res = await authClient.signIn.social({ provider, callbackURL });
+      const res = await authClient.signIn.social({ provider, callbackURL, errorCallbackURL: `${window.location.origin}/signin` });
       if (res?.error) setError(failure(res.error));
       else if (res && !res.data?.url) setError(WRONG_SERVER); // not the expected { url }
     } catch {
@@ -44,9 +44,9 @@ export function SignIn() {
     setError("");
     setBusy(true);
     try {
-      const res = mode === "in" ? await authClient.signIn.email({ email, password }) : await authClient.signUp.email({ name: name.trim(), email, password });
+      const res = mode === "in" ? await authClient.signIn.email({ email, password }) : await authClient.signUp.email({ name: name.trim(), email, password, callbackURL: `${window.location.origin}/verify-email` });
       if (res.error) setError(failure(res.error));
-      else { qc.clear(); navigate("/dashboard"); } // nothing from an earlier account may survive a new sign-in
+      else { qc.clear(); navigate("/projects"); } // nothing from an earlier account may survive a new sign-in
     } catch {
       setError(UNREACHABLE);
     } finally {

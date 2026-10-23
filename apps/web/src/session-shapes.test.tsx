@@ -15,6 +15,7 @@ import { Home } from "./pages/Home";
 import { RequireSession } from "./components/RequireSession";
 import { SessionCacheGuard } from "./components/SessionCacheGuard";
 import { Shell } from "./pages/dashboard/Shell";
+import { ProjectContext } from "./lib/projects";
 import { SignIn } from "./pages/SignIn";
 import { useOrgId } from "./lib/session";
 
@@ -55,13 +56,13 @@ describe("odd useSession shapes never throw", () => {
     expect(screen.getByText("org:[]")).toBeInTheDocument();
     render(wrap(dash, "/dashboard"));
     expect(screen.getByText("dashboard secret")).toBeInTheDocument();
-    render(wrap(<Routes><Route path="/signin" element={<SignIn />} /><Route path="/dashboard" element={<div>dashboard home</div>} /></Routes>, "/signin"));
+    render(wrap(<Routes><Route path="/signin" element={<SignIn />} /><Route path="/projects" element={<div>dashboard home</div>} /></Routes>, "/signin"));
     expect(screen.getByText("dashboard home")).toBeInTheDocument();
   });
 
   it("Shell and API keys tolerate a session without a user", () => {
     result = { data: { session: { activeOrganizationId: "o" } }, isPending: false };
-    render(wrap(<Routes><Route path="/dashboard" element={<Shell />}><Route index element={<ApiKeys />} /></Route></Routes>, "/dashboard"));
+    render(wrap(<Routes><Route path="/dashboard" element={<ProjectContext.Provider value={{ id: "o", name: "P", slug: "p", description: null, role: "owner", created_at: "2026-10-24T08:00:00Z", documents: 0, requests_this_month: 0 }}><Shell /></ProjectContext.Provider>}><Route index element={<ApiKeys />} /></Route></Routes>, "/dashboard"));
     expect(screen.getByRole("navigation", { name: "Dashboard" })).toBeInTheDocument();
   });
 

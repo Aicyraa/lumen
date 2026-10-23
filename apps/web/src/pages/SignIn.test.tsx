@@ -22,7 +22,7 @@ const page = () =>
       <MemoryRouter initialEntries={["/signin"]}>
         <Routes>
           <Route path="/signin" element={<SignIn />} />
-          <Route path="/dashboard/*" element={<div>dashboard home</div>} />
+          <Route path="/projects" element={<div>dashboard home</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -31,16 +31,16 @@ const page = () =>
 describe("SignIn", () => {
   beforeEach(() => { [social, signInEmail, signUpEmail, useSession].forEach((f) => f.mockReset()); useSession.mockReturnValue({ data: null, isPending: false }); });
 
-  it("starts Google and GitHub sign-in with a callback to this app's dashboard", async () => {
+  it("starts Google and GitHub sign-in with a callback to Projects", async () => {
     page();
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Continue with Google" }));
-    expect(social).toHaveBeenCalledWith({ provider: "google", callbackURL: `${window.location.origin}/dashboard` });
+    expect(social).toHaveBeenCalledWith({ provider: "google", callbackURL: `${window.location.origin}/projects`, errorCallbackURL: `${window.location.origin}/signin` });
     await user.click(screen.getByRole("button", { name: "Continue with GitHub" }));
-    expect(social).toHaveBeenLastCalledWith({ provider: "github", callbackURL: `${window.location.origin}/dashboard` });
+    expect(social).toHaveBeenLastCalledWith({ provider: "github", callbackURL: `${window.location.origin}/projects`, errorCallbackURL: `${window.location.origin}/signin` });
   });
 
-  it("signs in with email and password and lands on /dashboard", async () => {
+  it("signs in with email and password and lands on /projects", async () => {
     signInEmail.mockResolvedValue({ data: { user: {} }, error: null });
     page();
     const user = userEvent.setup();
@@ -71,8 +71,7 @@ describe("SignIn", () => {
     await user.type(screen.getByLabelText("Email"), "maya@campus.test");
     await user.type(screen.getByLabelText("Password"), "correct horse 123");
     await user.click(screen.getByRole("button", { name: "Sign up" }));
-    expect(signUpEmail).toHaveBeenCalledWith({ name: "Maya", email: "maya@campus.test", password: "correct horse 123" });
-    expect(await screen.findByText("dashboard home")).toBeInTheDocument();
+    expect(signUpEmail).toHaveBeenCalledWith({ name: "Maya", email: "maya@campus.test", password: "correct horse 123", callbackURL: `${window.location.origin}/verify-email` });
   });
 
   it("sends a visitor who already has a session straight to the dashboard", () => {

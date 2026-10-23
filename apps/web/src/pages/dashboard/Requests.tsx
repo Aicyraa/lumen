@@ -26,7 +26,7 @@ export function Requests() {
     queryFn: ({ pageParam }) => api<RequestsPage>(`/api/dashboard/requests?range=${range}&tier=${tier}${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`),
     getNextPageParam: (last) => last.next_cursor ?? undefined, // null = last page
   });
-  const rows = q.data?.pages.flatMap((p) => p.items) ?? [];
+  const rows = q.data?.pages.flatMap((p) => p.items ?? []) ?? [];
 
   return (
     <div className="stack">
