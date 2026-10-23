@@ -88,6 +88,14 @@ describe("POST /v1/chat", () => {
     expect((await logs(a.tenantId)).rows).toMatchObject([{ status: "provider_error", model_tier: null }]);
   });
 
+  it("a failing request_logs insert during a provider error does not replace the 502 provider_error", async () => {
+    await resetLogs();
+    ctx.stub.handlers.query = () => ({ status: 502, body: { error: { code: "provider_error", message: "down" } } });
+    const res = await chat(a, { query: "bad \u0000 byte makes the Postgres insert fail" });
+    expect(res.status).toBe(502);
+    expect(res.body.error.code).toBe("provider_error");
+  });
+
   it("returns 429 monthly_limit once the tenant has used MAX_REQUESTS_PER_MONTH", async () => {
     await resetLogs();
     for (let i = 0; i < 5; i++) await ctx.pool.query("INSERT INTO request_logs (tenant_id, query) VALUES ($1, 'old')", [b.tenantId]);

@@ -26,6 +26,11 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ ...good, [name]: "0" })).toThrow(name);
   });
 
+  it("defaults the global LLM cap to 8 per minute and lets GLOBAL_LLM_CAP_PER_MINUTE override it", () => {
+    expect(loadConfig(good).globalLlmCapPerMinute).toBe(8);
+    expect(loadConfig({ ...good, GLOBAL_LLM_CAP_PER_MINUTE: "20" }).globalLlmCapPerMinute).toBe(20);
+  });
+
   it("lets an environment variable override a config.json tunable", () => {
     expect(loadConfig({ ...good, INGEST_TIMEOUT_MS: "1234" }).ingestTimeoutMs).toBe(1234);
   });
