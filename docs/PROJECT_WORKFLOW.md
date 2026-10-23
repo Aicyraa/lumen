@@ -46,7 +46,7 @@ A new customer goes from the home page to a working API key and a searchable doc
 8. Python returns the chunk count. Express sets the status to `ready`, or to `failed` with a reason the user can read.
 9. The dashboard shows the status and a **Try it** box so the owner can ask a test question before touching any code.
 10. The customer's own chatbot backend now calls `POST /v1/chat` with the API key.
-11. Each call appears in the dashboard's **Requests** page, where the owner can open one to see its route, tokens and which documents it used (its cost is added in Phase 7). The sidebar usage meters show how close the tenant is to its limits (documents, requests per minute, requests this month).
+11. Each call appears in the dashboard's **Requests** page, where the owner can open one to see its route, tokens and which documents it used (plus its estimated provider cost, from the prices the owner enters per model). The sidebar usage meters show how close the tenant is to its limits (documents, requests per minute, requests this month).
 
 Ingest can take seconds to minutes on big files, so step 6 must not block. Return immediately with `processing`, run the ingest in the background, and let the dashboard poll the status.
 
@@ -81,7 +81,7 @@ The console is only as good as what you log. Log one row per request in a `reque
 | View | Built from | Why the owner cares |
 | --- | --- | --- |
 | Requests per day | `created_at` | Is the chatbot being used |
-| Cost per day, and estimated savings (**Phase 7**) | `cost_usd`, `tokens_in`, `tokens_out` | The headline number: what routing saved versus always using the expensive model. Mark it as an estimate. Not built until Phase 7 |
+| Estimated provider cost per day and per model (tenant-entered prices); savings estimates are on hold | `cost_usd`, `tokens_in`, `tokens_out` | The headline number: what routing saved versus always using the expensive model. Mark it as an estimate. Not built until Phase 7 |
 | Route mix | `model_tier`, `escalated` | How often the cheap path is enough |
 | Latency | `latency_ms` | Median and slow requests |
 | Unanswered questions | Low `top_score` | Tells the owner which documents to add |
@@ -222,12 +222,12 @@ Tick these off before showing the service to anyone outside your test accounts.
 - [ ] FastAPI is not reachable from the internet and rejects calls without `X-Internal-Secret`
 - [ ] Secrets are in environment variables, `.env` is in `.gitignore`, and no key has ever been committed
 - [ ] Uploads are limited by file type, file size and documents per tenant
-- [ ] Rate limit per tenant (shared by `/v1/chat` and `/try`) plus a global cap below the provider's limit, and (Phase 7) a spending cap at each LLM provider
+- [ ] Rate limit per tenant (shared by `/v1/chat` and `/try`) plus a global cap that protects only the shared dev default key (tenants' own keys are limited by their own providers)
 - [ ] Session cookie is `httpOnly`, `secure` in production and `sameSite: 'lax'`; dashboard form posts are protected against CSRF
 - [ ] CORS allows only your dashboard origin
 - [ ] OAuth redirect URIs are exact, and production uses HTTPS only
 - [ ] Deleting a document deletes its chunks, not just the file record
 - [ ] Full document text is never written to logs, and no page or FAQ promises a retention period that is not built
 - [ ] The Requests and usage endpoints filter by tenant, and another tenant's request id returns 404
-- [ ] (Phase 7) The home-page calculator is labelled as an illustration, not real prices
+- [ ] Provider keys are encrypted at rest and never returned, logged or shown after saving; tenant endpoint URLs are checked against private addresses
 - [ ] The prompt treats retrieved text as data: a document that says "ignore your instructions" must not change the model's behavior (test this with one planted document)
