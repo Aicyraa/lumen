@@ -44,6 +44,90 @@ With no models: production answers `422 no_models_configured`, other environment
 `LLM_*` default. The global LLM cap applies only to that shared default key.
 Apply `infra/sql/002_tenant_models.sql` to the dev database (`psql "$DATABASE_URL" -f infra/sql/002_tenant_models.sql`); tests apply it to `lumen_test` themselves.
 
+## Dashboard endpoints (Phase 4)
+
+All are under `/api/dashboard`, need the Better Auth session cookie (`401 unauthorized` otherwise) and use the session's
+active organization as the tenant. Every query filters by `tenant_id`; another tenant's id is `404 not_found`, and so is a
+non-UUID id. Errors are `{ "error": { "code", "message" } }`; a bad `range`, `tier`, `limit` or `cursor` is `422 invalid_request`.
+`range` is `7d` (default) or `30d` and means whole UTC days, today included. Cost is always the tenant's
+**estimated provider cost** (`null` when no priced model answered). There is no savings figure and no Lumen price.
+Browser calls need `credentials: "include"`; CORS allows `DASHBOARD_ORIGIN` with credentials (GET/POST/PATCH/DELETE).
+
+| Endpoint | Response |
+| --- | --- |
+| `GET /usage` | `{ documents: {used,max}, requests_per_minute: {used,max}, requests_this_month: {used,max} }`. `max` = `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE`, `MAX_REQUESTS_PER_MONTH`; per-minute `used` is the rate limiter's own counter (shared by `/v1/chat` and `/try`); the month is the calendar month in UTC |
+| `GET /analytics/summary?range=` | see below |
+| `GET /analytics/unanswered?range=` | `{ range, threshold, total, items: [{ id, query, top_score, tier, time }] }`, newest first, at most `unansweredPageSize` items. An item is tier `none` or a best match below `threshold` (`unansweredScoreBelow`) |
+| `GET /requests?range=&tier=all\|cheap\|expensive\|none&limit=&cursor=` | `{ items: [{ id, time, query, tier, k, escalated, latency_ms, tokens_in, tokens_out, cost_usd, status }], next_cursor }`. Newest first; `limit` defaults to `requestsPageSizeDefault` and is capped at `requestsPageSizeMax`; pass `next_cursor` back as `cursor` (`null` = last page). A failed call (provider error) has `tier: null`, shown under `all` only |
+| `GET /requests/:id` | see below |
+| `POST /feedback` `{ request_id, rating: 1 \| -1 }` | `204`; for the Try it "Helpful?" buttons (`request_id` is the `request_id` of the try response). `404` for another tenant's request |
+| `GET /documents` | `{ documents: [{ document_id, filename, status: "processing"\|"ready"\|"failed", error, chunk_count, created_at }] }`, newest first |
+| `POST /documents`, `DELETE /documents/:id`, `POST /try`, `/models...` | as in the brief, section 6 (Phase 3 and 3B) |
+
+`GET /analytics/summary` (days with no traffic are present with zeros, oldest first, today last; `failed` counts calls whose
+provider failed, so `cheap + expensive + none + failed` is the day's total):
+
+```json
+{
+  "range": "7d",
+  "total_requests": 6,
+  "per_day": [{ "date": "2026-10-23", "cheap": 2, "expensive": 1, "none": 0, "failed": 0, "cost_usd": 0.011 }],
+  "route_mix": { "cheap": 2, "escalated": 1, "expensive_hard": 1, "none": 1, "failed": 1 },
+  "latency_ms": { "median": 300, "p95": 1140 },
+  "total_cost_usd": 0.031,
+  "by_model": [{ "id": "uuid", "tier": "cheap", "position": 0, "provider": "openai_compatible", "model_id": "m1", "status": "connected",
+                 "rate_limits": null, "rate_limits_seen_at": null, "requests": 4, "tokens_in": 300, "tokens_out": 30,
+                 "failures": { "error": 1, "timeout": 1, "rate_limited": 0 }, "backup_uses": 0, "fallback_uses": 0,
+                 "median_latency_ms": 200, "cost_usd": 0.003 }]
+}
+```
+
+`escalated` is tier `expensive` with `escalated: true` (the router was cautious); `expensive_hard` is tier `expensive`
+without it. Latency covers answered requests only (`status = ok`). `per_day[].cost_usd` and `total_cost_usd` sum
+`request_logs.cost_usd` (null when nothing in the period was priced). `by_model` is exactly the `models` array of
+`GET /models/usage` for the same range (fallback models and unused models included, `cost_usd` per model).
+
+`GET /requests/:id`. The passage is read from `chunks` when the request is opened (tenant-scoped join, cut to
+`passageMaxChars`) and is never stored or logged:
+
+```json
+{
+  "id": "uuid", "time": "2026-10-23T10:15:00.123456Z", "query": "When does enrollment close?", "status": "ok",
+  "route": { "tier": "expensive", "k": 8, "escalated": true, "difficulty": 0.62, "top_score": 0.78 },
+  "usage": { "tokens_in": 812, "tokens_out": 96, "latency_ms": 820, "cost_usd": 0.0042 },
+  "feedback": -1,
+  "api_key": { "id": "...", "name": "website bot", "start": "abcde", "prefix": null },
+  "sources": [
+    { "document_id": "uuid", "chunk_id": 12, "score": 0.78, "filename": "handbook.pdf", "document_deleted": false, "passage": "Spring enrollment closes..." },
+    { "document_id": "uuid", "chunk_id": 99, "score": 0.5, "filename": null, "document_deleted": true, "passage": null }
+  ]
+}
+```
+
+`api_key` is `null` for Try it requests, a deleted key, or a key that is not this tenant's. A source whose chunk is gone
+(re-ingested) has its `filename` and `passage: null`; a source whose document is gone has `document_deleted: true`
+(show "deleted document"). Failed requests have `route.tier: null` and `status: "provider_error"`.
+
+Config keys added to `config.json` (each can be overridden by an upper-snake env var, e.g. `UNANSWERED_SCORE_BELOW`):
+`passageMaxChars` (300), `unansweredScoreBelow` (0.3, the same value as the Python router's `weak_score`),
+`unansweredPageSize` (50). Existing: `requestsPageSizeDefault` (50), `requestsPageSizeMax` (200).
+
+### API keys (Better Auth client, no custom routes)
+
+Keys belong to the active organization (`apiKey({ references: "organization" })`). The tenant id is the session's
+`activeOrganizationId` (`authClient.useSession().data?.session.activeOrganizationId`). With
+`createAuthClient({ baseURL, plugins: [organizationClient(), apiKeyClient()] })`:
+
+```ts
+await authClient.apiKey.create({ name: "website bot", organizationId });   // data.key is shown once; data.id, data.start
+await authClient.apiKey.list({ query: { organizationId } });               // data.apiKeys[] (no secret), data.total
+await authClient.apiKey.delete({ keyId });                                 // revoke; data.success
+```
+
+`organizationId` is required for create. Another organization's id gives `403` on create, list and delete (the plugin checks
+membership and the `apiKey` permission of the member's role; the creator/owner role has all of them). The new key
+authenticates `/v1/*` as that tenant straight away.
+
 ## Dev-only API key
 
 No browser needed. Sign up with email + password (`POST /api/auth/sign-up/email`), then:
@@ -69,9 +153,9 @@ src/
   db/                pool.ts, the pg pool
   auth/              auth.ts, Better Auth setup (organizations, API keys)
   middleware/        rateLimit, requireApiKey, requireSession, tenantModels
-  routes/            HTTP handlers: chat, documents, feedback, models, dev
-  services/          non-HTTP logic: rag.ts (rag-service client), provider.ts (Test & save call), modelCalls.ts (attempts, cost), sweep.ts
-  lib/               errors.ts (error shape), crypto.ts (AES-256-GCM), endpointGuard.ts (SSRF guard), logger.ts (key redaction)
+  routes/            HTTP handlers: chat, documents, feedback, models, usage, requests, analytics, dev
+  services/          non-HTTP logic: rag.ts (rag-service client), provider.ts (Test & save call), modelCalls.ts (attempts, cost), modelUsage.ts (per-model figures), sweep.ts
+  lib/               errors.ts (error shape), range.ts (7d/30d, UTC month), crypto.ts (AES-256-GCM), endpointGuard.ts (SSRF guard), logger.ts (key redaction)
   types/             types.ts, shared types (Deps)
 test/                mirrors src: auth, config, middleware, routes, services; helpers/ and global-setup.ts
 ```
