@@ -7,7 +7,7 @@ import { makeCtx, type Ctx, type Tenant } from "../helpers/ctx.js";
 const fakeGoogle = {
   clientId: "test-client", clientSecret: "test-secret",
   verifyIdToken: async () => true,
-  getUserInfo: async (t: { idToken?: string }) => ({ user: JSON.parse(t.idToken!), data: {} }),
+  getUserInfo: async (t: { idToken?: string }) => { const user = JSON.parse(t.idToken!); return { user, data: { sub: user.id } }; }, // sub: Google's account subject
 };
 let ctx: Ctx;
 beforeAll(async () => { ctx = await makeCtx({}, { social: { google: fakeGoogle } }); });
@@ -35,7 +35,9 @@ describe("no implicit account linking", () => {
     const owner = await ctx.createTenant("owner");
     const res = await googleSignIn(profile(owner.email));
     expect(res.status).toBeGreaterThanOrEqual(400);
-    expect(JSON.stringify(res.body).toLowerCase()).toContain("account_not_linked");
+    // the id-token API says "account not linked"; the browser redirect flow reports the same condition as ?error=account_not_linked
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/account.not.linked/i);
     expect(res.headers["set-cookie"]).toBeUndefined();
     expect(await accounts(owner.userId)).toEqual(["credential"]);
   });

@@ -30,7 +30,12 @@ export function createAuth({ pool, config, mailer, log, social }: { pool: Pool; 
     baseURL: config.authUrl,
     secret: config.authSecret,
     trustedOrigins: [config.dashboardOrigin],
-    socialProviders,
+    socialProviders: { ...socialProviders, ...social }, // `social` only exists so tests can plug in a fake provider
+    account: {
+      // Same-email sign-in with a second provider is refused (account_not_linked); a signed-in user links explicitly with linkSocial.
+      // allowDifferentEmails: that explicit step is authenticated, and GitHub/Google emails often differ from the sign-up email.
+      accountLinking: { enabled: true, disableImplicitLinking: true, allowDifferentEmails: true },
+    },
     databaseHooks: {
       user: { create: { after: async (user) => { await ensurePersonalOrg(user.id, user.name); } } },
       // Also covers users created before the hook existed: no session ever starts without an active tenant.
