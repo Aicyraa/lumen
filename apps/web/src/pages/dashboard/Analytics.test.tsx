@@ -10,7 +10,7 @@ const summary = (range: string) => ({
     { date: "2026-10-22", cheap: 4, expensive: 2, none: 1, failed: 0, cost_usd: 0.002 },
     { date: "2026-10-23", cheap: 1, expensive: 1, none: 0, failed: 1, cost_usd: null },
   ],
-  route_mix: { cheap: 5, escalated: 1, expensive_hard: 1, none: 1, failed: 1 },
+  route_mix: { cheap: 5, escalated: 1, expensive_hard: 1, none: 2, failed: 1 },
   latency_ms: { median: 840, p95: 2100 }, total_cost_usd: 0.0031,
   by_model: [{ id: "m1", tier: "cheap", position: 0, provider: "openai_compatible", model_id: "gpt-oss-20b", status: "connected", rate_limits: null, rate_limits_seen_at: null,
     requests: 7, tokens_in: 900, tokens_out: 80, failures: { error: 1, timeout: 0, rate_limited: 0 }, backup_uses: 0, fallback_uses: 0, median_latency_ms: 300, cost_usd: 0.0031 },
