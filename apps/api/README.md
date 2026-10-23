@@ -157,7 +157,7 @@ empty in any other environment nothing is sent and no link is logged. New tunabl
 - "Works once": the link is a signed token, so it cannot be revoked, but it is idempotent. Once the user is verified, another click only
   redirects to `status=verified` again: no new session, nothing changes.
 - Resend: `POST /api/auth/send-verification-email`, at most `verificationResendMax` per `verificationResendWindowSeconds` per client
-  address (IP, as seen by Express; behind a proxy set Express's `trust proxy`). Over the limit: `429 { error: { code: "rate_limited" } }`.
+  address (the socket address Express sees; the app does not configure `trust proxy`, so behind a reverse proxy every client would share one counter until it is set). Over the limit: `429 { error: { code: "rate_limited" } }`.
   The response is the same for unknown and already-verified addresses and no mail is sent for them. Not done: a per-email limit.
 
 ```ts
