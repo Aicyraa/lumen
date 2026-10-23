@@ -7,6 +7,7 @@ import { requireApiKey } from "./middleware/requireApiKey.js";
 import { devRouter } from "./routes/dev.js";
 import { chatHandler } from "./routes/chat.js";
 import { feedbackHandler } from "./routes/feedback.js";
+import { modelsRouter } from "./routes/models.js";
 import { documentsRouter } from "./routes/documents.js";
 import type { Auth } from "./auth/auth.js";
 import type { Deps } from "./types/types.js";
@@ -40,6 +41,7 @@ export function createApp({ config, pool, auth, rag, log }: Omit<Deps, "pending"
     res.json({ documents: rows.map((d: { id: string; filename: string; status: string; error: string | null; chunk_count: number; created_at: Date }) => ({ document_id: d.id, filename: d.filename, status: d.status, error: d.error, chunk_count: d.chunk_count, created_at: d.created_at })) });
   });
   dash.use("/documents", documentsRouter(deps));
+  dash.use("/models", modelsRouter(deps));
   dash.post("/try", ...limiters.llm, chatHandler(deps)); // same limiter instance as /v1/chat: one shared counter
   app.use("/api/dashboard", dash);
 

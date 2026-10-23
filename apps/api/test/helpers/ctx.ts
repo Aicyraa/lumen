@@ -46,6 +46,8 @@ export async function makeCtx(overrides: Partial<Config> = {}) {
   async function close() {
     for (const t of tenants) {
       await pool.query("DELETE FROM request_logs WHERE tenant_id = $1", [t]);
+      await pool.query("DELETE FROM model_calls WHERE tenant_id = $1", [t]);
+      await pool.query("DELETE FROM tenant_models WHERE tenant_id = $1", [t]);
       await pool.query("DELETE FROM documents WHERE tenant_id = $1", [t]);
     }
     stub.close();
