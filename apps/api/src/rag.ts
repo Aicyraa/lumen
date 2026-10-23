@@ -1,7 +1,7 @@
 // Client for the private Python service. Errors keep the service's error.code; nothing from the body is logged.
 import { openAsBlob } from "node:fs";
 import type { Config } from "./config/config.js";
-import { ApiError } from "./errors.js";
+import { ApiError } from "./lib/errors.js";
 
 export interface ChatSource {
   document_id: string;

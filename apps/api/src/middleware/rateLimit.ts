@@ -1,8 +1,8 @@
 import { MemoryStore, rateLimit } from "express-rate-limit";
 import type { Request, Response } from "express";
 import type { Config } from "../config/config.js";
-import "../types.js";
-import { sendError } from "../errors.js";
+import "../types/types.js";
+import { sendError } from "../lib/errors.js";
 
 const handler = (_req: Request, res: Response) => sendError(res, 429, "rate_limited", "Too many requests. Try again in a minute.");
 

@@ -1,7 +1,7 @@
 import type { RequestHandler } from "express";
 import type { Auth } from "../auth/auth.js";
-import { ApiError } from "../errors.js";
-import "../types.js";
+import { ApiError } from "../lib/errors.js";
+import "../types/types.js";
 
 // /v1/*: the tenant is the organization that owns the key, never anything from the request body.
 export const requireApiKey = (auth: Auth): RequestHandler => async (req, _res, next) => {

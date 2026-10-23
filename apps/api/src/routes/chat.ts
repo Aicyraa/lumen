@@ -1,8 +1,8 @@
 import type { Request, RequestHandler } from "express";
 import { z } from "zod";
-import { ApiError } from "../errors.js";
+import { ApiError } from "../lib/errors.js";
 import type { ChatResponse } from "../rag.js";
-import type { Deps } from "../types.js";
+import type { Deps } from "../types/types.js";
 
 interface LogInput {
   sources?: Partial<ChatResponse["sources"][number]>[];
