@@ -14,24 +14,24 @@ describe("createLogger redaction", () => {
       }),
       "debug",
     );
-    log.info({ api_key: "sk-top-1111" }, "a");
-    log.info({ models: { cheap: [{ model_id: "m", api_key: "sk-deep-2222" }] } }, "b");
-    log.info({ model: { api_key_encrypted: "iv.tag.ct-3333", apiKey: "sk-camel-4444" } }, "c");
+    log.info({ api_key: "sk-top-zqone" }, "a");
+    log.info({ models: { cheap: [{ model_id: "m", api_key: "sk-deep-zqtwo" }] } }, "b");
+    log.info({ model: { api_key_encrypted: "iv.tag.ct-zqthree", apiKey: "sk-camel-zqfour" } }, "c");
     log.info(
       {
         req: {
           headers: {
-            "x-api-key": "lum-5555",
-            cookie: "c=6666",
-            authorization: "Bearer 7777",
-            "x-internal-secret": "8888",
+            "x-api-key": "lum-zqfive",
+            cookie: "c=zqsix",
+            authorization: "Bearer zqseven",
+            "x-internal-secret": "zqeight",
           },
         },
       },
       "d",
     );
     const out = lines.join("");
-    for (const secret of ["1111", "2222", "3333", "4444", "5555", "6666", "7777", "8888"])
+    for (const secret of ["zqone", "zqtwo", "zqthree", "zqfour", "zqfive", "zqsix", "zqseven", "zqeight"])
       expect(out).not.toContain(secret);
     expect(out).toContain('"model_id":"m"');
   });
