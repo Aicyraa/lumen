@@ -43,7 +43,10 @@ def resp(answer, tier, top, latency, with_source):
 
 def judge_handler(method, path, headers, body):
     text = body["messages"][-1]["content"]
-    ok = "SYSTEM ANSWER:\n" in text and ("cheap" in text.split("SYSTEM ANSWER:\n")[1] or "router" in text.split("SYSTEM ANSWER:\n")[1])
+    ok = "SYSTEM ANSWER:\n" in text and (
+        "cheap" in text.split("SYSTEM ANSWER:\n")[1]
+        or "router" in text.split("SYSTEM ANSWER:\n")[1]
+    )
     out = json.dumps({"correct": ok, "reason": "scripted"})
     return 200, {}, {"choices": [{"message": {"content": out}}]}
 
@@ -53,13 +56,22 @@ def env(tmp_path, server):
     rag, judge = server(rag_handler()), server(judge_handler)
     envp = tmp_path / ".env"
     envp.write_text(
-        "\n".join([
-            f"EVAL_BASE_URL={judge.url}", "EVAL_API_KEY=KEY", "EVAL_PROVIDER=openai",
-            "EVAL_MODEL_CHEAP=small", "EVAL_MODEL_EXPENSIVE=big", "EVAL_JUDGE_MODEL=jm",
-            "TENANT_IDS=Lumen=tenant-1", f"RAG_URL={rag.url}", "INTERNAL_SECRET=S",
-            "EVAL_CONFIDENT_TOP_SCORE=0.5",
-            "EVAL_PRICE_CHEAP_INPUT=2", "EVAL_PRICE_CHEAP_OUTPUT=4",
-        ])  # fmt: skip
+        "\n".join(
+            [
+                f"EVAL_BASE_URL={judge.url}",
+                "EVAL_API_KEY=KEY",
+                "EVAL_PROVIDER=openai",
+                "EVAL_MODEL_CHEAP=small",
+                "EVAL_MODEL_EXPENSIVE=big",
+                "EVAL_JUDGE_MODEL=jm",
+                "TENANT_IDS=Lumen=tenant-1",
+                f"RAG_URL={rag.url}",
+                "INTERNAL_SECRET=S",
+                "EVAL_CONFIDENT_TOP_SCORE=0.5",
+                "EVAL_PRICE_CHEAP_INPUT=2",
+                "EVAL_PRICE_CHEAP_OUTPUT=4",
+            ]
+        )  # fmt: skip
     )
     rows = [
         ["Q1?", "Lumen", "d", "easy", "cheap-ish truth", "a.pdf", "", "", ""],
@@ -103,7 +115,11 @@ def test_full_run_writes_exact_results_and_verdicts(env, capsys):
     assert (c["accuracy"], c["median_latency_ms"], c["escalation_rate"]) == ("1.0", "100", "0.0")
     assert c["estimated_cost_per_query_usd"] == "2.0" and c["unanswerable_handled"] == ""
     e = got[("always_expensive", "train")]
-    assert (e["accuracy"], e["escalation_rate"], e["estimated_cost_per_query_usd"]) == ("0.0", "1.0", "")
+    assert (e["accuracy"], e["escalation_rate"], e["estimated_cost_per_query_usd"]) == (
+        "0.0",
+        "1.0",
+        "",
+    )
     assert got[("always_cheap", "held_out")]["unanswerable_handled"] == "1.0"
     assert got[("always_expensive", "held_out")]["unanswerable_handled"] == "0.0"
     assert got[("rule_router", "train")]["median_latency_ms"] == "200"
@@ -127,7 +143,14 @@ def test_unanswerable_rows_are_graded_by_rule_not_by_the_judge(env):
     main(args(env))
     assert len(judge.calls) == 3  # only Q1 in three setups
     v = read(tmp / "verdicts.csv")
-    assert list(v[0]) == ["setup", "query", "answer_excerpt", "verdict", "reason", "flagged_for_review"]
+    assert list(v[0]) == [
+        "setup",
+        "query",
+        "answer_excerpt",
+        "verdict",
+        "reason",
+        "flagged_for_review",
+    ]
     rule = [r for r in v if r["query"] == "Q2?" and r["setup"] == "always_cheap"][0]
     assert rule["verdict"] == "correct" and rule["reason"].startswith("rule:")
 
@@ -204,7 +227,9 @@ def test_a_failing_service_counts_as_wrong_and_is_reported(env, server, capsys):
     envp.write_text(envp.read_text().replace(rag.url, bad.url))
     assert main(args(env, "--limit", "1")) == 0
     got = {r["setup"]: r for r in read(tmp / "results.csv")}
-    assert got["always_cheap"]["accuracy"] == "0.0" and got["always_cheap"]["median_latency_ms"] == ""
+    assert (
+        got["always_cheap"]["accuracy"] == "0.0" and got["always_cheap"]["median_latency_ms"] == ""
+    )
     assert "provider_error" in read(tmp / "verdicts.csv")[0]["reason"]
     assert "3 system errors" in capsys.readouterr().out
 
@@ -218,4 +243,6 @@ def test_resume_retries_pairs_that_failed(env, server):
     envp.write_text(envp.read_text().replace(bad.url, good_url))
     main(args(env, "--limit", "1", "--resume"))
     assert len(rag.calls) == 3  # the three failed pairs were run again
-    assert {r["accuracy"] for r in read(tmp / "results.csv") if r["setup"] != "always_expensive"} == {"1.0"}
+    assert {
+        r["accuracy"] for r in read(tmp / "results.csv") if r["setup"] != "always_expensive"
+    } == {"1.0"}
