@@ -142,7 +142,14 @@ With `SMTP_URL` empty and `NODE_ENV=development`, the verification email is **no
 (`mail not sent (no SMTP_URL, development): open the link below`, with the link in the `text` field). With `SMTP_URL`
 empty in any other environment nothing is sent and no link is logged. New tunables in `config.json` (env-overridable):
 `projectNameMaxChars` (60), `projectDescriptionMaxChars` (500), `verificationResendWindowSeconds` (60),
-`verificationResendMax` (3), `verificationEmailExpiresSeconds` (3600).
+`verificationResendMax` (3), `verificationEmailExpiresSeconds` (3600), `verificationResendPerEmailWindowSeconds` (3600),
+`verificationResendPerEmailMax` (5), `dbConnectionTimeoutMs` (5000: a starved database pool errors after this long instead of hanging),
+`projectIdMaxChars` (100), `projectSlugMaxChars` (30), `projectSlugRandomBytes` (3), `projectCreateLockMs` (15000).
+
+`TRUST_PROXY` (optional, **off by default**): how Express reads the client address behind a reverse proxy. Unset, empty, `false` or `0` = ignore
+`X-Forwarded-For`, the right choice with no proxy (a client could otherwise pick its own address and dodge every per-address limit). A number is the count of
+proxy hops in front of the API (`1` for one load balancer); a list such as `loopback, 10.0.0.0/8` names trusted proxies. `true` is refused. Behind a
+proxy with the default, every client shares one per-address counter, so set it there.
 
 ### Email verification (email + password accounts)
 
@@ -157,8 +164,11 @@ empty in any other environment nothing is sent and no link is logged. New tunabl
 - "Works once": the link is a signed token, so it cannot be revoked, but it is idempotent. Once the user is verified, another click only
   redirects to `status=verified` again: no new session, nothing changes.
 - Resend: `POST /api/auth/send-verification-email`, at most `verificationResendMax` per `verificationResendWindowSeconds` per client
-  address (the socket address Express sees; the app does not configure `trust proxy`, so behind a reverse proxy every client would share one counter until it is set). Over the limit: `429 { error: { code: "rate_limited" } }`.
-  The response is the same for unknown and already-verified addresses and no mail is sent for them. Not done: a per-email limit.
+  address (the socket address Express sees; see `TRUST_PROXY` below). On top of that, at most `verificationResendPerEmailMax` verification
+  emails go to one address per `verificationResendPerEmailWindowSeconds`, counted across sign-up, unverified sign-in and resend, from any number of
+  clients. Over that limit the mail is dropped silently and the response is identical for every address, so a victim's inbox cannot be flooded and nothing
+  can be enumerated. Over the limit: `429 { error: { code: "rate_limited" } }`.
+  The response is the same for unknown and already-verified addresses and no mail is sent for them.
 
 ```ts
 await authClient.signUp.email({ email, password, name, callbackURL: `${location.origin}/verify-email` }); // no session; show "check your email"
@@ -188,6 +198,11 @@ which runs the same linking rules).
 
 ### Projects (`/api/dashboard/workspaces`)
 
+Creating a project is serialised per user inside Better Auth's create hook (an in-process lock, no database connection held while waiting), so
+`POST /workspaces` and the client's own `organization.create` share one exact cap even under concurrent calls. The lock is per API process; with several
+instances a database-level guard would be needed. Upload files are stored as `<tenantId>__<uuid>` and removed after a project is deleted; a chat or
+ingest still running for a deleted project writes nothing.
+
 A project is a Better Auth organization and is the tenant. No new table: the description is `organization.metadata.description`.
 The routes below need a session but **not** an active project. Every other `/api/dashboard/*` route needs one and answers
 `403 no_active_project` ("Choose a project first.") when the session has none or the user is no longer a member of it
@@ -198,7 +213,7 @@ The routes below need a session but **not** an active project. Every other `/api
 | `GET /workspaces` | every project the user belongs to, oldest first |
 | `POST /workspaces` `{ name, description? }` | `201 { workspace }`. Name 1 to `projectNameMaxChars`, description up to `projectDescriptionMaxChars`; the slug is generated (`shop-support-3fa9c1`); the creator is owner; the active project is **not** changed. `422 project_limit` at `MAX_PROJECTS_PER_USER` owned projects |
 | `PATCH /workspaces/:id` `{ name?, description? }` | owner or admin (`403 forbidden` for a member); `description: null` clears it. `200 { workspace }` |
-| `DELETE /workspaces/:id` `{ name }` | owner only (`403 forbidden`); the body must repeat the project's exact name (`422 name_mismatch`). One transaction removes `model_calls`, `request_logs`, `tenant_models`, `chunks`, `documents`, the project's API keys, invitations, members, clears it as any session's active project, then deletes the organization. `204`. All or nothing |
+| `DELETE /workspaces/:id` `{ name }` | owner only (`403 forbidden`); the body must repeat the project's exact name (`422 name_mismatch`). One transaction removes `model_calls`, `request_logs`, `tenant_models`, `chunks`, `documents`, the project's API keys, invitations, members, clears it as any session's active project, then deletes the organization. `204`. All or nothing; the project's leftover upload files are removed after the commit |
 
 Another user's project id, an unknown id and a malformed id are all `404 not_found`. Validation errors are `422 invalid_request`.
 

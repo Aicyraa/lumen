@@ -301,3 +301,17 @@ describe("DELETE /api/dashboard/workspaces/:id", () => {
     expect(fresh.body.workspaces[0].id).not.toBe(u.tenantId);
   });
 });
+
+describe("project shape limits come from config", () => {
+  it("the slug length and random part follow projectSlugMaxChars and projectSlugRandomBytes; ids longer than projectIdMaxChars are 404", async () => {
+    const small = await makeCtx({ projectSlugMaxChars: 8, projectSlugRandomBytes: 2, projectIdMaxChars: 10 });
+    try {
+      const t = await small.createTenant("cfg");
+      const made = await request(small.app).post("/api/dashboard/workspaces").set("cookie", t.cookie).send({ name: "A very long project name" });
+      expect(made.body.workspace.slug).toMatch(/^a-very-l-[0-9a-f]{4}$/);
+      const patch = await request(small.app).patch(`/api/dashboard/workspaces/${made.body.workspace.id}`).set("cookie", t.cookie).send({ name: "x" });
+      expect(made.body.workspace.id.length).toBeGreaterThan(10);
+      expect(patch.status).toBe(404); // a real id, but longer than the configured maximum
+    } finally { await small.close(); }
+  });
+});
