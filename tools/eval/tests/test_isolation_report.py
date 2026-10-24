@@ -40,3 +40,11 @@ def test_summary_states_both_results_plainly():
     assert "zero leaks" in text.lower() and "control" in text.lower() and "detected" in text.lower()
     bad = "\n".join(summary_lines(outcome(real_leaks=3, control_leaks={"A": 0, "B": 0})))
     assert "3 leak" in bad and "did not detect" in bad
+
+
+def test_a_control_that_crashed_is_not_a_detection():
+    o = outcome(
+        control_problems=3
+    )  # leaks were counted, but some questions did not even get an answer
+    assert exit_code(o) != 0
+    assert "problem" in "\n".join(summary_lines(o)).lower()

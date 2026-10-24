@@ -246,3 +246,139 @@ def test_resume_retries_pairs_that_failed(env, server):
     assert {
         r["accuracy"] for r in read(tmp / "results.csv") if r["setup"] != "always_expensive"
     } == {"1.0"}
+
+
+# ---- robustness: a dead service, resume keys, a corrupt state file ----
+
+
+def dropping_server():
+    """Accepts a connection and closes it without answering."""
+    import socket
+    import threading
+
+    srv = socket.socket()
+    srv.bind(("127.0.0.1", 0))
+    srv.listen(16)
+    srv.accepted = 0
+
+    def loop():
+        while True:
+            try:
+                c, _ = srv.accept()
+            except OSError:
+                return
+            srv.accepted += 1
+            c.close()
+
+    threading.Thread(target=loop, daemon=True).start()
+    return srv, f"http://127.0.0.1:{srv.getsockname()[1]}"
+
+
+def point_rag_at(envp, old, new):
+    envp.write_text(envp.read_text().replace(old, new))
+
+
+def test_unreachable_service_is_a_system_error_not_a_crash(env, capsys):
+    q, envp, rag, judge, tmp = env
+    srv, url = dropping_server()
+    point_rag_at(envp, rag.url, url)
+    envp.write_text(envp.read_text() + "\nEVAL_MAX_CONSECUTIVE_FAILURES=100\n")
+    try:
+        assert main(args(env)) == 0
+    finally:
+        srv.close()
+    v = read(tmp / "verdicts.csv")
+    assert len(v) == 6 and all(r["verdict"] == "incorrect" for r in v)
+    assert all(
+        r["reason"].startswith("system error: ") and "127.0.0.1" not in r["reason"] for r in v
+    )
+    assert all(r["flagged_for_review"] == "yes" for r in v)
+    res = read(tmp / "results.csv")
+    assert len(res) == 6 and all(
+        r["accuracy"] == "0.0" and r["median_latency_ms"] == "" for r in res
+    )
+    assert "6 system errors" in capsys.readouterr().out
+
+
+def test_aborts_after_consecutive_connection_failures(env, capsys):
+    q, envp, rag, judge, tmp = env
+    srv, url = dropping_server()
+    point_rag_at(envp, rag.url, url)
+    envp.write_text(envp.read_text() + "\nEVAL_MAX_CONSECUTIVE_FAILURES=2\n")
+    try:
+        rc = main(args(env))
+    finally:
+        srv.close()
+    assert rc == 3 and srv.accepted == 2  # stopped, did not burn the other four runs
+    assert "consecutive" in capsys.readouterr().err
+    assert len(read(tmp / "verdicts.csv")) == 2  # what was done is still written
+
+
+def test_a_good_answer_resets_the_failure_count(env):
+    q, envp, rag, judge, tmp = env
+    envp.write_text(envp.read_text() + "\nEVAL_MAX_CONSECUTIVE_FAILURES=2\n")
+    assert main(args(env)) == 0  # healthy service: no abort
+
+
+def test_default_limit_of_consecutive_failures_is_five():
+    from evalkit.config import Config
+
+    assert Config().max_consecutive_failures == 5
+
+
+def test_edited_expected_answer_reruns_only_that_pair(env):
+    q, envp, rag, judge, tmp = env
+    main(args(env, "--limit", "1"))
+    assert len(rag.calls) == 3
+    text = q.read_text().replace("cheap-ish truth", "a corrected answer")
+    q.write_text(text)
+    main(args(env, "--limit", "1", "--resume"))
+    assert len(rag.calls) == 6  # all three setups of that question ran again
+
+
+def test_unchanged_answer_is_still_skipped(env):
+    q, envp, rag, judge, tmp = env
+    main(args(env, "--limit", "1"))
+    main(args(env, "--limit", "1", "--resume"))
+    assert len(rag.calls) == 3
+
+
+def test_changed_held_out_or_judge_model_reruns(env):
+    q, envp, rag, judge, tmp = env
+    main(args(env, "--limit", "1"))
+    q.write_text(
+        q.read_text().replace(
+            "Q1?,Lumen,d,easy,cheap-ish truth,a.pdf,,",
+            "Q1?,Lumen,d,easy,cheap-ish truth,a.pdf,true,",
+        )
+    )
+    main(args(env, "--limit", "1", "--resume"))
+    assert len(rag.calls) == 6
+    envp.write_text(envp.read_text().replace("EVAL_JUDGE_MODEL=jm", "EVAL_JUDGE_MODEL=other-judge"))
+    main(args(env, "--limit", "1", "--resume"))
+    assert len(rag.calls) == 9
+
+
+def test_same_query_for_two_tenants_runs_for_each(env):
+    q, envp, rag, judge, tmp = env
+    envp.write_text(
+        envp.read_text().replace(
+            "TENANT_IDS=Lumen=tenant-1", "TENANT_IDS=Lumen=tenant-1,Other=tenant-2"
+        )
+    )
+    rows = [["Same?", "Lumen", "d", "easy", "x cheap", "a.pdf", "", "", ""],
+            ["Same?", "Other", "d", "easy", "x cheap", "a.pdf", "", "", ""]]  # fmt: skip
+    p = write_q(tmp, rows)
+    a = ["--questions", str(p), "--env", str(envp), "--out-dir", str(tmp)]
+    assert main(a) == 0
+    assert sorted({c["body"]["tenant_id"] for c in rag.calls}) == ["tenant-1", "tenant-2"]
+    assert len(rag.calls) == 6
+    assert main([*a, "--resume"]) == 0 and len(rag.calls) == 6
+
+
+def test_corrupt_state_file_is_a_clear_error(env, capsys):
+    q, envp, rag, judge, tmp = env
+    (tmp / ".eval_state.json").write_text('{"half": ')
+    assert main(args(env, "--resume")) == 2
+    err = capsys.readouterr().err
+    assert "state file" in err and "Traceback" not in err and rag.calls == []
