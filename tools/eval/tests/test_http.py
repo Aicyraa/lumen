@@ -86,3 +86,11 @@ def test_raw_bytes_body_is_sent_with_the_given_content_type(server):
         headers={"content-type": "multipart/form-data; boundary=x"},
     )
     assert s.calls[0]["headers"]["content-type"].startswith("multipart/form-data")
+
+
+def test_requests_do_not_use_the_default_python_user_agent(server):
+    # Cloudflare-fronted providers answer 403 to "Python-urllib"
+    s = server(lambda *a: (200, {}, {}))
+    request("GET", s.url + "/x")
+    ua = s.calls[0]["headers"]["user-agent"]
+    assert ua.startswith("lumen-eval/") and "urllib" not in ua
