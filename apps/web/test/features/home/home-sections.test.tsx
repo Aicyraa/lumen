@@ -89,7 +89,43 @@ describe("Home animation starts when seen", () => {
     const o = observers.find((x) => x.el === flow)!;
     expect(o).toBeTruthy();
     act(() =>
-      o.cb([{ isIntersecting: true, target: flow } as IntersectionObserverEntry], o as never),
+      o.cb(
+        [
+          {
+            isIntersecting: true,
+            intersectionRatio: 0.5,
+            target: flow,
+          } as IntersectionObserverEntry,
+        ],
+        o as never,
+      ),
+    );
+    expect(flow.classList.contains("in-view")).toBe(true);
+    act(() =>
+      o.cb(
+        [
+          {
+            isIntersecting: false,
+            intersectionRatio: 0,
+            target: flow,
+          } as IntersectionObserverEntry,
+        ],
+        o as never,
+      ),
+    );
+    expect(flow.classList.contains("in-view")).toBe(false);
+    expect(flow.classList.contains("is-out")).toBe(true); // reset so it replays on re-entry
+    act(() =>
+      o.cb(
+        [
+          {
+            isIntersecting: true,
+            intersectionRatio: 0.5,
+            target: flow,
+          } as IntersectionObserverEntry,
+        ],
+        o as never,
+      ),
     );
     expect(flow.classList.contains("in-view")).toBe(true);
   });

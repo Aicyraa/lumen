@@ -91,6 +91,6 @@ describe("Home section 02 proportions", () => {
     expect(css).toMatch(
       /\.what-grid\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1\.[5-9]fr\)\s*minmax\(0,\s*1fr\)/,
     );
-    expect(css).toMatch(/\.audience li\s*\{[^}]*font-size:\s*(?:1[89]|2\d)px/);
+    expect(css).toMatch(/\.audience li\s*\{[^}]*font-size:\s*clamp\((?:1[89]|2\d)px/);
   });
 });

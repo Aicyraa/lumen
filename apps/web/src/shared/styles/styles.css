@@ -2103,82 +2103,68 @@ table.data.compact td {
 }
 .what-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-  gap: 48px;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: 56px;
   align-items: start;
 }
 .audience {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 20px;
   border-left: 1px solid var(--line-strong);
-  padding-left: 20px;
+  padding-left: 24px;
+}
+.audience li {
+  font-size: clamp(18px, 1.7vw, 24px);
+  line-height: 1.45;
 }
 .mini-steps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 24px;
-  font-size: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  font-size: 16px;
   color: var(--text-2);
 }
-.facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-.fact {
+.mini-steps li {
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--surface);
-  padding: 24px;
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
+.facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.fact {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 .fact-num {
-  font-size: clamp(64px, 7vw, 104px);
+  font-size: clamp(40px, 4.2vw, 64px);
   font-weight: 500;
   letter-spacing: -0.05em;
   line-height: 0.95;
   color: var(--lime);
 }
 .fact-title {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 500;
-  letter-spacing: -0.02em;
-}
-.route-flow {
-  width: 100%;
-  height: auto;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface);
-  padding: 12px;
-}
-.route-flow .rf-node rect {
-  fill: var(--bg);
-  stroke: var(--line-strong);
-  stroke-width: 1.5;
-}
-.route-flow .rf-accent rect {
-  stroke: var(--lime);
-}
-.rf-title {
-  font: 500 15px var(--sans);
-  fill: var(--text);
-}
-.rf-sub {
-  font: 11px var(--mono);
-  fill: var(--text-3);
-}
-.rf-label {
-  font: 11px var(--mono);
-  fill: var(--text-3);
+  letter-spacing: -0.01em;
 }
 .rf-edge {
   fill: none;
   stroke: var(--line-dashed);
   stroke-width: 1.5;
+  transition: stroke 0.3s ease;
 }
 .route-flow .rf-node,
 .route-flow .rf-edge,
@@ -2251,34 +2237,9 @@ table.data.compact td {
   }
 }
 
-.routing-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-  gap: 32px;
-  align-items: center;
-}
-.route-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.route-steps .step {
-  padding-top: 16px;
-  gap: 6px;
-}
-@media (max-width: 900px) {
-  .routing-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.route-wrap {
-  overflow-x: auto;
-  min-width: 0;
-}
 @media (max-width: 640px) {
   .route-flow {
-    min-width: 600px;
+    min-width: 640px;
   }
 }
 
@@ -2454,4 +2415,144 @@ table.data.compact td {
   width: 100%;
   justify-content: center;
   margin-top: 6px;
+}
+
+/* enter and leave animation (opacity and transform only, under 600 ms; idle and in are fully visible) */
+.reveal {
+  transition:
+    opacity 0.45s ease,
+    transform 0.45s cubic-bezier(0.2, 0.7, 0.1, 1);
+}
+.reveal[data-state="out"] {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+/* routing explorer */
+.route-explorer {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.route-main {
+  padding: 24px;
+  gap: 16px;
+}
+.route-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.route-bar .chip.on {
+  background: var(--text);
+  color: var(--bg);
+}
+.route-flow {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 0;
+  background: none;
+  padding: 0;
+}
+.rf-node {
+  cursor: default;
+  transition: opacity 0.3s ease;
+}
+.route-flow .rf-node:not(.rf-on) {
+  opacity: 0.5;
+}
+.route-flow .rf-node rect {
+  fill: var(--bg);
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+  transition: stroke 0.3s ease;
+}
+.route-flow .rf-node.rf-on rect {
+  stroke: var(--lime);
+  stroke-width: 2.5;
+}
+.route-flow .rf-node.rf-error.rf-on rect {
+  stroke: var(--red);
+}
+.route-flow .rf-node:focus-visible rect,
+.route-flow .rf-node:hover rect {
+  stroke: var(--text);
+}
+.route-flow .rf-node:focus {
+  outline: none;
+}
+.rf-title {
+  font: 500 20px var(--sans);
+  fill: var(--text);
+}
+.rf-sub {
+  font: 13px var(--mono);
+  fill: var(--text-3);
+}
+.rf-label {
+  font: 13px var(--mono);
+  fill: var(--text-3);
+}
+.rf-label-on {
+  fill: var(--text);
+}
+.route-flow .rf-edge.rf-on {
+  stroke: var(--lime);
+  stroke-width: 3;
+}
+.route-flow.is-out .rf-node,
+.route-flow.is-out .rf-edge,
+.route-flow.is-out .rf-label {
+  animation: none;
+}
+.route-desc {
+  min-height: 3.2em;
+}
+.route-items {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.route-item {
+  width: 100%;
+  height: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.route-item:hover {
+  border-color: var(--line-strong);
+}
+.route-item[aria-pressed="true"] {
+  background: var(--surface);
+  border-color: var(--lime);
+}
+@media (max-width: 900px) {
+  .what-grid,
+  .route-items {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mini-steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .route-flow {
+    min-width: 640px;
+  }
+  .route-main {
+    overflow-x: auto;
+  }
+}
+@media (min-width: 901px) and (max-width: 1100px) {
+  .route-items {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
