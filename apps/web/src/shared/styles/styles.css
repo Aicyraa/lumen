@@ -451,11 +451,10 @@ button:disabled {
   font-size: 17px;
   padding: 0 12px 28px;
 }
-.logo-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--lime);
+.logo-mark {
+  width: 1.35em;
+  height: 1.35em;
+  flex: none;
 }
 
 /* forms */
