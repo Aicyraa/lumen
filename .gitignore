@@ -17,3 +17,10 @@ setup-smoke/
 
 # Turborepo
 .turbo/
+
+# Evaluation tool run outputs (tools/eval/.env is covered by .env above)
+tools/eval/results.csv
+tools/eval/verdicts.csv
+tools/eval/.eval_state.json
+tools/eval/.pytest_cache/
+tools/eval/.ruff_cache/
