@@ -1,6 +1,7 @@
+import { readFileSync } from "node:fs";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { InfoTip } from "../../../src/shared/ui/InfoTip";
 
 const setup = () =>
@@ -40,5 +41,58 @@ describe("InfoTip", () => {
     await userEvent.keyboard("{Escape}");
     expect(screen.getByRole("tooltip", { hidden: true })).not.toBeVisible();
     expect(screen.getByRole("button", { name: "About the cheap tier" })).toHaveFocus();
+  });
+
+  describe("stays inside the viewport", () => {
+    afterEach(() => vi.restoreAllMocks());
+    const rectAt = (left: number, width: number) =>
+      vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+        this: HTMLElement,
+      ) {
+        return this.getAttribute("role") === "tooltip"
+          ? ({
+              left,
+              right: left + width,
+              width,
+              top: 0,
+              bottom: 0,
+              height: 0,
+              x: left,
+              y: 0,
+              toJSON() {},
+            } as DOMRect)
+          : ({
+              left: 0,
+              right: 0,
+              width: 0,
+              top: 0,
+              bottom: 0,
+              height: 0,
+              x: 0,
+              y: 0,
+              toJSON() {},
+            } as DOMRect);
+      });
+
+    it("aligns to the right edge when it would overflow on the right", async () => {
+      rectAt(window.innerWidth - 100, 260); // right edge past the viewport
+      setup();
+      await userEvent.tab();
+      expect(screen.getByRole("tooltip")).toHaveClass("align-right");
+    });
+
+    it("keeps the default alignment when it fits", async () => {
+      rectAt(20, 200);
+      setup();
+      await userEvent.tab();
+      expect(screen.getByRole("tooltip")).not.toHaveClass("align-right");
+    });
+
+    it("has a width cap that cannot exceed a 390px phone", () => {
+      const css = readFileSync("src/shared/styles/styles.css", "utf8");
+      expect(css).toMatch(
+        /\.infotip-tip\s*\{[^}]*max-width:\s*min\(260px,\s*calc\(100vw - 32px\)\)/,
+      );
+    });
   });
 });
