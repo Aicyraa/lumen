@@ -54,10 +54,10 @@ describe("Home", () => {
       "HOW ROUTING WORKS — 03",
       "DEMO — 04",
       "BUILT IN — 05",
-      "USE CASES — 06",
-      "SECURITY — 07",
-      "QUICKSTART — 08",
+      "SECURITY — 06",
+      "QUICKSTART — 07",
     ];
+    expect(text).not.toMatch(/USE CASES/);
     let at = -1;
     for (const l of labels) {
       const i = text.indexOf(l);

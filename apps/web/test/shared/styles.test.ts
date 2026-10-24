@@ -46,3 +46,20 @@ describe("Projects grid", () => {
     expect(css).toMatch(/\.cards\s*\{[^}]*repeat\(3,/);
   });
 });
+
+describe("public page layout", () => {
+  const css = readFileSync("src/shared/styles/styles.css", "utf8");
+  const rule = (sel: string) =>
+    css.match(new RegExp(`(?:^|\\n)${sel.replace(/[.]/g, "\\.")}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
+  it("the public navbar is sticky with a solid fallback background and a backdrop blur", () => {
+    const all = [...css.matchAll(/\.pub-nav\s*\{([^}]*)\}/g)].map((m) => m[1]).join(";");
+    expect(all).toMatch(/position:\s*sticky/);
+    expect(all).toMatch(/top:\s*0/);
+    expect(all).toMatch(/background:\s*var\(--bg\)/);
+    expect(all).toMatch(/backdrop-filter:\s*blur/);
+  });
+  it("only the hero fills a screen; other snap sections take their content height", () => {
+    expect(rule(".snap-section")).not.toMatch(/min-height/);
+    expect(rule(".hero")).toMatch(/min-height/);
+  });
+});

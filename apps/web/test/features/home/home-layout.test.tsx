@@ -20,14 +20,14 @@ describe("Home layout", () => {
     expect(document.documentElement.classList.contains("snap-home")).toBe(false);
   });
 
-  it("is made of full-screen snap sections (hero, what it is, routing, demo, features, use cases, security, quickstart, closing)", () => {
+  it("is made of snap sections (hero, what it is, routing, demo, features, security, quickstart, closing)", () => {
     const { container } = render(
       <MemoryRouter>
         <Home />
       </MemoryRouter>,
     );
     const sections = Array.from(container.querySelectorAll("main > section"));
-    expect(sections).toHaveLength(9);
+    expect(sections).toHaveLength(8);
     for (const s of sections) expect(s.classList.contains("snap-section")).toBe(true);
     expect(sections[0].classList.contains("hero")).toBe(true);
   });

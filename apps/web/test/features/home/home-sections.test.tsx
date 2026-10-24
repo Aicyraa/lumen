@@ -33,11 +33,13 @@ describe("Home content", () => {
       expect(diagram).toHaveTextContent(n);
   });
 
-  it("has a features grid, use cases, security and a closing call to action", () => {
+  it("has a features grid, security and a closing call to action, and no use-cases section", () => {
     view();
-    expect(screen.getByRole("region", { name: "Built in" })).toBeInTheDocument();
-    const uses = screen.getByRole("region", { name: "Use cases" });
-    expect(within(uses).getAllByRole("heading", { level: 3 }).length).toBeGreaterThanOrEqual(3);
+    const built = screen.getByRole("region", { name: "Built in" });
+    expect(built.querySelectorAll(".feature-card svg")).toHaveLength(6); // each feature has an illustration
+    expect(screen.queryByRole("region", { name: "Use cases" })).toBeNull();
+    const sec = screen.getByRole("region", { name: "Security" });
+    expect(sec.querySelectorAll(".sec-card svg")).toHaveLength(4);
     expect(screen.getByRole("region", { name: "Security" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Closing" })).toBeInTheDocument();
   });
@@ -88,4 +90,19 @@ describe("Home animation starts when seen", () => {
     );
     expect(flow.classList.contains("in-view")).toBe(true);
   });
+});
+
+describe("Home section headings", () => {
+  it.each(["What Lumen is", "How routing works", "Security"])(
+    "%s: the heading sits directly under its label, stacked and left-aligned",
+    (name) => {
+      view();
+      const sec = screen.getByRole("region", { name });
+      const head = sec.querySelector(".sec-head")!;
+      expect(head).not.toBeNull();
+      expect(head.firstElementChild).toHaveClass("label");
+      expect(head.children[1].tagName).toBe("H2");
+      expect(sec.querySelector(".head-grid")).toBeNull();
+    },
+  );
 });
