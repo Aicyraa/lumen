@@ -7,7 +7,7 @@ import pytest
 
 from app.core.env import load_env
 
-SCHEMA = Path(__file__).resolve().parents[3] / "infra" / "sql" / "001_app_tables.sql"
+SQL_DIR = Path(__file__).resolve().parents[3] / "infra" / "sql"
 
 
 def _test_url() -> str:
@@ -26,14 +26,31 @@ def test_db():
     os.environ["DATABASE_URL"] = url  # app code reads DATABASE_URL, so it now points at the test DB
     with psycopg.connect(url, autocommit=True) as conn:
         conn.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public")
-        conn.execute(SCHEMA.read_text())
+        # every numbered migration in order, the same rule as apps/api/test/global-setup.ts (001 runs once, on a fresh schema)
+        for f in sorted(SQL_DIR.glob("[0-9]*_*.sql")):
+            conn.execute(f.read_text())
     return url
+
+
+def ensure_tenant(*tenant_ids: str) -> None:
+    """Insert the tenants rows the foreign keys need (in production the API creates them first)."""
+    with psycopg.connect(os.environ["DATABASE_URL"], autocommit=True) as conn:
+        for t in tenant_ids:
+            conn.execute("INSERT INTO tenants (id) VALUES (%s) ON CONFLICT DO NOTHING", (t,))
+
+
+def add_document(tenant_id: str, filename: str) -> str:
+    """store.add_document for a tenant that may not have a tenants row yet."""
+    from app.retrieval import store
+
+    ensure_tenant(tenant_id)
+    return store.add_document(tenant_id, filename)
 
 
 @pytest.fixture(autouse=True)
 def clean(test_db):
     with psycopg.connect(test_db, autocommit=True) as conn:
-        conn.execute("TRUNCATE documents, chunks, request_logs RESTART IDENTITY CASCADE")
+        conn.execute("TRUNCATE tenants RESTART IDENTITY CASCADE")  # cascades to every tenant table
 
 
 # ---- fixtures for the FastAPI service: fake secrets and a fake LLM, never real values or calls ----

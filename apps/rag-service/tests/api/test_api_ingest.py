@@ -3,7 +3,7 @@ import os
 import psycopg
 
 from app.retrieval import store
-from tests.conftest import AUTH
+from tests.conftest import AUTH, add_document
 
 LONG_TEXT = " ".join(
     f"word{i}" for i in range(300)
@@ -31,7 +31,7 @@ def chunk_count(tenant, doc_id):
 
 
 def test_ingest_writes_chunks_for_the_given_document(client):
-    doc_id = store.add_document(
+    doc_id = add_document(
         "tenant_a", "notes.txt"
     )  # Express creates this row before calling Python
     resp = post(client, "tenant_a", doc_id)
@@ -40,13 +40,13 @@ def test_ingest_writes_chunks_for_the_given_document(client):
     assert set(body) == {"chunk_count"} and body["chunk_count"] >= 2
     assert chunk_count("tenant_a", doc_id) == body["chunk_count"]
     stored = db_rows(
-        "SELECT chunk_count FROM documents WHERE tenant_id = %s AND id = %s", "tenant_a", doc_id
+        "SELECT chunk_count FROM document_stats WHERE tenant_id = %s AND id = %s", "tenant_a", doc_id
     )
     assert stored == [(body["chunk_count"],)]
 
 
 def test_empty_file_is_422_no_text_extracted_and_writes_nothing(client):
-    doc_id = store.add_document("tenant_a", "empty.txt")
+    doc_id = add_document("tenant_a", "empty.txt")
     resp = post(client, "tenant_a", doc_id, "empty.txt", b"   \n  ")
     assert resp.status_code == 422
     assert resp.json()["error"]["code"] == "no_text_extracted"
@@ -54,13 +54,13 @@ def test_empty_file_is_422_no_text_extracted_and_writes_nothing(client):
 
 
 def test_unreadable_pdf_is_422_no_text_extracted(client):
-    doc_id = store.add_document("tenant_a", "bad.pdf")
+    doc_id = add_document("tenant_a", "bad.pdf")
     resp = post(client, "tenant_a", doc_id, "bad.pdf", b"this is not a pdf")
     assert resp.status_code == 422 and resp.json()["error"]["code"] == "no_text_extracted"
 
 
 def test_unsupported_file_type_is_415(client):
-    doc_id = store.add_document("tenant_a", "x.exe")
+    doc_id = add_document("tenant_a", "x.exe")
     resp = post(client, "tenant_a", doc_id, "x.exe", b"MZ")
     assert resp.status_code == 415 and resp.json()["error"]["code"] == "unsupported_type"
 
@@ -72,8 +72,15 @@ def test_unknown_document_is_404_and_writes_nothing(client):
     assert db_rows("SELECT count(*) FROM chunks")[0][0] == 0
 
 
+def test_tenant_without_a_tenants_row_is_404_and_writes_nothing(client):
+    resp = post(client, "no_such_tenant", "00000000-0000-0000-0000-000000000009")
+    assert resp.status_code == 404 and resp.json()["error"]["code"] == "not_found"
+    assert db_rows("SELECT count(*) FROM documents")[0][0] == 0
+    assert db_rows("SELECT count(*) FROM chunks")[0][0] == 0
+
+
 def test_another_tenants_document_looks_like_a_missing_one(client):
-    doc_id = store.add_document("tenant_a", "a.txt")
+    doc_id = add_document("tenant_a", "a.txt")
     resp = post(client, "tenant_b", doc_id)  # tenant_b names tenant_a's document
     assert resp.status_code == 404 and resp.json()["error"]["code"] == "not_found"
     assert chunk_count("tenant_a", doc_id) == 0 and chunk_count("tenant_b", doc_id) == 0
@@ -85,7 +92,7 @@ def test_document_id_must_be_a_uuid(client):
 
 
 def test_nul_byte_in_text_is_422_no_text_extracted_and_writes_nothing(client):
-    doc_id = store.add_document("tenant_a", "nul.txt")
+    doc_id = add_document("tenant_a", "nul.txt")
     resp = post(client, "tenant_a", doc_id, "nul.txt", b"hello\x00world " * 20)
     assert resp.status_code == 422
     assert resp.json()["error"]["code"] == "no_text_extracted"  # Postgres text cannot hold NUL
@@ -93,20 +100,20 @@ def test_nul_byte_in_text_is_422_no_text_extracted_and_writes_nothing(client):
 
 
 def test_ingesting_the_same_document_twice_keeps_chunk_count(client):
-    doc_id = store.add_document("tenant_a", "notes.txt")
+    doc_id = add_document("tenant_a", "notes.txt")
     first = post(client, "tenant_a", doc_id).json()["chunk_count"]
     second = post(client, "tenant_a", doc_id).json()["chunk_count"]
     assert second == first
     assert chunk_count("tenant_a", doc_id) == first
     stored = db_rows(
-        "SELECT chunk_count FROM documents WHERE tenant_id = %s AND id = %s", "tenant_a", doc_id
+        "SELECT chunk_count FROM document_stats WHERE tenant_id = %s AND id = %s", "tenant_a", doc_id
     )
     assert stored == [(first,)]
 
 
 def test_reingest_does_not_touch_other_documents_chunks(client):
-    keep = store.add_document("tenant_a", "keep.txt")
-    other = store.add_document("tenant_a", "other.txt")
+    keep = add_document("tenant_a", "keep.txt")
+    other = add_document("tenant_a", "other.txt")
     post(client, "tenant_a", keep)
     kept = chunk_count("tenant_a", keep)
     post(client, "tenant_a", other)

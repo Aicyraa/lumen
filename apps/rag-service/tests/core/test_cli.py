@@ -106,8 +106,7 @@ def test_test_lint_format_run_the_tool_and_pass_extra_args(monkeypatch, argv, ex
 def test_ingest_then_ask_is_scoped_to_the_tenant(tmp_path):
     f = tmp_path / "menu.md"
     f.write_text("The cafe serves espresso, flat white and cold brew every morning.")
-    document_id, count = ingest_file("tenant_a", str(f))
-    assert document_id and count >= 1
+    assert cli.main(["ingest", "tenant_a", str(f)]) == 0  # the CLI creates the tenants row itself
     assert ask_chunks("tenant_a", "which coffee drinks are served?")
     assert ask_chunks("tenant_b", "which coffee drinks are served?") == []
 
@@ -117,3 +116,16 @@ def test_ingest_of_a_file_without_text_stores_nothing(tmp_path):
     f.write_text("   ")
     with pytest.raises(ValueError):
         ingest_file("tenant_a", str(f))
+
+
+def test_ingest_for_a_tenant_without_a_tenants_row_fails_clearly_and_writes_nothing(tmp_path):
+    f = tmp_path / "menu.md"
+    f.write_text("The cafe serves espresso.")
+    with pytest.raises(ValueError, match="no_such_tenant"):
+        ingest_file("no_such_tenant", str(f))
+    import os
+
+    import psycopg
+
+    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+        assert conn.execute("SELECT count(*) FROM documents").fetchone()[0] == 0

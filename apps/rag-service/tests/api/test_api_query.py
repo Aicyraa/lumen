@@ -7,7 +7,7 @@ import pytest
 from app.core.config import load_config
 from app.llm.prompt import SYSTEM_PROMPT
 from app.retrieval import store
-from tests.conftest import AUTH
+from tests.conftest import AUTH, add_document
 
 MESSAGES = load_config()["messages"]
 SHORT = "What time does the cafe open?"
@@ -31,7 +31,7 @@ def best_score(monkeypatch):
 
 
 def add_doc(tenant, texts, filename="doc.txt"):
-    doc = store.add_document(tenant, filename)
+    doc = add_document(tenant, filename)
     axis = np.zeros(384, dtype=np.float32)
     axis[0] = 1.0  # every chunk sits on axis 0, so each scores exactly the same
     store.add_chunks(tenant, doc, texts, np.array([axis] * len(texts)))

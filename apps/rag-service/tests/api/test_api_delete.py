@@ -1,11 +1,11 @@
 import numpy as np
 
 from app.retrieval import store
-from tests.conftest import AUTH
+from tests.conftest import AUTH, add_document
 
 
 def add_doc(tenant, texts):
-    doc = store.add_document(tenant, "d.txt")
+    doc = add_document(tenant, "d.txt")
     axis = np.zeros(384, dtype=np.float32)
     axis[0] = 1.0
     store.add_chunks(tenant, doc, texts, np.array([axis] * len(texts)))
