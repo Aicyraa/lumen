@@ -113,6 +113,79 @@ describe("Projects", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("boom");
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
+
+  describe("grid and summary", () => {
+    const account = {
+      user: {
+        name: "Maya",
+        email: "m@x.test",
+        email_verified: true,
+        image: null,
+        created_at: "2026-10-01T00:00:00Z",
+      },
+      providers: [],
+      projects: { owned: 1, max: 5 },
+      totals: { documents: 2, requests_this_month: 1248, api_keys: 0, models: 0 },
+    };
+    const both = (url: string) => (url.includes("/account") ? account : { workspaces: [P1, P2] });
+
+    it("shows a summary strip: projects n of max, total documents, requests this month", async () => {
+      mockFetch(both);
+      page();
+      const strip = await screen.findByRole("region", { name: "Summary" });
+      await waitFor(() => expect(strip).toHaveTextContent(/1 of 5/));
+      expect(within(strip).getByText("Projects").parentElement).toHaveTextContent("1 of 5");
+      expect(within(strip).getByText("Documents").parentElement).toHaveTextContent("2");
+      expect(within(strip).getByText("Requests this month").parentElement).toHaveTextContent(
+        "1,248",
+      );
+    });
+
+    it("falls back to the project count and workspace sums when the account data is unavailable", async () => {
+      mockFetch((url) =>
+        url.includes("/account")
+          ? reply(500, { error: { code: "x", message: "no" } })
+          : { workspaces: [P1, P2] },
+      );
+      page();
+      const strip = await screen.findByRole("region", { name: "Summary" });
+      expect(within(strip).getByText("Projects").parentElement).toHaveTextContent("2");
+      expect(within(strip).getByText("Requests this month").parentElement).toHaveTextContent(
+        "1,248",
+      );
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("has Create project as a cell of the grid, after the project cards", async () => {
+      mockFetch(both);
+      page();
+      await screen.findByRole("link", { name: /Shop support/ });
+      const cells = Array.from(document.querySelectorAll("ul.cards > li"));
+      const create = within(cells[cells.length - 1] as HTMLElement).getByRole("button", {
+        name: "Create project",
+      });
+      await userEvent.click(create);
+      expect(screen.getByRole("dialog", { name: "Create project" })).toBeInTheDocument();
+    });
+
+    it("cards show a role badge, description, stats and the created date", async () => {
+      mockFetch(both);
+      page();
+      const card = await screen.findByRole("link", { name: /Shop support/ });
+      expect(within(card).getByText("member")).toHaveClass("badge");
+      expect(within(card).getByText("Orders and returns")).toBeInTheDocument();
+      expect(within(card).getByText("DOCUMENTS")).toBeInTheDocument();
+      expect(within(card).getByText(/Created Oct 20/)).toBeInTheDocument();
+    });
+
+    it("with a single project it still shows the strip, the card and the Create cell (no empty page)", async () => {
+      mockFetch((url) => (url.includes("/account") ? account : { workspaces: [P1] }));
+      page();
+      await screen.findByRole("link", { name: /My project/ });
+      expect(screen.getByRole("region", { name: "Summary" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Create project" })).toBeInTheDocument();
+    });
+  });
 });
 
 void MemoryRouter;

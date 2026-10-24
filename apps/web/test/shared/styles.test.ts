@@ -39,3 +39,10 @@ describe("Try it layout", () => {
     expect(css).toMatch(/\.try-grid\s*\{[^}]*max-width:\s*\d+px[^}]*margin-inline:\s*auto/);
   });
 });
+
+describe("Projects grid", () => {
+  it("uses three columns on wide screens", () => {
+    const css = readFileSync("src/shared/styles/styles.css", "utf8");
+    expect(css).toMatch(/\.cards\s*\{[^}]*repeat\(3,/);
+  });
+});
