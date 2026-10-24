@@ -20,6 +20,7 @@ export function ProjectMenu({
 }) {
   const navigate = useNavigate();
   const base = useId();
+  const listId = `${base}-list`;
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLDivElement>(null);
@@ -28,12 +29,10 @@ export function ProjectMenu({
     ...projects.map((p) => ({ key: p.slug, label: p.name, slug: p.slug })),
     { key: "all", label: "All projects", slug: null },
   ];
-  const selected = Math.max(
-    0,
-    entries.findIndex((e) => e.slug === current),
-  );
+  const found = entries.findIndex((e) => e.slug === current);
+  const selected = Math.max(0, found);
   const [active, setActive] = useState(selected);
-  const name = entries[selected]?.label ?? "";
+  const name = found >= 0 ? entries[found].label : "Select project";
 
   function show(at: number) {
     setActive(at);
@@ -88,17 +87,27 @@ export function ProjectMenu({
       e.preventDefault();
       e.stopPropagation();
       close();
-    } else if (e.key === "Tab") setOpen(false);
+    } else if (e.key === "Tab") {
+      e.preventDefault();
+      close();
+    }
   }
 
   return (
-    <div className="pmenu" ref={root}>
+    <div
+      className="pmenu"
+      ref={root}
+      onBlur={(e) => {
+        if (open && !root.current?.contains(e.relatedTarget as Node | null)) setOpen(false);
+      }}
+    >
       <button
         ref={button}
         type="button"
         className="pmenu-btn"
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-controls={open ? listId : undefined}
         aria-label={`Project: ${name}`}
         onClick={() => (open ? close() : show(selected))}
         onKeyDown={onButtonKey}
@@ -118,6 +127,7 @@ export function ProjectMenu({
       {open && (
         <div
           ref={list}
+          id={listId}
           role="listbox"
           tabIndex={-1}
           aria-label="Projects"
@@ -131,7 +141,7 @@ export function ProjectMenu({
               key={e.key}
               id={`${base}-${i}`}
               role="option"
-              aria-selected={i === selected && e.slug !== null}
+              aria-selected={i === found && e.slug !== null}
               className={`pmenu-opt${i === active ? " active" : ""}${e.slug === null ? " all" : ""}`}
               onMouseEnter={() => setActive(i)}
               onClick={() => choose(i)}
