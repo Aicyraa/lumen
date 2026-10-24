@@ -133,4 +133,22 @@ describe("ApiKeys", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(cached()).not.toContain(FULL_KEY);
   });
+
+  describe("status messages", () => {
+    it("loading, then empty", async () => {
+      list.mockResolvedValue({ data: { apiKeys: [], total: 0 }, error: null });
+      renderWithProviders(<ApiKeys />);
+      expect(screen.getByRole("status")).toHaveTextContent("Loading API keys");
+      expect(await screen.findByText(/No keys yet/)).toBeInTheDocument();
+    });
+    it("error with Retry that refetches", async () => {
+      list
+        .mockResolvedValueOnce({ data: null, error: { message: "nope" } })
+        .mockResolvedValue({ data: { apiKeys: [row], total: 1 }, error: null });
+      renderWithProviders(<ApiKeys />);
+      expect(await screen.findByRole("alert")).toHaveTextContent("Could not load API keys");
+      await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+      expect(await screen.findByText("Staging")).toBeInTheDocument();
+    });
+  });
 });

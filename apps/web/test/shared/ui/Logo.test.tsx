@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
@@ -17,5 +18,26 @@ describe("Logo", () => {
       expect(container.querySelectorAll("svg rect")).toHaveLength(3);
       unmount();
     }
+  });
+
+  it("the inline SVG has no script, no event handler and no external reference", () => {
+    const { container } = render(
+      <MemoryRouter>
+        <Logo />
+      </MemoryRouter>,
+    );
+    const svg = container.querySelector("svg")!.outerHTML;
+    expect(svg).not.toMatch(/<script|\son\w+=|href=|url\(|<image|<foreignObject|https?:/i);
+  });
+});
+
+describe("public/favicon.svg", () => {
+  const file = readFileSync("public/favicon.svg", "utf8");
+  it("has no script, handler or external reference", () => {
+    expect(file).not.toMatch(/<script|\son\w+=|href=|url\(|<image|<foreignObject/i);
+    expect(file.replace('xmlns="http://www.w3.org/2000/svg"', "")).not.toMatch(/https?:/i);
+  });
+  it("has a plain hex fill before the oklch token so older Safari renders it", () => {
+    expect(file).toMatch(/<path fill="#[0-9a-f]{6}"[^>]*style="fill:\s*oklch\(0\.88 0\.17 118\)"/i);
   });
 });

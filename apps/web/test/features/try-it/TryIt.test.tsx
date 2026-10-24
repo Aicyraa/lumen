@@ -99,4 +99,41 @@ describe("TryIt", () => {
     );
     expect(widths).toEqual(["100%", "0%"]);
   });
+
+  describe("status messages", () => {
+    it("starts with an empty-state message", () => {
+      mockFetch(() => result(null));
+      renderWithProviders(<TryIt />);
+      expect(screen.getByRole("status")).toHaveTextContent(/Ask a question to see the answer/);
+    });
+    it("shows a loading message while asking, and the empty message is gone after the answer", async () => {
+      let release!: (v: unknown) => void;
+      const gate = new Promise((r) => {
+        release = r;
+      });
+      const { fn } = mockFetch(() => result(null));
+      const orig = fn.getMockImplementation()!;
+      fn.mockImplementation(async (i, init) => {
+        await gate;
+        return orig(i, init);
+      });
+      renderWithProviders(<TryIt />);
+      await userEvent.type(screen.getByLabelText("Question"), "Hello?");
+      await userEvent.click(screen.getByRole("button", { name: "Ask" }));
+      expect(await screen.findByRole("status")).toHaveTextContent(/routing/i);
+      release(null);
+      await screen.findByText(/Enrollment closes on 15 March/);
+      expect(screen.queryByText(/Ask a question to see the answer/)).toBeNull();
+    });
+    it("shows the error as an alert and the empty message is not shown with it", async () => {
+      mockFetch(() =>
+        reply(502, { error: { code: "provider_error", message: "All models failed." } }),
+      );
+      renderWithProviders(<TryIt />);
+      await userEvent.type(screen.getByLabelText("Question"), "Hello?");
+      await userEvent.click(screen.getByRole("button", { name: "Ask" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("All models failed.");
+      expect(screen.queryByText(/Ask a question to see the answer/)).toBeNull();
+    });
+  });
 });

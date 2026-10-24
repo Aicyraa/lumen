@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Requests } from "../../../src/features/requests/Requests";
-import { mockFetch, renderWithProviders } from "../../helpers";
+import { mockFetch, renderWithProviders, reply } from "../../helpers";
 
 const ID1 = "3f0c1a7b-1111-4222-8333-444455556666";
 const ID2 = "9a8b7c6d-1111-4222-8333-444455556666";
@@ -148,5 +148,27 @@ describe("Requests", () => {
     const drawer = await screen.findByRole("dialog");
     await within(drawer).findByText("No model called");
     expect(within(drawer).queryByText("no price set")).not.toBeInTheDocument();
+  });
+
+  describe("status messages", () => {
+    it("loading, then empty", async () => {
+      mockFetch(() => ({ items: [], next_cursor: null }));
+      renderWithProviders(<Requests />);
+      expect(screen.getByRole("status")).toHaveTextContent("Loading requests");
+      expect(await screen.findByText(/No requests match this filter/)).toBeInTheDocument();
+    });
+    it("error with Retry that refetches", async () => {
+      let fail = true;
+      mockFetch(() =>
+        fail
+          ? reply(500, { error: { code: "boom", message: "Server error." } })
+          : { items: [item(ID1, "Where is the cafe?", "cheap")], next_cursor: null },
+      );
+      renderWithProviders(<Requests />);
+      expect(await screen.findByRole("alert")).toHaveTextContent("Could not load requests");
+      fail = false;
+      await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+      expect(await screen.findByText("Where is the cafe?")).toBeInTheDocument();
+    });
   });
 });

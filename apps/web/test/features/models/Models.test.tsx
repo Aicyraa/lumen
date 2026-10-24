@@ -387,4 +387,40 @@ describe("Models", () => {
       expect(cost("b").queryByText(/no price set/)).toBeNull();
     });
   });
+
+  describe("usage failures and wording", () => {
+    it("when usage fails, rows say 'usage unavailable' (not 'loading' forever), the list still renders and Retry refetches usage", async () => {
+      let fail = true;
+      const { calls } = mockFetch(
+        router((url) =>
+          fail && url.includes("/models/usage")
+            ? reply(500, { error: { code: "boom", message: "Usage is down." } })
+            : undefined,
+        ),
+      );
+      renderWithProviders(<Models />);
+      await screen.findByText("model-a");
+      await waitFor(() => expect(screen.getAllByText("usage unavailable").length).toBe(3));
+      expect(screen.queryByText("usage loading…")).toBeNull();
+      expect(screen.getByRole("alert")).toHaveTextContent(/Could not load usage/);
+      fail = false;
+      const before = calls.filter((c) => c.url.includes("/models/usage")).length;
+      await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+      await waitFor(() =>
+        expect(within(screen.getByTestId("model-a")).getByText(/12 requests/)).toBeInTheDocument(),
+      );
+      expect(calls.filter((c) => c.url.includes("/models/usage")).length).toBeGreaterThan(before);
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("uses one wording for a missing price: 'no price set', never 'none set'", async () => {
+      mockFetch(router());
+      const { container } = renderWithProviders(<Models />);
+      await screen.findByText("model-b");
+      expect(within(screen.getByTestId("model-b")).getByText(/no price set/)).toBeInTheDocument();
+      expect(container.textContent).not.toMatch(/none set/i);
+      await userEvent.click(screen.getByRole("button", { name: "Add model" }));
+      expect(screen.getByRole("dialog")).toHaveTextContent(/Leave empty to show "no price set"/);
+    });
+  });
 });

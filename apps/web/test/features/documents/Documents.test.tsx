@@ -145,4 +145,28 @@ describe("Documents", () => {
       ),
     ).toBe(true);
   });
+
+  describe("status messages", () => {
+    it("loading, then empty", async () => {
+      mockFetch((url) => (url.endsWith("/usage") ? usage : { documents: [] }));
+      renderWithProviders(<Documents />);
+      expect(screen.getByRole("status")).toHaveTextContent("Loading documents");
+      expect(await screen.findByText("No documents yet. Upload one to start.")).toBeInTheDocument();
+    });
+    it("error with Retry that refetches", async () => {
+      let fail = true;
+      mockFetch((url) =>
+        url.endsWith("/usage")
+          ? usage
+          : fail
+            ? reply(500, { error: { code: "boom", message: "Server error." } })
+            : { documents: [doc({ status: "ready", chunk_count: 3 })] },
+      );
+      renderWithProviders(<Documents />);
+      expect(await screen.findByRole("alert")).toHaveTextContent("Could not load documents");
+      fail = false;
+      await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+      expect(await screen.findByText("handbook.md")).toBeInTheDocument();
+    });
+  });
 });
