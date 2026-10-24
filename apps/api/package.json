@@ -5,8 +5,11 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
-    "typecheck": "tsc --noEmit",
-    "test": "tsc --noEmit && vitest run",
+    "test": "tsc -b && vitest run",
+    "typecheck": "tsc -b",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "clean": "rm -rf node_modules/.cache",
     "auth:migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {
