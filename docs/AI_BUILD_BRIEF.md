@@ -616,6 +616,30 @@ Tests first for behaviour (route guards, project switch activates the organizati
 - [ ] The hero fits one screen at 1355x700, each home section fills a screen, and scroll snap works
 - [ ] Motion is present across the site, reduced-motion turns it off, and the site is fully usable with it off
 
+### Phase R2: codebase restructure for scalability and maintainability (extra phase, 2026-10-24; goal: easy to grow and maintain)
+
+Order: rag-engineer, then api-engineer, then web-engineer (one at a time), then the lead does the root tooling and the `.env` split. Behaviour must not change: every existing test stays green (api 364, rag-service 149, web 150) and moves only when its source moves. Branch `phase-r2-restructure` (from `phase-4-dashboard`). Then the database phase, then the UI tweaks phase (4C), in that order, so the UI work lands in the final structure.
+
+Target structure (group code by feature or flow; code used by one feature lives in it, shared code in `shared/`):
+- `apps/api/src/`: `server.ts`, `app.ts`, `modules/<feature>/` for auth, documents, chat, feedback, models, projects, analytics, requests, usage, dev (each: routes, service or queries, validation schema), and `shared/` for config, db, middleware, lib, types and the RAG client. `apps/api/test/` mirrors `src/`.
+- `apps/web/src/`: `app/` (App, routes, providers), `features/<feature>/` for home, docs, auth, projects, documents, keys, try-it, analytics, requests, models, account (components, hooks, api calls, local types), and `shared/` for ui, motion, lib. All tests move to `apps/web/test/`, mirroring `src/`.
+- `apps/rag-service/`: `pyproject.toml` (dependencies, pytest and ruff config), `app/` split into `api/` (routes, dependencies, schemas), `core/` (config, env, errors), `ingest/` (chunking, extraction), `retrieval/` (embeddings, store, router), `llm/` (client, prompt, endpoint guard), plus `config.yaml`; `scripts/` for operator scripts; `tests/` mirroring `app/`.
+- tsconfig split by environment: a root `tsconfig.base.json`, then per app `tsconfig.json` (references only), `tsconfig.app.json` (src), `tsconfig.test.json` (tests), `tsconfig.node.json` or `tsconfig.scripts.json` (config files and scripts).
+- Scripts: every app exposes the same names where they apply (`dev`, `build`, `start`, `test`, `typecheck`, `lint`, `format`, `clean`), and rag-service has a Python handler `python -m app.cli <command>` (dev, test, lint, format, check-env, ingest, ask) that its `package.json` scripts call. Root `package.json` has only the important scripts: `setup`, `dev`, `dev:api`, `dev:web`, `dev:rag`, `build`, `test`, `typecheck`, `lint`, `format`, `check` (typecheck + lint + test), `clean`, `db:up`, `db:down`, `db:psql`, `db:migrate`, `env:init`, `env:check`.
+- Root tools: Turborepo tasks with correct `dependsOn`, `inputs` and `outputs`; Biome for TypeScript lint and format; Ruff for Python lint and format; `.editorconfig`; `engines` and `.nvmrc`; a `scripts/` folder for repo-level helpers (`env-init`, `env-check`, `db-migrate`).
+- Environment files live with their app: `apps/api/.env`, `apps/rag-service/.env`, `apps/web/.env` (only `VITE_` variables) and `infra/.env` (database password, Supabase connection strings, used by docker compose and the db scripts), each with a `.env.example`; there is no repo-root `.env` any more. Each app loads only its own file (plus the real environment). Shared values (`DATABASE_URL`, `INTERNAL_SECRET`) are repeated in each app that needs them, and `env:check` verifies they agree without printing them.
+- Duplicates: remove files that duplicate another (checked by content hash and by name); keep empty placeholders only where a directory must exist.
+
+Checks: all tests green, `pnpm check` passes from the root, `pnpm dev` starts all three apps, no file imports from another app, `git grep` finds no repo-root `.env` reads, and the old and new test counts match exactly.
+
+### Phase DB: normalized schema (extra phase, after R2)
+
+Normalize the application tables to third normal form and add the missing foreign keys; keep the tenant-isolation design (every table that holds tenant data carries `tenant_id` and every statement filters by it). Apply it as numbered migrations under `infra/sql/` (never edit applied ones), first to the local development database and the test database, then to a new Supabase branch named `development` (after the human has approved the branch cost; never to the main Supabase project without explicit approval). The code is updated to match. Candidate changes to evaluate and decide in the design step (write the decision and reason for each in `docs/NOTES.md`): foreign keys from `documents.tenant_id`, `tenant_models.tenant_id`, `request_logs.tenant_id`, `model_calls.tenant_id` to `organization(id)` with cascade; `request_logs.api_key_id` to the API key table; `request_logs.sources` JSONB into a `request_sources` table; lookup tables or enums for tiers, providers and statuses; removing derived columns (`documents.chunk_count`, `request_logs` token and cost totals) in favour of views or queries, or keeping them deliberately with a stated reason; `model_calls` snapshot columns kept on purpose. Verify with Supabase advisors on the branch.
+
+### Phase 4C: UI tweaks (extra phase, after DB)
+
+The human's 13 tweaks (2026-10-24): large Product page with more explanatory sections and filled space; Docs sections as tabs; animations trigger when visible; dashboard sidebar without the lumen logo, not scrollable, no Docs link, no numbers, user name shown by sign-in provider, a button to Projects; a centred status text on every dashboard tab; Analytics layout redesign; Models layout redesign with Add model as a modal; richer Account page; new logo (SVG) for the system and favicon.
+
 ### Phase 5: isolation suite and evaluation
 
 The fake customer test website is out of scope (outside work). The checks below call the public API directly.

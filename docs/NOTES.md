@@ -103,3 +103,9 @@
 - 4B-2 web (web-engineer): /projects and /projects/:slug/* routes with switcher and settings, /account (linked methods, verification), /verify-email, sign-in icons, structured Docs and Privacy (sticky TOC with scroll-spy, reachable signed in or out), hero fixed, full-screen home sections with scroll-snap, Animate UI + motion across the site. Animate UI (npm @animate-ui/react + copied icon sources) needed neither Tailwind nor the shadcn CLI; licence MIT with the Commons Clause (fine to use in an app, not to resell the components). Browser-verified at 1355x700, 1440x900, 390x844 (screenshots v3-*). Two things that broke and were fixed: docs scroll-spy picking a stale section; Vitest 5 failing tests on throwing mocks. Reduced-motion path only covered by jsdom tests.
 - Lead checks: root `pnpm test` api 364, rag-service 149, web 150; web build ok. Process: the web agent was cut off once by a session limit and resumed from its saved commits.
 - Not run: Google/GitHub consent and linking (needs the human); resend 429 and owner-only delete in a browser (API tests cover them).
+
+## 2026-10-24 Round 3 requests (UI tweaks, database, codebase)
+
+- Human asked for 13 UI tweaks, database normalization with a development branch, and 8 codebase restructure items. Order decided: R2 restructure (+ env split) -> DB normalization (+ Supabase branch `development`, cost approved in principle by the human; confirm the plan/price first) -> 4C UI tweaks. phase-4-dashboard is still unmerged (waiting on the human's merge decision); R2 branches from it.
+- Supabase project `lumen` (ap-northeast-2) exists, empty, no branches (checked with MCP, read-only).
+- Duplicate scan (content hash): only empty files (.gitkeep, __init__.py); no duplicated sources. `apps/web/.gitkeep` removed in R2.
