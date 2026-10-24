@@ -669,21 +669,26 @@ Order: api-engineer (tier removal, migration 010), rag-engineer (service), then 
 
 ### Phase 5: isolation suite and evaluation
 
-The fake customer test website is out of scope (outside work). The checks below call the public API directly.
+The fake customer test website is out of scope (outside work). Order: rag-engineer (`force_tier`, small), then eval-engineer (everything in `tools/eval/`). Branch `phase-5-eval` in the worktree `/home/jee/Desktop/Code/Projects/lumen-p5` (another agent, Codex, works in the main checkout).
+
+**Design (decided 2026-10-24).**
+- `force_tier` (rag-service): optional `force_tier: "cheap" | "expensive"` in the `/internal/query` body, internal only (Express never forwards it). It replaces the router's tier choice (k follows the forced tier), keeps retrieval, validation and the no-answer rules, reports `route.escalated: false`, and an invalid value is `422 invalid_request`.
+- Evaluation (`tools/eval/run_eval.py`): reads `tools/eval/questions.csv`; for each question with an `expected_answer`, runs three setups (always cheap, always expensive, rule router) by calling `POST /internal/query` directly with the tenant's id and a `models` payload built from `tools/eval/.env` (`EVAL_BASE_URL`, `EVAL_API_KEY`, `EVAL_MODEL_CHEAP`, `EVAL_MODEL_EXPENSIVE`, `EVAL_JUDGE_MODEL`, tenant ids, `INTERNAL_SECRET`, `RAG_URL`); an LLM judge compares the answer with `expected_answer` and its verdicts and reasons are written to `tools/eval/verdicts.csv` for the human to spot-check 10 to 20 percent; it respects provider rate limits (token and request per minute backoff on 429, resumable runs); writes `tools/eval/results.csv` with `setup,split,accuracy,median_latency_ms,escalation_rate,unanswerable_handled,estimated_cost_per_query_usd` (the last column is the tenant's estimated provider cost from the prices on the models used, empty when unpriced). Questions without an `expected_answer` are skipped and counted. `held_out` rows are reported as their own split and never used for tuning. The agent drafts the `query`, `tenant`, `domain`, `type` (easy, hard, multi-document, unanswerable) and `source_doc` columns from the ingested documents and leaves `expected_answer`, `held_out`, `cheap_ok` and `expensive_ok` empty for the human.
+- Isolation suite (`tools/eval/isolation/`): fully automated and independent of the dev data. It creates a scratch database, migrates it, starts its own API and rag-service on free ports, signs up two users, creates keys, points each tenant at a local OpenAI-compatible stub model that answers with claims quoting the first retrieved passage (free, deterministic, fast), uploads documents with a unique planted code word per tenant, then runs at least 50 cross-tenant questions through the public API (`x-api-key`) and checks: every source `document_id` belongs to the caller, no foreign code word in any answer or source, a foreign document id returns 404 on GET and DELETE, a foreign request id returns 404, feedback on a foreign request returns 404, and keys are not interchangeable. The negative control runs the same checks against a rag-service started from a temporary copy of the app with the `tenant_id` predicates removed from the retrieval queries; the control passes only when the checks report leaks (so a suite that cannot fail would be caught). Exit code 0 means zero leaks and a failing control; any leak or a control that does not fail is non-zero. It drops the scratch database and stops its processes at the end.
 
 ```text
-Do Phase 5 only. Build the checks that prove tenant isolation and compare the router setups, calling the public API (x-api-key) directly. No test website.
-- Two tenants (campus FAQ and shop support), each with its own API key and documents the human supplies.
-- tools/eval/questions.csv with the header: query,tenant,domain,type,expected_answer,source_doc,held_out,cheap_ok,expensive_ok. Do not invent expected answers; leave them for the human.
-- Add an optional force_tier field to /internal/query (internal only, for evaluation).
-- tools/eval/run_eval.py: run every question as always-cheap, always-expensive and the rule router; judge correctness with an LLM judge using expected_answer and write its verdicts to a file so the human can spot-check 10 to 20 percent; write tools/eval/results.csv with the columns setup,split,accuracy,median_latency_ms,escalation_rate,unanswerable_handled (Phase 7 adds cost_per_query_usd).
-- An automated isolation suite: at least 50 cross-tenant questions plus planted code-word checks (a unique code word planted in each tenant's documents must never appear in the other tenant's answers or sources). It must include a negative control that fails when the tenant filter is removed.
+Do Phase 5 only. Build the checks that prove tenant isolation and compare the router setups, as described in the Design above. No test website. Do not invent expected answers; leave them for the human.
+- rag-service: force_tier (test-first).
+- tools/eval/questions.csv with the header: query,tenant,domain,type,expected_answer,source_doc,held_out,cheap_ok,expensive_ok (drafted queries only).
+- tools/eval/run_eval.py, verdicts file and results.csv as above, with tests that use a fake model server (no real provider calls in tests).
+- The isolation suite with at least 50 cross-tenant questions, the planted code-word checks and the negative control, runnable with one command (`pnpm eval:isolation` from the repo root), plus unit tests for its checkers.
 Report using the format in section 9.
 ```
 
-- [ ] The isolation suite passes with zero leaks, and its negative control fails when the filter is removed
-- [ ] You have filled in `expected_answer` for every question yourself, and kept the `held_out` rows untouched during tuning
-- [ ] `results.csv` has all three setups, and you have read every confident-and-wrong case
+- [ ] The isolation suite reports zero leaks, and its negative control fails (finds leaks) when the tenant filter is removed
+- [ ] `force_tier` works and is not reachable from the public API
+- [ ] The human has filled in `expected_answer` for every question and kept the `held_out` rows untouched during tuning
+- [ ] `results.csv` has all three setups, and every confident-and-wrong case has been read by the human
 
 ### Phase 6: classifier (only if needed)
 

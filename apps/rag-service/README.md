@@ -46,6 +46,8 @@ Tests use `TEST_DATABASE_URL`, or `DATABASE_URL` with the database name replaced
 
 ## Retrieval and answers
 
+`POST /internal/query` accepts an optional `force_tier` (`"cheap"` or `"expensive"`), used by the evaluation scripts and never forwarded by the API. It replaces the router's tier choice: the tier and `k` (`k_cheap` or `k_expensive`) follow it, `route.escalated` is `false` and `difficulty` is still reported. Retrieval, reranking, quote validation, the no-documents and not-found replies (still tier `none`, no model call) and model ordering are unchanged. Any other value is `422 invalid_request`.
+
 The API combines tenant-local BM25 and vector candidates using reciprocal rank fusion, reranks up to the configured candidate count, then sends the selected passages to the tenant's chat model. Source scores remain cosine similarity. BM25 statistics use only the caller's tenant; new uploads and deletions are reflected without a separate search index or a database migration. This exact implementation computes corpus statistics per request; benchmark larger tenants before introducing a persistent index.
 
 The reranker uses the installed `sentence-transformers` library and a pinned model revision from `app/config.yaml`. Prefetch its weights once, from this directory, before starting a new deployment:

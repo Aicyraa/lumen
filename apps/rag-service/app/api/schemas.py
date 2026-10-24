@@ -25,4 +25,7 @@ class QueryRequest(BaseModel):
     models: TenantModels | None = (
         None  # absent: use the dev/test default from the LLM_* environment
     )
+    force_tier: Literal["cheap", "expensive"] | None = (
+        None  # internal only (Express never sends it): replaces the router tier choice
+    )
     include_snippets: bool = False  # Try it only: adds filename and snippet to each source
