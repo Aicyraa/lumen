@@ -176,4 +176,16 @@ describe("Analytics", () => {
     await screen.findByText("840 ms");
     await waitFor(() => expect(container.querySelector(".an")).toHaveClass("in-view"));
   });
+
+  it("an unused model shows 'no usage yet' instead of 'no price set'; a used unpriced one still says 'no price set'", async () => {
+    mockFetch((url) => {
+      const r = handler(url) as ReturnType<typeof summary>;
+      if (url.includes("/unanswered")) return r;
+      return { ...r, by_model: [{ ...r.by_model[0], requests: 0, cost_usd: null }, r.by_model[1]] };
+    });
+    renderWithProviders(<Analytics />);
+    const table = await screen.findByRole("table", { name: "By model" });
+    expect(within(table).getByText("no usage yet")).toBeInTheDocument();
+    expect(within(table).getAllByText("no price set")).toHaveLength(1);
+  });
 });

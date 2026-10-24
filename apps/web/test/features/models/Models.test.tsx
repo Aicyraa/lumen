@@ -348,4 +348,43 @@ describe("Models", () => {
       expect(document.body.innerHTML).not.toContain(SECRET);
     });
   });
+
+  describe("cost wording follows the model's prices", () => {
+    const cost = (id: string) => within(screen.getByTestId(`model-${id}`));
+    it("a priced model with no usage shows $0, never 'no price set'", async () => {
+      mockFetch(router());
+      renderWithProviders(<Models />);
+      await screen.findByText("model-a");
+      // model-c is unpriced and unused; give it prices in a second render below
+      expect(cost("b").getByText(/no price set/)).toBeInTheDocument();
+    });
+    it("shows $0 for priced-but-unused and keeps the real figure when there is usage", async () => {
+      mockFetch(
+        router((url) =>
+          url.includes("/models/usage")
+            ? {
+                ...usageBody,
+                models: [
+                  u("a", "cheap", 0, { cost_usd: 0.0123, requests: 12 }),
+                  u("b", "cheap", 1),
+                ],
+              }
+            : {
+                models: {
+                  ...base.models,
+                  cheap: [
+                    m("a", "cheap", 0, { input_price_per_1m: 0.1, output_price_per_1m: 0.4 }),
+                    m("b", "cheap", 1, { input_price_per_1m: 0.1, output_price_per_1m: 0.5 }),
+                  ],
+                },
+              },
+        ),
+      );
+      renderWithProviders(<Models />);
+      await screen.findByText("model-a");
+      expect(cost("a").getByText("$0.0123")).toBeInTheDocument();
+      expect(cost("b").getByText("$0")).toBeInTheDocument();
+      expect(cost("b").queryByText(/no price set/)).toBeNull();
+    });
+  });
 });
