@@ -23,3 +23,12 @@ def test_refuses_a_remote_database():
 def test_refuses_names_outside_the_prefix():
     with pytest.raises(StackError):
         derive_urls(DEV, "lumen")
+
+
+def test_drop_statement_only_for_scratch_names():
+    from isolation.stack import drop_statement
+
+    assert drop_statement("lumen_isolation_1") == 'DROP DATABASE IF EXISTS "lumen_isolation_1" WITH (FORCE)'
+    for bad in ("keyword", "lumen", 'lumen_isolation_1"; DROP DATABASE lumen; --'):
+        with pytest.raises(StackError):
+            drop_statement(bad)
