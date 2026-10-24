@@ -58,12 +58,7 @@ const TOC = [
 
 export function Docs() {
   return (
-    <DocTabs
-      label="DOCS"
-      title="API reference"
-      toc={TOC}
-      lead="Everything your chatbot's backend needs: one key, one chat endpoint and a few document endpoints. All responses are JSON."
-    >
+    <DocTabs title="API reference" toc={TOC}>
       <section id="getting-started">
         <div className="label">01 — GETTING STARTED</div>
         <h2 className="h2s">Quickstart</h2>
