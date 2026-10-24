@@ -2039,7 +2039,7 @@ table.data.compact td {
 
 /* home: scale, what it is, routing diagram, feature grid, use cases */
 .home .h2 {
-  font-size: clamp(34px, 4.2vw, 64px);
+  font-size: clamp(34px, min(4.2vw, 7vh), 64px);
 }
 .home .lead {
   font-size: clamp(19px, 1.6vw, 24px);
@@ -2108,7 +2108,7 @@ table.data.compact td {
 }
 .route-flow {
   width: 100%;
-  max-height: 46dvh;
+  height: auto;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--surface);
@@ -2204,15 +2204,24 @@ table.data.compact td {
   gap: 16px;
 }
 .usecase {
-  border-top: 1px solid var(--line-strong);
-  padding-top: 24px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 28px;
+  min-height: 340px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
+}
+.usecase .body {
+  flex: 1;
 }
 .usecase-q {
-  font-size: 15px;
-  color: var(--lime-soft);
+  font-size: clamp(20px, 1.8vw, 26px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--text);
 }
 @media (max-width: 900px) {
   .what-grid,
@@ -2223,6 +2232,27 @@ table.data.compact td {
 }
 @media (max-width: 520px) {
   .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.routing-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 32px;
+  align-items: center;
+}
+.route-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.route-steps .step {
+  padding-top: 16px;
+  gap: 6px;
+}
+@media (max-width: 900px) {
+  .routing-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }

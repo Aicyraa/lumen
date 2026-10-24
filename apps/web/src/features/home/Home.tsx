@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { Reveal } from "../../shared/motion/motion";
 import { CodeBlock, PublicLayout, SectionLabel } from "../../shared/ui/PublicLayout";
-import { Segmented } from "../../shared/ui/ui";
+import { Segmented, StatusDot } from "../../shared/ui/ui";
 import { RouteFlow } from "./RouteFlow";
 
 const STEPS = [
@@ -66,17 +66,20 @@ const USE_CASES = [
   [
     "Student help desk",
     "When does enrollment close?",
-    "A short factual question. Answered by the cheap tier, with the calendar page cited.",
+    "A short factual question. The cheap tier answers it and cites the calendar page.",
+    "cheap",
   ],
   [
     "Shop support",
     "Can I return an opened item?",
     "One policy document, one clear passage. The answer cites it so a customer can check.",
+    "cheap",
   ],
   [
     "Internal handbook",
     "What is the difference between fall and spring refunds?",
     "A comparison across passages escalates to the expensive tier.",
+    "expensive",
   ],
 ] as const;
 const SECURITY = [
@@ -238,16 +241,18 @@ export function Home() {
               Cheap first, expensive when needed, a fallback when a tier fails.
             </h2>
           </div>
-          <RouteFlow />
-          <ul className="cols-4">
-            {ROUTING.map(([t, b], i) => (
-              <Reveal as="li" key={t} delay={i * 0.08} className="step">
-                <div className="num">0{i + 1}</div>
-                <h3 className="card-title-sm">{t}</h3>
-                <div className="small muted-2">{b}</div>
-              </Reveal>
-            ))}
-          </ul>
+          <div className="routing-grid">
+            <RouteFlow />
+            <ul className="route-steps">
+              {ROUTING.map(([t, b], i) => (
+                <Reveal as="li" key={t} delay={i * 0.08} className="step">
+                  <div className="num">0{i + 1}</div>
+                  <h3 className="card-title-sm">{t}</h3>
+                  <div className="small muted-2">{b}</div>
+                </Reveal>
+              ))}
+            </ul>
+          </div>
         </section>
 
         <section className="snap-section" aria-label="Demo">
@@ -297,12 +302,15 @@ export function Home() {
             <h2 className="h2">One endpoint, any set of documents.</h2>
           </div>
           <ul className="cols-3">
-            {USE_CASES.map(([t, q, b], i) => (
+            {USE_CASES.map(([t, q, b, tier], i) => (
               <Reveal as="li" key={t} delay={i * 0.08} className="usecase">
-                <h3 className="card-title-sm">{t}</h3>
-                <div className="usecase-q mono">“{q}”</div>
-                <div className="small muted-2">{b}</div>
-                <div className="mono small muted-4">EXAMPLE QUESTION</div>
+                <div className="row-between">
+                  <h3 className="card-title-sm">{t}</h3>
+                  <StatusDot tone={tier}>{tier}</StatusDot>
+                </div>
+                <div className="usecase-q">“{q}”</div>
+                <div className="body muted-2">{b}</div>
+                <div className="mono small muted-4">EXAMPLE, NOT A CUSTOMER</div>
               </Reveal>
             ))}
           </ul>
