@@ -7,7 +7,7 @@ import "../../shared/types/types.js";
 
 const TIERS = ["all", "cheap", "expensive", "none"];
 // created_at as text keeps microseconds, which a JS Date would cut to milliseconds and break the keyset.
-const TS = `to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
+const TSR = `to_char(r.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
 const ISO_US = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/;
 const decodeCursor = (v: string): { ts: string; id: string } => {
   try {
@@ -45,13 +45,17 @@ export function requestsRouter({ pool, config }: Deps) {
     }
     const cursor = req.query.cursor === undefined ? null : decodeCursor(String(req.query.cursor));
 
+    // Tokens and cost come from the request_usage view; LATERAL looks it up only for the rows of this page.
     const { rows } = await pool.query(
-      `SELECT id, ${TS} AS ts, query, model_tier AS tier, k, escalated, latency_ms, tokens_in, tokens_out, cost_usd::float8 AS cost_usd, status
-       FROM request_logs
-       WHERE tenant_id = $1 AND created_at >= $2
-         AND ($3::text = 'all' OR model_tier = $3)
-         AND ($4::timestamptz IS NULL OR (created_at, id) < ($4::timestamptz, $5::uuid))
-       ORDER BY created_at DESC, id DESC
+      `SELECT r.id, ${TSR} AS ts, r.query, r.model_tier AS tier, r.k, r.escalated, r.latency_ms,
+              u.tokens_in, u.tokens_out, u.cost_usd::float8 AS cost_usd, r.status
+       FROM request_logs r
+       LEFT JOIN LATERAL (SELECT tokens_in, tokens_out, cost_usd FROM request_usage
+                          WHERE request_id = r.id AND tenant_id = r.tenant_id) u ON true
+       WHERE r.tenant_id = $1 AND r.created_at >= $2
+         AND ($3::text = 'all' OR r.model_tier = $3)
+         AND ($4::timestamptz IS NULL OR (r.created_at, r.id) < ($4::timestamptz, $5::uuid))
+       ORDER BY r.created_at DESC, r.id DESC
        LIMIT $6`,
       [req.tenantId, rangeStart(days), tier, cursor?.ts ?? null, cursor?.id ?? null, limit + 1],
     );
@@ -76,47 +80,26 @@ export function requestsRouter({ pool, config }: Deps) {
     const {
       rows: [row],
     } = await pool.query(
-      `SELECT r.id, ${TS.replaceAll("created_at", "r.created_at")} AS ts, r.query, r.status, r.sources, r.model_tier, r.k, r.escalated, r.difficulty, r.top_score,
-              r.tokens_in, r.tokens_out, r.latency_ms, r.cost_usd::float8 AS cost_usd, r.feedback,
+      `SELECT r.id, ${TSR} AS ts, r.query, r.status, r.model_tier, r.k, r.escalated, r.difficulty, r.top_score,
+              u.tokens_in, u.tokens_out, r.latency_ms, u.cost_usd::float8 AS cost_usd, r.feedback,
               ak.id AS key_id, ak.name AS key_name, ak.start AS key_start, ak.prefix AS key_prefix
-       FROM request_logs r LEFT JOIN apikey ak ON ak.id = r.api_key_id AND ak."referenceId" = r.tenant_id
+       FROM request_logs r
+       LEFT JOIN request_usage u ON u.request_id = r.id AND u.tenant_id = r.tenant_id
+       LEFT JOIN apikey ak ON ak.id = r.api_key_id AND ak."referenceId" = r.tenant_id
        WHERE r.id = $1 AND r.tenant_id = $2`,
       [req.params.id, req.tenantId],
     );
     if (!row) throw notFound();
 
-    // Sources hold ids and scores only; filename and passage are read now, both joins scoped to the tenant (rule 1).
-    const stored = (Array.isArray(row.sources) ? row.sources : []) as {
-      document_id?: unknown;
-      chunk_id?: unknown;
-      score?: unknown;
-    }[];
-    const docIds = [...new Set(stored.map((s) => s.document_id).filter(isUuid))];
-    const chunkIds = [
-      ...new Set(stored.map((s) => s.chunk_id).filter((c): c is number => Number.isSafeInteger(c))),
-    ];
-    const [docs, chunks] = await Promise.all([
-      docIds.length
-        ? pool.query(
-            "SELECT id, filename FROM documents WHERE tenant_id = $1 AND id = ANY($2::uuid[])",
-            [req.tenantId, docIds],
-          )
-        : { rows: [] },
-      chunkIds.length
-        ? pool.query(
-            "SELECT id, document_id, left(content, $3) AS passage FROM chunks WHERE tenant_id = $1 AND id = ANY($2::bigint[])",
-            [req.tenantId, chunkIds, config.passageMaxChars],
-          )
-        : { rows: [] },
-    ]);
-    const names = new Map<string, string>(
-      docs.rows.map((d: { id: string; filename: string }) => [d.id, d.filename]),
-    );
-    const passages = new Map<string, string>(
-      chunks.rows.map((c: { id: string; document_id: string; passage: string }) => [
-        `${c.document_id}:${c.id}`,
-        c.passage,
-      ]),
+    // Sources are ids and scores only; filename and passage are read now. Every table in the join is matched on the tenant (rule 1).
+    const { rows: sources } = await pool.query(
+      `SELECT s.document_id, s.chunk_id, s.score, d.filename, left(c.content, $3) AS passage
+       FROM request_sources s
+       LEFT JOIN documents d ON d.id = s.document_id AND d.tenant_id = s.tenant_id
+       LEFT JOIN chunks c ON c.id = s.chunk_id AND c.tenant_id = s.tenant_id AND c.document_id = s.document_id
+       WHERE s.request_id = $1 AND s.tenant_id = $2
+       ORDER BY s.position`,
+      [req.params.id, req.tenantId, config.passageMaxChars],
     );
 
     res.json({
@@ -141,19 +124,14 @@ export function requestsRouter({ pool, config }: Deps) {
       api_key: row.key_id
         ? { id: row.key_id, name: row.key_name, start: row.key_start, prefix: row.key_prefix }
         : null,
-      sources: stored.map((s) => {
-        const filename = isUuid(s.document_id) ? (names.get(s.document_id) ?? null) : null;
-        return {
-          document_id: s.document_id,
-          chunk_id: s.chunk_id,
-          score: s.score,
-          filename,
-          document_deleted: filename === null,
-          passage: isUuid(s.document_id)
-            ? (passages.get(`${s.document_id}:${s.chunk_id}`) ?? null)
-            : null,
-        };
-      }),
+      sources: sources.map((s) => ({
+        document_id: s.document_id,
+        chunk_id: s.chunk_id === null ? null : Number(s.chunk_id),
+        score: s.score,
+        filename: s.filename,
+        document_deleted: s.filename === null,
+        passage: s.passage,
+      })),
     });
   });
 

@@ -75,7 +75,12 @@ describe("chat writes request_sources", () => {
       [res.body.request_id, a.tenantId],
     );
     expect(rows).toEqual([
-      { position: 0, document_id: mine.doc, chunk_id: mine.chunk, score: expect.closeTo(0.8, 5) },
+      {
+        position: 0,
+        document_id: mine.doc,
+        chunk_id: String(mine.chunk),
+        score: expect.closeTo(0.8, 5),
+      },
       { position: 1, document_id: null, chunk_id: null, score: expect.closeTo(0.6, 5) },
       { position: 2, document_id: null, chunk_id: null, score: expect.closeTo(0.4, 5) },
     ]);

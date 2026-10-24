@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type Ctx, makeCtx, type Tenant } from "../../helpers/ctx.js";
-import { insertLog } from "../../helpers/seed.js";
+import { insertDoc, insertLog } from "../../helpers/seed.js";
 
 // "Workspace" is the URL name for what the product calls a project: one Better Auth organization = one tenant.
 let ctx: Ctx, a: Tenant, b: Tenant;
@@ -284,17 +284,10 @@ describe("activating a project", () => {
 
 describe("DELETE /api/dashboard/workspaces/:id", () => {
   async function seed(u: Tenant, orgId: string) {
-    const {
-      rows: [d],
-    } = await ctx.pool.query(
-      "INSERT INTO documents (tenant_id, filename, status, chunk_count) VALUES ($1, 'd.md', 'ready', 1) RETURNING id",
-      [orgId],
-    );
-    await ctx.pool.query(
-      "INSERT INTO chunks (tenant_id, document_id, content, embedding) VALUES ($1, $2, 'c', array_fill(0, ARRAY[384])::vector)",
-      [orgId, d.id],
-    );
-    const log = await insertLog(ctx.pool, orgId);
+    const doc = await insertDoc(ctx.pool, orgId, 1, { filename: "d.md" });
+    const log = await insertLog(ctx.pool, orgId, {
+      sources: [{ document_id: doc, chunk_id: null, score: 0.5 }],
+    });
     await ctx.pool.query(
       "INSERT INTO model_calls (tenant_id, request_id, provider, model_id, tier, outcome) VALUES ($1, $2, 'p', 'm', 'cheap', 'ok')",
       [orgId, log],
@@ -306,6 +299,7 @@ describe("DELETE /api/dashboard/workspaces/:id", () => {
   }
   const TABLES: [string, string][] = [
     ["request_logs", "tenant_id"],
+    ["request_sources", "tenant_id"],
     ["model_calls", "tenant_id"],
     ["tenant_models", "tenant_id"],
     ["chunks", "tenant_id"],
@@ -314,6 +308,7 @@ describe("DELETE /api/dashboard/workspaces/:id", () => {
     ["member", `"organizationId"`],
     ["invitation", `"organizationId"`],
     ["organization", "id"],
+    ["tenants", "id"],
   ];
   const counts = async (orgId: string) =>
     Object.fromEntries(
@@ -343,6 +338,8 @@ describe("DELETE /api/dashboard/workspaces/:id", () => {
       keepOther = await counts(b.tenantId);
     expect(before).toMatchObject({
       request_logs: 1,
+      request_sources: 1,
+      tenants: 1,
       model_calls: 1,
       tenant_models: 1,
       chunks: 1,
@@ -402,6 +399,8 @@ describe("DELETE /api/dashboard/workspaces/:id", () => {
       expect(res.status).toBe(500);
       expect(await counts(w.id)).toMatchObject({
         request_logs: 1,
+        request_sources: 1,
+        tenants: 1,
         model_calls: 1,
         tenant_models: 1,
         chunks: 1,

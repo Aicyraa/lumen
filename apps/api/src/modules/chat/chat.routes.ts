@@ -17,7 +17,6 @@ interface LogInput {
   route?: Partial<ChatResponse["route"]>;
   usage?: Partial<ChatResponse["usage"]>;
   status?: string;
-  cost?: number | null;
 }
 const isUuid = (v: unknown): v is string => typeof v === "string" && z.uuid().safeParse(v).success;
 
@@ -31,16 +30,27 @@ export function chatHandler(
     session_id: z.string().max(config.sessionIdMaxChars).optional(),
   });
 
-  // Ids and scores only: never chunk text, never the answer (section 5).
+  // Ids and scores only: never chunk text, never the answer (section 5). Tokens and cost are not stored here: they are the
+  // sum of this request's model_calls rows (view request_usage).
+  // One statement writes the request and its sources. It writes only while the project still exists: a chat that finishes after
+  // its project was deleted leaves nothing. The share lock makes the check wait for a delete that is committing.
+  // A source id that is not this tenant's document or chunk is stored as unknown (NULL), never as another tenant's id.
   const insertLog = (req: Request, id: string | null, q: z.infer<typeof body>, r: LogInput) =>
     pool.query(
-      // Written only while the project still exists: a chat that finishes after its project was deleted leaves no orphan row.
-      // The share lock makes the check wait for a delete that is committing.
-      `INSERT INTO request_logs (id, tenant_id, api_key_id, session_id, query, sources, model_tier, k, escalated,
-                                 difficulty, top_score, tokens_in, tokens_out, cost_usd, latency_ms, status)
-       SELECT COALESCE($1::uuid, gen_random_uuid()), $2::text, $3::text, $4::text, $5::text, $6::jsonb, $7::text, $8::int, $9::boolean,
-              $10::real, $11::real, $12::int, $13::int, $16::numeric, $14::int, $15::text
-       WHERE EXISTS (SELECT 1 FROM organization WHERE id = $2::text FOR SHARE)`,
+      `WITH log AS (
+         INSERT INTO request_logs (id, tenant_id, api_key_id, session_id, query, model_tier, k, escalated,
+                                   difficulty, top_score, latency_ms, status)
+         SELECT COALESCE($1::uuid, gen_random_uuid()), $2::text, $3::text, $4::text, $5::text, $7::text, $8::int, $9::boolean,
+                $10::real, $11::real, $12::int, $13::text
+         WHERE EXISTS (SELECT 1 FROM tenants WHERE id = $2::text FOR SHARE)
+         RETURNING id, tenant_id
+       )
+       INSERT INTO request_sources (request_id, tenant_id, position, document_id, chunk_id, score)
+       SELECT l.id, l.tenant_id, (e.ord - 1)::int, d.id, c.id, (e.v ->> 'score')::real
+       FROM log l
+       CROSS JOIN LATERAL jsonb_array_elements($6::jsonb) WITH ORDINALITY AS e(v, ord)
+       LEFT JOIN documents d ON d.tenant_id = l.tenant_id AND d.id = (e.v ->> 'document_id')::uuid
+       LEFT JOIN chunks c ON c.tenant_id = l.tenant_id AND c.id = (e.v ->> 'chunk_id')::bigint AND c.document_id = d.id`,
       [
         id,
         req.tenantId,
@@ -49,9 +59,9 @@ export function chatHandler(
         q.query,
         JSON.stringify(
           (r.sources ?? []).map((s) => ({
-            document_id: s.document_id,
-            chunk_id: s.chunk_id,
-            score: s.score,
+            document_id: isUuid(s.document_id) ? s.document_id : null,
+            chunk_id: Number.isSafeInteger(s.chunk_id) ? s.chunk_id : null,
+            score: Number.isFinite(s.score) ? s.score : null,
           })),
         ),
         r.route?.model_tier ?? null,
@@ -59,11 +69,8 @@ export function chatHandler(
         r.route?.escalated ?? null,
         r.route?.difficulty ?? null,
         r.route?.top_score ?? null,
-        r.usage?.tokens_in ?? null,
-        r.usage?.tokens_out ?? null,
         r.usage?.latency_ms ?? null,
         r.status ?? "ok",
-        r.cost ?? null,
       ],
     );
 
@@ -102,7 +109,7 @@ export function chatHandler(
       });
     } catch (err) {
       const failedId = randomUUID();
-      const { attempts, total } = priceAttempts(
+      const { attempts } = priceAttempts(
         err instanceof RagError ? err.attempts : [],
         known,
         config,
@@ -110,7 +117,6 @@ export function chatHandler(
       await insertLog(req, failedId, q, {
         status: "provider_error",
         usage: { latency_ms: Date.now() - started },
-        cost: total,
       }).catch((e: Error) => log.error({ err: e.message }, "request_logs insert failed"));
       await book(failedId, attempts);
       log.warn({ code: (err as { code?: string }).code }, "chat failed");
@@ -130,7 +136,7 @@ export function chatHandler(
     }
     const { attempts, total } = priceAttempts(result.attempts ?? [], known, config);
     // A failed log write must not throw away an answer that was already paid for.
-    await insertLog(req, result.request_id, q, { ...result, cost: total }).catch((err) =>
+    await insertLog(req, result.request_id, q, result).catch((err) =>
       log.error({ err: err.message }, "request_logs insert failed"),
     );
     await book(result.request_id, attempts);

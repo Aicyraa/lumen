@@ -19,7 +19,7 @@ async function addDoc(t: Tenant, filename: string, text: string) {
   const {
     rows: [d],
   } = await ctx.pool.query(
-    "INSERT INTO documents (tenant_id, filename, status, chunk_count) VALUES ($1, $2, 'ready', 1) RETURNING id",
+    "INSERT INTO documents (tenant_id, filename, status) VALUES ($1, $2, 'ready') RETURNING id",
     [t.tenantId, filename],
   );
   const {
@@ -101,8 +101,8 @@ describe("GET /api/dashboard/requests/:id", () => {
           passage: PASSAGE.slice(0, 300),
         },
         {
-          document_id: gone,
-          chunk_id: 999999,
+          document_id: null, // the document is gone: the row keeps its score, the ids are unknown
+          chunk_id: null,
           score: 0.5,
           filename: null,
           document_deleted: true,
@@ -110,7 +110,7 @@ describe("GET /api/dashboard/requests/:id", () => {
         },
         {
           document_id: docA,
-          chunk_id: chunkA + 100000,
+          chunk_id: null,
           score: 0.4,
           filename: "handbook.pdf",
           document_deleted: false,
@@ -120,16 +120,18 @@ describe("GET /api/dashboard/requests/:id", () => {
     });
   });
 
-  it("reads the passage live: nothing is stored in request_logs and no passage reaches the log", async () => {
+  it("reads the passage live: nothing is stored with the request and no passage reaches the log", async () => {
     const id = await insertLog(ctx.pool, a.tenantId, {
       sources: [{ document_id: docA, chunk_id: chunkA, score: 0.9 }],
     });
     await detail(a, id);
     const { rows } = await ctx.pool.query(
-      "SELECT sources FROM request_logs WHERE id = $1 AND tenant_id = $2",
+      "SELECT document_id, chunk_id, score FROM request_sources WHERE request_id = $1 AND tenant_id = $2",
       [id, a.tenantId],
     );
-    expect(rows[0].sources).toEqual([{ document_id: docA, chunk_id: chunkA, score: 0.9 }]);
+    expect(rows).toEqual([
+      { document_id: docA, chunk_id: String(chunkA), score: expect.closeTo(0.9, 5) },
+    ]); // ids and score only, no text
     expect(ctx.logLines.join("")).not.toContain("Spring enrollment");
     await ctx.pool.query(
       "UPDATE chunks SET content = 'edited later' WHERE id = $1 AND tenant_id = $2",
@@ -176,14 +178,22 @@ describe("GET /api/dashboard/requests/:id", () => {
     expect((await detail(null, theirs)).status).toBe(401);
   });
 
-  it("never reads another tenant's document or chunk, even when the log row points at them", async () => {
-    // a crafted/stale source naming B's ids must resolve like a deleted document, not leak B's filename or text
-    const id = await insertLog(ctx.pool, a.tenantId, {
-      sources: [
-        { document_id: docB, chunk_id: chunkB, score: 0.9 },
-        { document_id: docA, chunk_id: chunkB, score: 0.8 },
-      ],
-    });
+  it("never reads another tenant's document or chunk, even when the source row points at them", async () => {
+    // The foreign keys forbid such a row; plant it anyway (FK triggers off) to prove the read does not rely on them.
+    const id = await insertLog(ctx.pool, a.tenantId);
+    const c = await ctx.pool.connect();
+    try {
+      await c.query("BEGIN");
+      await c.query("SET LOCAL session_replication_role = replica");
+      await c.query(
+        `INSERT INTO request_sources (request_id, tenant_id, position, document_id, chunk_id, score)
+         VALUES ($1, $2, 0, $3, $4, 0.9), ($1, $2, 1, $5, $4, 0.8)`,
+        [id, a.tenantId, docB, chunkB, docA],
+      );
+      await c.query("COMMIT");
+    } finally {
+      c.release();
+    }
     const res = await detail(a, id);
     expect(res.body.sources[0]).toMatchObject({
       filename: null,
@@ -192,6 +202,16 @@ describe("GET /api/dashboard/requests/:id", () => {
     });
     expect(res.body.sources[1]).toMatchObject({ filename: "handbook.pdf", passage: null }); // the chunk exists, but not in A's document
     expect(JSON.stringify(res.body)).not.toMatch(/b-secret|B-ONLY-SECRET/);
+  });
+
+  it("the foreign keys refuse a source row that points at another tenant's document", async () => {
+    const id = await insertLog(ctx.pool, a.tenantId);
+    await expect(
+      ctx.pool.query(
+        "INSERT INTO request_sources (request_id, tenant_id, position, document_id) VALUES ($1, $2, 0, $3)",
+        [id, a.tenantId, docB],
+      ),
+    ).rejects.toMatchObject({ code: "23503" });
   });
 
   it("truncates the passage to passageMaxChars from config", async () => {

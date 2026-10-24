@@ -255,13 +255,15 @@ describe("indexes and row level security", () => {
     expect(rows.map((r) => r.relname).sort()).toEqual([...APP].sort());
   });
 
-  it("indexes the referencing columns of every foreign key (the index starts with them)", async () => {
+  it("indexes every foreign key (an index starts with its first column, or with all of its columns in any order)", async () => {
     const { rows } = await pool.query(
       `SELECT c.conrelid::regclass::text AS tbl, c.conname FROM pg_constraint c
        WHERE c.contype = 'f' AND c.connamespace = 'public'::regnamespace AND c.conrelid::regclass::text = ANY($1)
          AND NOT EXISTS (
            SELECT 1 FROM pg_index i WHERE i.indrelid = c.conrelid
-             AND (i.indkey::int2[])[0:cardinality(c.conkey) - 1] = c.conkey)`,
+             AND ((i.indkey::int2[])[0] = c.conkey[1]
+               OR ARRAY(SELECT unnest((i.indkey::int2[])[0:cardinality(c.conkey) - 1]) ORDER BY 1)
+                = ARRAY(SELECT unnest(c.conkey) ORDER BY 1)))`,
       [APP],
     );
     expect(rows).toEqual([]);

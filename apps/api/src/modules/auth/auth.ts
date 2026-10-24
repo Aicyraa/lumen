@@ -141,10 +141,17 @@ export function createAuth({
               });
             }
           },
-          afterCreateOrganization: async ({ user }) => {
-            if (user?.id) releaseProjectLock(user.id);
+          // The tenants row comes first: every tenant table points at it. The organization id is the tenant id.
+          afterCreateOrganization: async ({ organization, user }) => {
+            try {
+              await pool.query("INSERT INTO tenants (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+                organization.id,
+              ]);
+            } finally {
+              if (user?.id) releaseProjectLock(user.id);
+            }
           },
-          // Deleting only the organization row would orphan the tenant's documents, logs and keys; DELETE /api/dashboard/workspaces/:id does it all in one transaction.
+          // Deleting only the organization row would orphan the tenant's data and keys; DELETE /api/dashboard/workspaces/:id does it all in one transaction.
           beforeDeleteOrganization: async () => {
             throw new APIError("FORBIDDEN", {
               message: "Delete a project with DELETE /api/dashboard/workspaces/:id.",

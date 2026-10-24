@@ -1,9 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { existsSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
 import request from "supertest";
-import { recordAttempts } from "../../../src/shared/services/modelCalls.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { recordAttempts } from "../../../src/shared/services/modelCalls.js";
 import { type Ctx, makeCtx, type Tenant } from "../../helpers/ctx.js";
 
 let ctx: Ctx, u: Tenant, project: string, other: Tenant;

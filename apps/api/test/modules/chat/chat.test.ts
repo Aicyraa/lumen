@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import request from "supertest";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { type Ctx, makeCtx, type Tenant } from "../../helpers/ctx.js";
+import { insertDoc } from "../../helpers/seed.js";
 
 let ctx: Ctx, a: Tenant, b: Tenant;
 beforeAll(async () => {
@@ -56,32 +57,57 @@ describe("POST /v1/chat", () => {
       escalated: false,
       difficulty: 0,
       top_score: 0.71,
-      tokens_in: 812,
-      tokens_out: 96,
       latency_ms: expect.any(Number),
       status: "ok",
-      cost_usd: null,
     });
     expect(rows[0].api_key_id).toBeTruthy();
+    const usage = await ctx.pool.query(
+      "SELECT tokens_in, tokens_out, cost_usd FROM request_usage WHERE request_id = $1 AND tenant_id = $2",
+      [res.body.request_id, a.tenantId],
+    ); // tokens and cost are derived from the attempts, not stored on the request
+    expect(usage.rows).toEqual([{ tokens_in: 812, tokens_out: 96, cost_usd: null }]);
   });
 
   it("stores source ids and scores only, never chunk text or the answer", async () => {
     await resetLogs();
-    const docId = randomUUID();
+    const docId = await insertDoc(ctx.pool, a.tenantId, 1);
+    const chunkId = Number(
+      (
+        await ctx.pool.query("SELECT id FROM chunks WHERE document_id = $1 AND tenant_id = $2", [
+          docId,
+          a.tenantId,
+        ])
+      ).rows[0].id,
+    );
     ctx.stub.handlers.query = () => ({
       status: 200,
       body: {
         request_id: randomUUID(),
         answer: "SECRET-ANSWER-TEXT",
-        sources: [{ document_id: docId, chunk_id: 7, score: 0.5, content: "SECRET-CHUNK-TEXT" }],
+        sources: [
+          { document_id: docId, chunk_id: chunkId, score: 0.5, content: "SECRET-CHUNK-TEXT" },
+        ],
         route: { model_tier: "expensive", k: 8, escalated: true, difficulty: 0.5, top_score: 0.5 },
         usage: { tokens_in: 1, tokens_out: 2, cost_usd: null, latency_ms: 3 },
       },
     });
     await chat(a, { query: "q" });
     const row = (await logs(a.tenantId)).rows[0];
-    expect(row.sources).toEqual([{ document_id: docId, chunk_id: 7, score: 0.5 }]);
-    expect(JSON.stringify(row)).not.toContain("SECRET");
+    const { rows: sources } = await ctx.pool.query(
+      "SELECT * FROM request_sources WHERE request_id = $1 AND tenant_id = $2",
+      [row.id, a.tenantId],
+    );
+    expect(sources).toEqual([
+      {
+        request_id: row.id,
+        tenant_id: a.tenantId,
+        position: 0,
+        document_id: docId,
+        chunk_id: String(chunkId),
+        score: 0.5,
+      },
+    ]);
+    expect(JSON.stringify([row, sources])).not.toContain("SECRET");
   });
 
   it("logs the none tier with a null top_score when the tenant has no documents", async () => {
@@ -101,8 +127,11 @@ describe("POST /v1/chat", () => {
     expect((await logs(a.tenantId)).rows[0]).toMatchObject({
       model_tier: "none",
       top_score: null,
-      sources: [],
     });
+    expect(
+      (await ctx.pool.query("SELECT 1 FROM request_sources WHERE tenant_id = $1", [a.tenantId]))
+        .rowCount,
+    ).toBe(0);
   });
 
   it.each([

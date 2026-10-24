@@ -10,9 +10,12 @@ const insert = (tier: string, position: number, provider = "openai") =>
    VALUES ($1, $2, $3, $4, 'm', 'https://x.test/v1', 'enc', 'sk-...abcd')`,
     [tenant, tier, position, provider],
   );
-beforeAll(() => pool.query("DELETE FROM tenant_models WHERE tenant_id = $1", [tenant]));
+beforeAll(async () => {
+  await pool.query("DELETE FROM tenants WHERE id = $1", [tenant]);
+  await pool.query("INSERT INTO tenants (id) VALUES ($1)", [tenant]); // every tenant table points at tenants
+});
 afterAll(async () => {
-  await pool.query("DELETE FROM tenant_models WHERE tenant_id = $1", [tenant]);
+  await pool.query("DELETE FROM tenants WHERE id = $1", [tenant]);
   await pool.end();
 });
 

@@ -66,7 +66,9 @@ export function createApp({
   dash.use(requireTenant);
   dash.get("/documents", async (req, res) => {
     const { rows } = await pool.query(
-      "SELECT id, filename, status, error, chunk_count, created_at FROM documents WHERE tenant_id = $1 ORDER BY created_at DESC",
+      `SELECT d.id, d.filename, d.status, d.error, s.chunk_count, d.created_at
+       FROM documents d JOIN document_stats s ON s.document_id = d.id AND s.tenant_id = d.tenant_id
+       WHERE d.tenant_id = $1 ORDER BY d.created_at DESC`,
       [req.tenantId],
     );
     res.json({

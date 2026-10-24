@@ -92,8 +92,8 @@ export async function recordAttempts(
   for (const a of attempts) {
     await pool.query(
       `INSERT INTO model_calls (tenant_id, request_id, tenant_model_id, provider, model_id, tier, outcome, tokens_in, tokens_out, latency_ms, cost_usd, cost_source)
-       SELECT $1::text, $2::uuid, $3::uuid, $4::text, $5::text, $6::text, $7::text, $8::int, $9::int, $10::int, $11::numeric, $12::text
-       WHERE EXISTS (SELECT 1 FROM organization WHERE id = $1::text FOR SHARE)`, // no rows for a project that was deleted meanwhile
+       SELECT $1::text, $2::uuid, (SELECT id FROM tenant_models WHERE id = $3::uuid AND tenant_id = $1::text), $4::text, $5::text, $6::text, $7::text, $8::int, $9::int, $10::int, $11::numeric, $12::text
+       WHERE EXISTS (SELECT 1 FROM tenants WHERE id = $1::text FOR SHARE)`, // no rows for a project that was deleted meanwhile; a model deleted meanwhile is stored as unknown
       [
         tenantId,
         requestId,

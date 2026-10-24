@@ -2,6 +2,7 @@ import { existsSync, readdirSync } from "node:fs";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type Ctx, makeCtx, type Tenant } from "../../helpers/ctx.js";
+import { insertDoc as seedDoc } from "../../helpers/seed.js";
 
 let ctx: Ctx, a: Tenant, b: Tenant;
 beforeAll(async () => {
@@ -40,6 +41,18 @@ describe("POST /v1/documents", () => {
   it("answers 202 processing, forwards to /internal/ingest with the key's tenant, then marks ready", async () => {
     await clean();
     ctx.stub.calls.length = 0;
+    ctx.stub.handlers.ingest = async ({ body }) => {
+      for (
+        let i = 0;
+        i < 3;
+        i++ // what the Python service does: it writes the chunks
+      )
+        await ctx.pool.query(
+          "INSERT INTO chunks (tenant_id, document_id, content, embedding) VALUES ($1, $2, 'c', array_fill(0, ARRAY[384])::vector)",
+          [body.tenant_id, body.document_id],
+        );
+      return { status: 200, body: { chunk_count: 3 } };
+    };
     const res = await upload(a, "handbook.md", "hello world", { tenant_id: b.tenantId }); // a body field must not pick the tenant
     expect(res.status).toBe(202);
     expect(res.body).toEqual({ document_id: expect.any(String), status: "processing" });
@@ -136,13 +149,7 @@ describe("POST /v1/documents", () => {
 });
 
 describe("DELETE /v1/documents/:id", () => {
-  const insertDoc = async (tenantId: string) =>
-    (
-      await ctx.pool.query(
-        "INSERT INTO documents (tenant_id, filename, status, chunk_count) VALUES ($1, 'x.md', 'ready', 1) RETURNING id",
-        [tenantId],
-      )
-    ).rows[0].id;
+  const insertDoc = (tenantId: string) => seedDoc(ctx.pool, tenantId, 0, { filename: "x.md" });
   const zeroVector = `[${new Array(384).fill(0).join(",")}]`;
 
   it("returns 204, calls the internal delete with the tenant, and the chunks cascade away", async () => {

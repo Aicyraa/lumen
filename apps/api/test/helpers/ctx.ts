@@ -116,12 +116,8 @@ export async function makeCtx(
   }
 
   async function close() {
-    for (const t of tenants) {
-      await pool.query("DELETE FROM request_logs WHERE tenant_id = $1", [t]);
-      await pool.query("DELETE FROM model_calls WHERE tenant_id = $1", [t]);
-      await pool.query("DELETE FROM tenant_models WHERE tenant_id = $1", [t]);
-      await pool.query("DELETE FROM documents WHERE tenant_id = $1", [t]);
-    }
+    // The tenants row owns the project's data: deleting it removes documents, chunks, requests, sources, models and calls.
+    for (const t of tenants) await pool.query("DELETE FROM tenants WHERE id = $1", [t]);
     stub.close();
     await app.locals.idle(); // background ingests must finish before the pool closes
     await pool.end();

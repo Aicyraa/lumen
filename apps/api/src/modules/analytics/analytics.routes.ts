@@ -14,23 +14,25 @@ export function analyticsRouter({ pool, config }: Deps) {
 
     const [perDay, mix, latency, byModel] = await Promise.all([
       pool.query(
-        `SELECT to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date,
-                count(*) FILTER (WHERE model_tier = 'cheap')::int AS cheap,
-                count(*) FILTER (WHERE model_tier = 'expensive')::int AS expensive,
-                count(*) FILTER (WHERE model_tier = 'none')::int AS none,
-                count(*) FILTER (WHERE model_tier IS NULL)::int AS failed,
-                sum(cost_usd)::float8 AS cost_usd
-         FROM request_logs WHERE tenant_id = $1 AND created_at >= $2 GROUP BY 1`,
+        `SELECT to_char(r.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date,
+                count(*) FILTER (WHERE r.model_tier = 'cheap')::int AS cheap,
+                count(*) FILTER (WHERE r.model_tier = 'expensive')::int AS expensive,
+                count(*) FILTER (WHERE r.model_tier = 'none')::int AS none,
+                count(*) FILTER (WHERE r.model_tier IS NULL)::int AS failed,
+                sum(u.cost_usd)::float8 AS cost_usd
+         FROM request_logs r LEFT JOIN request_usage u ON u.request_id = r.id AND u.tenant_id = r.tenant_id
+         WHERE r.tenant_id = $1 AND r.created_at >= $2 GROUP BY 1`,
         [req.tenantId, since],
       ),
       pool.query(
-        `SELECT count(*) FILTER (WHERE model_tier = 'cheap')::int AS cheap,
-                count(*) FILTER (WHERE model_tier = 'expensive' AND escalated)::int AS escalated,
-                count(*) FILTER (WHERE model_tier = 'expensive' AND NOT COALESCE(escalated, false))::int AS expensive_hard,
-                count(*) FILTER (WHERE model_tier = 'none')::int AS none,
-                count(*) FILTER (WHERE model_tier IS NULL)::int AS failed,
-                sum(cost_usd)::float8 AS total_cost_usd
-         FROM request_logs WHERE tenant_id = $1 AND created_at >= $2`,
+        `SELECT count(*) FILTER (WHERE r.model_tier = 'cheap')::int AS cheap,
+                count(*) FILTER (WHERE r.model_tier = 'expensive' AND r.escalated)::int AS escalated,
+                count(*) FILTER (WHERE r.model_tier = 'expensive' AND NOT COALESCE(r.escalated, false))::int AS expensive_hard,
+                count(*) FILTER (WHERE r.model_tier = 'none')::int AS none,
+                count(*) FILTER (WHERE r.model_tier IS NULL)::int AS failed,
+                sum(u.cost_usd)::float8 AS total_cost_usd
+         FROM request_logs r LEFT JOIN request_usage u ON u.request_id = r.id AND u.tenant_id = r.tenant_id
+         WHERE r.tenant_id = $1 AND r.created_at >= $2`,
         [req.tenantId, since],
       ),
       pool.query(
@@ -61,7 +63,7 @@ export function analyticsRouter({ pool, config }: Deps) {
       per_day,
       route_mix,
       latency_ms: latency.rows[0],
-      total_cost_usd, // sum of request_logs.cost_usd; null when no priced model answered
+      total_cost_usd, // sum of request_usage.cost_usd; null when no priced model answered
       by_model: byModel.models,
     });
   });

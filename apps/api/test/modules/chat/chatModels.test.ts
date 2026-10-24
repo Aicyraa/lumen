@@ -398,7 +398,7 @@ describe("model_calls and tenant_models bookkeeping", () => {
 
 describe("estimated provider cost", () => {
   const costOf = async (tenantId: string) =>
-    (await ctx.pool.query("SELECT cost_usd FROM request_logs WHERE tenant_id = $1", [tenantId]))
+    (await ctx.pool.query("SELECT cost_usd FROM request_usage WHERE tenant_id = $1", [tenantId]))
       .rows[0].cost_usd;
 
   it("prices an attempt from the provider's token counts: 812 in and 96 out at 0.15 and 0.60 per 1M is 0.000179", async () => {

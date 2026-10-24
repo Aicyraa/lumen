@@ -115,19 +115,14 @@ export function workspacesRouter({ pool, config, log }: Deps, auth: Auth) {
     if (req.body?.name !== me.name)
       throw new ApiError(422, "name_mismatch", "Type the project's name to confirm.");
     const id = req.params.id;
-    // One transaction: all of the tenant's data, its keys and members, then the organization. Any failure leaves everything in place.
-    // An ingest still running for this project fails harmlessly (its document row is gone, and chunks need one); its file is removed below.
+    // One transaction: the tenants row (its data goes with it, ON DELETE CASCADE), the keys and members, then the organization.
+    // Any failure leaves everything in place. A chat or upload still writing for this project waits on the tenants row, then fails
+    // the foreign key or writes nothing. An ingest still running fails harmlessly (its document row is gone); its file is removed below.
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
-      // Lock the organization row first: a chat or upload that is still writing for this project waits here, then finds the project gone.
-      await client.query("SELECT 1 FROM organization WHERE id = $1 FOR UPDATE", [id]);
       for (const sql of [
-        "DELETE FROM model_calls WHERE tenant_id = $1",
-        "DELETE FROM request_logs WHERE tenant_id = $1",
-        "DELETE FROM tenant_models WHERE tenant_id = $1",
-        "DELETE FROM chunks WHERE tenant_id = $1",
-        "DELETE FROM documents WHERE tenant_id = $1",
+        "DELETE FROM tenants WHERE id = $1",
         `DELETE FROM apikey WHERE "referenceId" = $1`,
         `DELETE FROM invitation WHERE "organizationId" = $1`,
         `DELETE FROM member WHERE "organizationId" = $1`,

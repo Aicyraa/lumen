@@ -81,10 +81,10 @@ export function documentsRouter({ pool, rag, config, log, pending }: Deps) {
     filename: string,
   ): Promise<void> {
     try {
-      const { chunk_count } = await rag.ingest(tenantId, id, path, filename);
+      await rag.ingest(tenantId, id, path, filename); // the chunk count is the document_stats view, not a stored value
       await pool.query(
-        "UPDATE documents SET status = 'ready', chunk_count = $3 WHERE id = $1 AND tenant_id = $2 AND status = 'processing'",
-        [id, tenantId, chunk_count],
+        "UPDATE documents SET status = 'ready' WHERE id = $1 AND tenant_id = $2 AND status = 'processing'",
+        [id, tenantId],
       );
     } catch (e) {
       const err = e as Error & { code?: string };
@@ -124,7 +124,9 @@ export function documentsRouter({ pool, rag, config, log, pending }: Deps) {
   r.get("/:id", async (req, res) => {
     if (!isUuid(req.params.id)) throw notFound();
     const { rows } = await pool.query(
-      "SELECT id, status, chunk_count, error FROM documents WHERE id = $1 AND tenant_id = $2",
+      `SELECT d.id, d.status, s.chunk_count, d.error
+       FROM documents d JOIN document_stats s ON s.document_id = d.id AND s.tenant_id = d.tenant_id
+       WHERE d.id = $1 AND d.tenant_id = $2`,
       [req.params.id, req.tenantId],
     );
     if (!rows[0]) throw notFound();

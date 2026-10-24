@@ -1,6 +1,7 @@
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type Ctx, makeCtx, type Tenant } from "../../helpers/ctx.js";
+import { insertDoc } from "../../helpers/seed.js";
 
 let ctx: Ctx, a: Tenant, b: Tenant;
 beforeAll(async () => {
@@ -14,14 +15,22 @@ afterAll(async () => {
 
 describe("dashboard documents", () => {
   it("lists status, chunk_count, error and created_at for the tenant's documents only, newest first", async () => {
-    await ctx.pool.query(
-      `INSERT INTO documents (tenant_id, filename, status, chunk_count, error, created_at) VALUES
-       ($1, 'ready.pdf', 'ready', 12, NULL, now() - interval '1 hour'),
-       ($1, 'bad.pdf', 'failed', 0, 'no_text_extracted: scanned', now()),
-       ($1, 'busy.md', 'processing', 0, NULL, now() - interval '2 hours'),
-       ($2, 'theirs.md', 'ready', 3, NULL, now())`,
-      [a.tenantId, b.tenantId],
-    );
+    const hour = Date.now() - 3600_000;
+    await insertDoc(ctx.pool, a.tenantId, 12, {
+      filename: "ready.pdf",
+      createdAt: new Date(hour).toISOString(),
+    });
+    await insertDoc(ctx.pool, a.tenantId, 0, {
+      filename: "bad.pdf",
+      status: "failed",
+      error: "no_text_extracted: scanned",
+    });
+    await insertDoc(ctx.pool, a.tenantId, 0, {
+      filename: "busy.md",
+      status: "processing",
+      createdAt: new Date(hour - 3600_000).toISOString(),
+    });
+    await insertDoc(ctx.pool, b.tenantId, 3, { filename: "theirs.md" });
     const res = await request(ctx.app).get("/api/dashboard/documents").set("cookie", a.cookie);
     expect(res.status).toBe(200);
     expect(res.body.documents.map((d: { filename: string }) => d.filename)).toEqual([
