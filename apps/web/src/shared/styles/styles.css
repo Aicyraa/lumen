@@ -2310,3 +2310,10 @@ table.data.compact td {
 .an .bar {
   max-width: 72px;
 }
+
+/* very short windows or high zoom: let the sidebar scroll so Sign out and the usage meters stay reachable */
+@media (max-height: 560px) {
+  .sidebar {
+    overflow-y: auto;
+  }
+}

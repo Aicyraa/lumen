@@ -148,6 +148,14 @@ export function Models() {
         </Dialog>
       )}
       <ErrorText>{rowError}</ErrorText>
+      {usage.isError && (
+        <div role="alert" className="error-text">
+          Could not load usage. {(usage.error as Error).message}{" "}
+          <button type="button" className="link-btn red" onClick={() => usage.refetch()}>
+            Retry
+          </button>
+        </div>
+      )}
       {models.isPending && <StatusMessage state="loading">Loading models…</StatusMessage>}
       {models.isError && (
         <StatusMessage state="error" onRetry={() => models.refetch()}>
@@ -186,6 +194,7 @@ export function Models() {
                     key={m.id}
                     m={m}
                     u={byId.get(m.id)}
+                    usageFailed={usage.isError}
                     rank={i === 0 ? "PRIMARY" : `BACKUP ${i}`}
                     first={i === 0}
                     last={i === rows.length - 1}
@@ -214,6 +223,7 @@ function limitsText(u?: ModelUsage) {
 function ModelRow({
   m,
   u,
+  usageFailed,
   rank,
   first,
   last,
@@ -222,6 +232,7 @@ function ModelRow({
 }: {
   m: TenantModel;
   u?: ModelUsage;
+  usageFailed: boolean;
   rank: string;
   first: boolean;
   last: boolean;
@@ -258,6 +269,8 @@ function ModelRow({
               : ` · ${u.backup_uses} as backup`}{" "}
             · median {fmtMs(u.median_latency_ms)}
           </>
+        ) : usageFailed ? (
+          "usage unavailable"
         ) : (
           "usage loading…"
         )}
@@ -275,12 +288,12 @@ function ModelRow({
             )}
           </span>
         </span>
-        <span>
-          price per 1M tokens:{" "}
-          {m.input_price_per_1m == null && m.output_price_per_1m == null
-            ? "none set"
-            : `in ${m.input_price_per_1m ?? "—"}, out ${m.output_price_per_1m ?? "—"}`}
-        </span>
+        {(m.input_price_per_1m != null || m.output_price_per_1m != null) && (
+          <span>
+            price per 1M tokens: in {m.input_price_per_1m ?? "—"}, out{" "}
+            {m.output_price_per_1m ?? "—"}
+          </span>
+        )}
       </div>
       <div className="model-cell model-actions" role="cell">
         <button
