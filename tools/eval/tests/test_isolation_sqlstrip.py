@@ -62,3 +62,31 @@ def test_the_leaky_copy_changes_the_file_and_imports(tmp_path):
     out = subprocess.run([sys.executable, "-c", code], cwd=tmp_path / "leaky", capture_output=True,
                          text=True, env={"PATH": "/usr/bin"}, check=True).stdout.split()  # fmt: skip
     assert all(str(tmp_path / "leaky") in line for line in out)  # the copy, not the installed app
+
+
+@pytest.mark.parametrize(
+    "which,stripped,kept",
+    [(("search",), "search", "keyword_search"), (("keyword_search",), "keyword_search", "search")],
+)
+def test_a_single_predicate_can_be_stripped(which, stripped, kept):
+    new, n = strip_tenant_predicates(STORE, which)
+    assert n == 1
+    assert "tenant_id = %" not in func_source(new, stripped)
+    assert func_source(new, kept) == func_source(STORE, kept)  # the other query keeps its filter
+
+
+def test_the_default_and_the_explicit_combination_are_the_same():
+    assert strip_tenant_predicates(STORE) == strip_tenant_predicates(STORE, ("search", "keyword_search"))
+
+
+def test_unknown_function_name_is_refused():
+    with pytest.raises(StripError):
+        strip_tenant_predicates(STORE, ("nope",))
+
+
+def test_variant_copies_differ_from_each_other(tmp_path):
+    texts = {}
+    for name, which in (("v", ("search",)), ("k", ("keyword_search",)), ("all", None)):
+        assert make_leaky_copy(APP, tmp_path / name, which) == (2 if which is None else 1)
+        texts[name] = (tmp_path / name / "app" / "retrieval" / "store.py").read_text()
+    assert len(set(texts.values())) == 3 and all(t != STORE for t in texts.values())
