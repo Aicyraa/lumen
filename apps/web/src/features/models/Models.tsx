@@ -281,6 +281,9 @@ function ModelRow({
       <div className="model-cell small muted-3" role="cell">
         <span>
           estimated provider cost{" "}
+          <InfoTip label="About estimated provider cost">
+            Estimated from the prices you enter for each model.
+          </InfoTip>{" "}
           <span className="mono text">
             {fmtCost(
               u?.cost_usd ??

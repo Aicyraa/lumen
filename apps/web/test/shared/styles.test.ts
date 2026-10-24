@@ -31,4 +31,10 @@ describe("text contrast (small text must reach 4.5:1)", () => {
       );
     });
   });
+
+describe("Try it layout", () => {
+  const css = readFileSync("src/shared/styles/styles.css", "utf8");
+  it("is centred in the content area within a comfortable max width", () => {
+    expect(css).toMatch(/\.try-grid\s*\{[^}]*max-width:\s*\d+px[^}]*margin-inline:\s*auto/);
+  });
 });
