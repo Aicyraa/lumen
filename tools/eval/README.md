@@ -104,3 +104,14 @@ Logs of the child processes are in the temporary directory printed at the start 
 
 What it does not cover: Supabase (RLS, pooler), more than one API instance, the real model providers, the dashboard in a
 browser, and leaks that need data volumes (it uses six tiny documents; the reranker and BM25 see only 3 chunks per tenant).
+
+## Preliminary evaluation setup (eval-run-1)
+
+- **The `expected_answer` values are agent-drafted and unverified by the human.** They were written from the eight source PDFs
+  only (never from system output); `DRAFT_ANSWERS_REVIEW.md` lists each draft with its PDF page and, for the nine unanswerable
+  rows, the terms searched to confirm the information is absent. Every result built on them is **preliminary** until the
+  human verifies them.
+- **Held-out rule (fixed before any system answer was seen):** per `type`, take the rows in file order, shuffle them with
+  `random.Random(f"{SEED}:{type}")` where `SEED = 20261024`, keep the first N: 3 easy, 3 hard, 2 multi-document,
+  2 unanswerable (10 of 43). Code: `evalkit/heldout.py`; a test checks that `questions.csv` matches the rule.
+  `cheap_ok` and `expensive_ok` stay empty (Phase 6).
