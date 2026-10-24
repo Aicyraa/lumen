@@ -181,4 +181,9 @@ describe("Privacy layout", () => {
     expect(within(toc).getAllByRole("link").length).toBeGreaterThanOrEqual(5);
     expect(document.querySelector(".doc-content")).not.toBeNull();
   });
+
+  it("never mentions a fallback model", () => {
+    view(<Docs />);
+    expect(document.body.textContent).not.toMatch(/fallback/i);
+  });
 });
