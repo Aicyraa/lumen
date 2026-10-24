@@ -49,7 +49,7 @@ def keyword_search(
     """Tenant-local BM25 hits, with cosine and BM25 scores kept separate."""
     cfg = load_config()["retrieval"]
     with _connect() as conn:
-        # Corpus statistics must be tenant-local too: another tenant cannot affect ranking.
+        # shortcut: BM25 scans this tenant's chunks, persist postings when measured latency grows.
         rows = conn.execute(
             """
             WITH corpus AS MATERIALIZED (

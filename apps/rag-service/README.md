@@ -14,8 +14,8 @@ app/
   api/                factory (app, error handlers), routes, deps (secret, LLM caller), schemas
   core/               config loader and settings, env loader, errors, logging
   ingest/             chunking, text extraction, ingest_file (used by the CLI)
-  retrieval/          embeddings, pgvector store, router (decide), ask_chunks
-  llm/                client (call_model, Attempt), prompt, endpoint_guard
+  retrieval/          embeddings, BM25/pgvector store, reranker, router (decide), ask_chunks
+  llm/                client (call_model, Attempt), quote-backed prompt and rendering, endpoint_guard
 samples/              sample documents
 tests/                mirrors app/ (api, core, ingest, retrieval, llm) plus conftest.py
 ```
@@ -43,3 +43,17 @@ The handler also has `ingest <tenant_id> <file>` (.txt, .md, .pdf) and `ask <ten
 The app reads only `apps/rag-service/.env` plus the real environment (real variables win). There is no repo-root `.env` lookup.
 `DATABASE_URL` and `INTERNAL_SECRET` are required; the service refuses to start without them. `INTERNAL_SECRET` must equal the one in `apps/api/.env`.
 Tests use `TEST_DATABASE_URL`, or `DATABASE_URL` with the database name replaced by `lumen_test` (every `infra/sql/NNN_*.sql` is applied in order; tests insert the `tenants` rows they need). Tests use a fake LLM client and never call a provider.
+
+## Retrieval and answers
+
+The API combines tenant-local BM25 and vector candidates using reciprocal rank fusion, reranks up to the configured candidate count, then sends the selected passages to the tenant's chat model. Source scores remain cosine similarity. BM25 statistics use only the caller's tenant; new uploads and deletions are reflected without a separate search index or a database migration. This exact implementation computes corpus statistics per request; benchmark larger tenants before introducing a persistent index.
+
+The reranker uses the installed `sentence-transformers` library and a pinned model revision from `app/config.yaml`. Prefetch its weights once, from this directory, before starting a new deployment:
+
+```sh
+.venv/bin/python -c 'from app.core.config import load_config; from huggingface_hub import snapshot_download; c = load_config()["reranker"]; snapshot_download(c["model"], revision=c["revision"], allow_patterns=["config.json", "model.safetensors", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "vocab.txt"])'
+```
+
+At request time the reranker loads cached weights only. Missing weights or invalid inference scores produce a warning and use fused retrieval order. Automated tests replace inference with deterministic fakes. `reranker.enabled` controls this step; model, revision, candidate count and batch size are configuration values. The CLI `ask` displays fused retrieval without reranking.
+
+Chat models return claims with passage ids and exact evidence quotes. The service validates the quotes, tolerating whitespace and equivalent PDF typography, and renders ASCII citations itself. A quote assigned to the wrong passage is corrected only when it matches exactly one other provided passage. Invalid evidence gets one format-repair attempt, then `502 provider_error`; every attempt contributes to recorded usage. Empty claims produce the configured not-found message. Quote verification checks text presence, not logical entailment: a real quote does not by itself prove every interpretation of a claim.

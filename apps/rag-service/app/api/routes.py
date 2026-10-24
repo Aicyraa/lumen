@@ -21,6 +21,7 @@ from app.retrieval import store
 from app.retrieval.embeddings import (
     embed,  # loads the model at import, before the server starts listening
 )
+from app.retrieval.reranker import rerank
 from app.retrieval.router import decide
 
 public = APIRouter()
@@ -150,7 +151,12 @@ def query(req: QueryRequest, caller=Depends(get_caller)):
         raise ApiError(
             422, "no_models_configured", "No models are configured. Add a model in the Models tab."
         )
-    hits = store.search(req.tenant_id, qvec, route["k"], query_text=req.query)
+    reranker_cfg = load_config()["reranker"]
+    candidate_k = (
+        max(route["k"], reranker_cfg["candidate_limit"]) if reranker_cfg["enabled"] else route["k"]
+    )
+    hits = store.search(req.tenant_id, qvec, candidate_k, query_text=req.query)
+    hits = rerank(req.query, hits, route["k"]) if reranker_cfg["enabled"] else hits
     system, user = build_prompt(req.query, [content for _, _, content, _ in hits])
     attempts = []
     for label, m in plan:  # top to bottom; the first model that answers wins

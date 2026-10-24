@@ -1,6 +1,5 @@
 import pytest
 
-
 HITS = [(1, "doc-a", "First passage", 0.9), (2, "doc-b", "Better passage", 0.2)]
 
 

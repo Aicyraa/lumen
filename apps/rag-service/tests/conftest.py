@@ -79,6 +79,12 @@ def public_dns(monkeypatch):
     monkeypatch.setattr("app.llm.endpoint_guard._resolve", lambda host: ["93.184.216.34"])
 
 
+@pytest.fixture(autouse=True)
+def fake_reranker(monkeypatch):
+    # API tests use deterministic ordering; the reranker's own tests inject model scores.
+    monkeypatch.setattr("app.api.routes.rerank", lambda query, hits, k: hits[:k])
+
+
 class FakeCaller:
     """Stands in for llm.call_model. Records every call; `outcomes` maps a model_id to how that model behaves
     (default ok). Answering models report 100 tokens in and 10 out unless `tokens` says otherwise."""
