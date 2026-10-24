@@ -662,11 +662,11 @@ table.data td {
   top: 0;
   height: 100vh;
   border-right: 1px solid var(--line);
-  padding: 28px 20px;
+  padding: 16px 16px 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  overflow-y: auto;
+  overflow: hidden; /* the sidebar never scrolls; spacing is compact so it fits 1366x700 */
 }
 .nav {
   display: flex;
@@ -676,7 +676,7 @@ table.data td {
 .nav-item {
   display: flex;
   justify-content: space-between;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-radius: 8px;
   font-size: 14px;
   color: var(--text-2);
@@ -688,19 +688,12 @@ table.data td {
   background: var(--surface-active);
   color: var(--text);
 }
-.nav-num {
-  font-size: 11px;
-  color: var(--text-4);
-}
-.nav-item.active .nav-num {
-  color: var(--text-3);
-}
 .usage {
   margin-top: auto;
-  padding: 16px 12px;
+  padding: 12px 12px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 .meter {
   display: flex;
@@ -735,7 +728,7 @@ table.data td {
   color: var(--amber);
 }
 .chip-user {
-  padding: 12px;
+  padding: 10px 12px;
   border-top: 1px solid var(--line);
   display: flex;
   gap: 10px;
@@ -1830,4 +1823,9 @@ html.snap-home {
 }
 .status-msg-loading .status-msg-text {
   animation: pulse 1.4s infinite;
+}
+
+.all-projects {
+  margin: 4px 12px 8px;
+  justify-content: center;
 }
