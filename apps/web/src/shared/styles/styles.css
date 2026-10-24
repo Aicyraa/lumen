@@ -1854,11 +1854,6 @@ html.snap-home {
   animation: pulse 1.4s infinite;
 }
 
-.all-projects {
-  margin: 4px 12px 8px;
-  justify-content: center;
-}
-
 .in-view .bar {
   animation-play-state: running;
 }
@@ -2359,4 +2354,105 @@ table.data.compact td {
 }
 .infotip-tip[hidden] {
   display: none;
+}
+
+/* project dropdown and sidebar brand footer */
+.switcher-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.pmenu {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.pmenu-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.pmenu-btn[aria-expanded="true"] {
+  border-color: var(--text-3);
+}
+.pmenu-list {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface-active);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+  outline: none;
+}
+.pmenu-opt {
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--text-2);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pmenu-opt.active {
+  background: var(--line);
+  color: var(--text);
+}
+.pmenu-opt[aria-selected="true"] {
+  color: var(--lime);
+}
+.pmenu-opt.all {
+  margin-top: 4px;
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 6px 6px;
+  color: var(--text-3);
+}
+.icon-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  color: var(--text-3);
+}
+.icon-btn:hover {
+  color: var(--text);
+}
+.brand-foot {
+  margin-top: 2px;
+  padding: 6px 12px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-3);
+}
+.brand-foot:hover {
+  color: var(--text);
+}
+.brand-mark {
+  width: 18px;
+  height: 18px;
 }
