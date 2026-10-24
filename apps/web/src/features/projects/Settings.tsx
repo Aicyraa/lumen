@@ -31,6 +31,7 @@ export function Settings() {
     onSuccess: () => {
       setSaved(true);
       qc.invalidateQueries({ queryKey: ["workspaces"] });
+      qc.invalidateQueries({ queryKey: ["account"] });
     },
     onError: (e: Error) => setError(e.message),
   });

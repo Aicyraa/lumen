@@ -29,6 +29,7 @@ export function Projects() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["workspaces"] });
+      qc.invalidateQueries({ queryKey: ["account"] });
       close();
     },
     onError: (e: Error) => setError(e.message),

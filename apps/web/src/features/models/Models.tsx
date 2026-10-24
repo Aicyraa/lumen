@@ -96,6 +96,9 @@ export function Models() {
     enabled: !!org,
     queryFn: () => api<ModelsUsage>(`/api/dashboard/models/usage?range=${range}`),
   });
+  const anyPriced = Object.values(models.data ?? {}).some((rows) =>
+    rows.some((m) => m.input_price_per_1m != null || m.output_price_per_1m != null),
+  );
   const byId = new Map<string, ModelUsage>((usage.data?.models ?? []).map((u) => [u.id, u]));
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["models", org] });
@@ -132,7 +135,8 @@ export function Models() {
       </PageHead>
       {usage.data && (
         <div className="mono small muted-3">
-          ESTIMATED PROVIDER COST, {range.toUpperCase()}: {fmtCost(usage.data.total_cost_usd)}
+          ESTIMATED PROVIDER COST, {range.toUpperCase()}:{" "}
+          {fmtCost(usage.data.total_cost_usd ?? (anyPriced ? 0 : null))}
         </div>
       )}
       {open && (

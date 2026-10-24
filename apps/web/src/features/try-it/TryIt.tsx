@@ -57,7 +57,7 @@ export function TryIt() {
   const err = ask.error;
 
   return (
-    <div className="try-grid">
+    <div className={`try-grid${r ? " with-side" : ""}`}>
       <div className="stack">
         <PageHead title="Try it" />
         <form onSubmit={submit} className="askbar">

@@ -831,11 +831,15 @@ label.btn:focus-within {
 }
 .try-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 40px;
   width: 100%;
-  max-width: 1120px;
+  max-width: 760px;
   margin-inline: auto;
+}
+.try-grid.with-side {
+  grid-template-columns: minmax(0, 1fr) 340px;
+  max-width: 1080px;
 }
 .try-grid .side {
   padding-top: 96px;
@@ -1509,7 +1513,6 @@ html.snap-home {
   top: 0;
   z-index: 40;
   background: var(--bg);
-  background: color-mix(in srgb, var(--bg) 82%, transparent);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line-soft);
@@ -2293,8 +2296,10 @@ table.data.compact td {
 }
 @media (max-width: 900px) {
   .what-grid,
-  .feature-grid,
+  .feature-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
+}
 @media (max-width: 520px) {
   .facts {
     grid-template-columns: minmax(0, 1fr);
@@ -2568,4 +2573,10 @@ table.data.compact td {
 }
 .cols-4 {
   gap: 16px;
+}
+
+@supports (background: color-mix(in srgb, red, blue)) {
+  .pub-nav {
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+  }
 }

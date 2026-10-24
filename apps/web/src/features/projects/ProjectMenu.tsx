@@ -22,7 +22,7 @@ export function ProjectMenu({
   const base = useId();
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
-  const list = useRef<HTMLUListElement>(null);
+  const list = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const entries: Entry[] = [
     ...projects.map((p) => ({ key: p.slug, label: p.name, slug: p.slug })),
@@ -116,7 +116,7 @@ export function ProjectMenu({
         </svg>
       </button>
       {open && (
-        <ul
+        <div
           ref={list}
           role="listbox"
           tabIndex={-1}
@@ -126,7 +126,8 @@ export function ProjectMenu({
           onKeyDown={onListKey}
         >
           {entries.map((e, i) => (
-            <li
+            // biome-ignore lint/a11y/useKeyWithClickEvents: keys are handled by the listbox (aria-activedescendant)
+            <div
               key={e.key}
               id={`${base}-${i}`}
               role="option"
@@ -136,9 +137,9 @@ export function ProjectMenu({
               onClick={() => choose(i)}
             >
               {e.label}
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );
