@@ -459,4 +459,33 @@ describe("Models", () => {
       );
     });
   });
+
+  describe("total cost line", () => {
+    it("shows $0 (not 'no price set') in the header when a model has prices but nothing has been billed yet", async () => {
+      mockFetch(
+        router((url) =>
+          url.includes("/models/usage")
+            ? { ...usageBody, total_cost_usd: null, models: [] }
+            : undefined,
+        ),
+      );
+      renderWithProviders(<Models />);
+      await screen.findByText("model-a");
+      expect(await screen.findByText(/ESTIMATED PROVIDER COST, 7D: \$0$/)).toBeInTheDocument();
+    });
+    it("shows 'no price set' in the header when no model has a price", async () => {
+      mockFetch(
+        router((url) =>
+          url.includes("/models/usage")
+            ? { ...usageBody, total_cost_usd: null, models: [] }
+            : { models: { cheap: [m("b", "cheap", 0)], expensive: [], fallback: [] } },
+        ),
+      );
+      renderWithProviders(<Models />);
+      await screen.findByText("model-b");
+      expect(
+        await screen.findByText(/ESTIMATED PROVIDER COST, 7D: no price set/),
+      ).toBeInTheDocument();
+    });
+  });
 });

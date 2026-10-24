@@ -186,6 +186,35 @@ describe("Projects", () => {
       expect(screen.getByRole("button", { name: "Create project" })).toBeInTheDocument();
     });
   });
-});
 
-void MemoryRouter;
+  it("refreshes the account strip after a project is created", async () => {
+    let accountCalls = 0;
+    mockFetch((url, init) => {
+      if (url.includes("/account")) {
+        accountCalls += 1;
+        return {
+          user: {
+            name: "M",
+            email: "m@x.test",
+            email_verified: true,
+            image: null,
+            created_at: "2026-10-01T00:00:00Z",
+          },
+          providers: [],
+          projects: { owned: accountCalls, max: 5 },
+          totals: { documents: 0, requests_this_month: 0, api_keys: 0, models: 0 },
+        };
+      }
+      return init?.method === "POST" ? reply(201, { workspace: P2 }) : { workspaces: [P1] };
+    });
+    page();
+    const strip = await screen.findByRole("region", { name: "Summary" });
+    await waitFor(() => expect(strip).toHaveTextContent("1 of 5"));
+    await userEvent.click(screen.getByRole("button", { name: "Create project" }));
+    await userEvent.type(screen.getByLabelText("Name"), "Second");
+    await userEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Create" }),
+    );
+    await waitFor(() => expect(strip).toHaveTextContent("2 of 5"));
+  });
+});
