@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { CodeBlock, PublicLayout, SectionLabel } from "../components/PublicLayout";
+import { Reveal } from "../components/motion";
 import { Segmented } from "../components/ui";
 
 const STEPS = [
@@ -44,11 +45,13 @@ export function Home() {
   const [copied, setCopied] = useState(false);
   const d = DEMOS[demo];
   const copy = () => { void navigator.clipboard?.writeText(CODE[tab]).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 1500); };
+  // CSS scroll-snap (proximity) only on this page, so the dashboard and docs scroll normally.
+  useEffect(() => { document.documentElement.classList.add("snap-home"); return () => document.documentElement.classList.remove("snap-home"); }, []);
 
   return (
     <PublicLayout>
-      <main>
-        <section className="hero" aria-labelledby="hero-h">
+      <main className="home">
+        <section className="snap-section hero" aria-labelledby="hero-h">
           <SectionLabel>RAG API FOR YOUR CHATBOT — 01</SectionLabel>
           <h1 id="hero-h" className="hero-h1">Answers from your documents, from the smallest model that gets them right.</h1>
           <div className="hero-foot">
@@ -56,17 +59,22 @@ export function Home() {
             <div className="row-gap"><Link to="/signin" className="btn btn-accent btn-lg">Sign in to start</Link><Link to="/docs" className="btn btn-outline btn-lg">Read the docs</Link></div>
           </div>
         </section>
-        <div className="image-slot" role="img" aria-label="Placeholder for a dashboard screenshot">dashboard screenshot — analytics view</div>
 
-        <section id="how" className="sec head-grid" aria-labelledby="how-h">
-          <SectionLabel>HOW IT WORKS — 02</SectionLabel>
-          <h2 id="how-h" className="h2">Three steps from a folder of PDFs to a chatbot that cites its sources.</h2>
+        <section className="snap-section" aria-label="Preview">
+          <Reveal><div className="image-slot" role="img" aria-label="Placeholder for a dashboard screenshot">dashboard screenshot — analytics view</div></Reveal>
         </section>
-        <ol className="steps">
-          {STEPS.map(([n, t, b]) => <li key={n} className="step"><div className="num">{n}</div><div className="step-title">{t}</div><div className="body muted-2">{b}</div></li>)}
-        </ol>
 
-        <section className="sec" aria-label="Demo">
+        <section id="how" className="snap-section" aria-labelledby="how-h">
+          <div className="head-grid">
+            <SectionLabel>HOW IT WORKS — 02</SectionLabel>
+            <h2 id="how-h" className="h2">Three steps from a folder of PDFs to a chatbot that cites its sources.</h2>
+          </div>
+          <ol className="steps">
+            {STEPS.map(([n, t, b], i) => <Reveal as="li" key={n} delay={i * 0.1} className="step"><div className="num">{n}</div><div className="step-title">{t}</div><div className="body muted-2">{b}</div></Reveal>)}
+          </ol>
+        </section>
+
+        <section className="snap-section" aria-label="Demo">
           <div className="row-between">
             <SectionLabel>DEMO — 03</SectionLabel>
             <Segmented label="Demo case" options={[["easy", "EASY"], ["hard", "HARD"], ["none", "NO ANSWER"]] as const} value={demo} onChange={setDemo} />
@@ -77,7 +85,7 @@ export function Home() {
           </div>
         </section>
 
-        <section className="sec head-grid top" aria-label="Quickstart">
+        <section className="snap-section head-grid top" aria-label="Quickstart">
           <div className="stack">
             <SectionLabel>QUICKSTART — 04</SectionLabel>
             <h2 className="h2">Call it from your backend in a few lines.</h2>
@@ -92,21 +100,21 @@ export function Home() {
           </div>
         </section>
 
-        <section className="sec" aria-label="Built in">
+        <section className="snap-section" aria-label="Built in">
           <SectionLabel>BUILT IN — 06</SectionLabel>
           <div className="features">
-            {FEATURES.map(([t, b], i) => <div key={t} className="feature"><div className="mono muted-3">0{i + 1}</div><h3 className="feature-title">{t}</h3><div className="body muted-2">{b}</div></div>)}
+            {FEATURES.map(([t, b], i) => <Reveal key={t} delay={i * 0.08} className="feature"><div className="mono muted-3">0{i + 1}</div><h3 className="feature-title">{t}</h3><div className="body muted-2">{b}</div></Reveal>)}
           </div>
         </section>
 
-        <section className="sec" aria-label="Security">
+        <section className="snap-section" aria-label="Security">
           <div className="head-grid"><SectionLabel>SECURITY — 07</SectionLabel><h2 className="h2">Your documents stay yours.</h2></div>
           <ul className="cols-4">
-            {SECURITY.map(([t, b], i) => <li key={t} className="step"><div className="num">0{i + 1}</div><h3 className="card-title-sm">{t}</h3><div className="small muted-2">{b}</div></li>)}
+            {SECURITY.map(([t, b], i) => <Reveal as="li" key={t} delay={i * 0.08} className="step"><div className="num">0{i + 1}</div><h3 className="card-title-sm">{t}</h3><div className="small muted-2">{b}</div></Reveal>)}
           </ul>
         </section>
 
-        <section className="cta">
+        <section className="snap-section cta">
           <h2 className="cta-h">Ask your documents<br />anything.</h2>
           <Link to="/signin" className="btn btn-primary btn-xl">Sign in</Link>
         </section>
