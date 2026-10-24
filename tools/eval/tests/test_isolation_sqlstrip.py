@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
+
 from isolation.sqlstrip import StripError, make_leaky_copy, strip_tenant_predicates
 
 APP = Path(__file__).resolve().parents[3] / "apps" / "rag-service" / "app"
@@ -76,7 +77,9 @@ def test_a_single_predicate_can_be_stripped(which, stripped, kept):
 
 
 def test_the_default_and_the_explicit_combination_are_the_same():
-    assert strip_tenant_predicates(STORE) == strip_tenant_predicates(STORE, ("search", "keyword_search"))
+    assert strip_tenant_predicates(STORE) == strip_tenant_predicates(
+        STORE, ("search", "keyword_search")
+    )
 
 
 def test_unknown_function_name_is_refused():

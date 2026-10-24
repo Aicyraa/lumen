@@ -91,8 +91,13 @@ the rag-service venv with its model weights cached. It never touches dev data an
 5. **negative control**: copies `apps/rag-service/app` to a temporary directory, removes the `tenant_id` predicates from
    `store.search` and `store.keyword_search` (`isolation/sqlstrip.py`; it raises if the code no longer looks as expected, so
    the control cannot silently turn into a no-op), starts that rag-service and a second API instance in front of it and asks
-   the same questions. The control passes only when leaks are detected for both tenants;
-6. prints a report and exits 0 only with zero leaks in the real run and a control that detected leaks. It always stops its
+   the same questions. The control passes only when leaks are detected for both tenants. This **combined** control is
+   mandatory. Two more controls run one after the other, each with its own leaky copy: only the vector predicate removed
+   (`search`, which is also the probe query: the probe is the same SQL, not a separate predicate) and only the keyword
+   (BM25) predicate removed. They are reported, not required: if one path alone cannot leak (the other path's candidates
+   may not cover it), the report says "no leak" for it instead of forcing a result;
+6. prints a report and exits 0 only with zero leaks in the real run, at least 50 cross-tenant questions actually asked, at
+   least 10 positive checks passed, and a combined control that detected leaks. It always stops its
    processes (by PID group), drops the scratch database and removes its temporary directory.
 
 Logs of the child processes are in the temporary directory printed at the start (removed at the end).

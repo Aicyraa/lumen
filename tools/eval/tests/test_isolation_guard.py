@@ -12,7 +12,11 @@ class FakeApi:
 
     def call(self, method, path, **kw):
         self.n += 1
-        body = {"request_id": f"r{self.n}", "answer": "I could not find that in the documents.", "sources": []}
+        body = {
+            "request_id": f"r{self.n}",
+            "answer": "I could not find that in the documents.",
+            "sources": [],
+        }
         return HttpResult(200, {}, body, "{}")
 
 

@@ -3,7 +3,8 @@ from isolation.report import Outcome, exit_code, summary_lines
 
 def outcome(**kw):
     base = dict(real_leaks=0, real_problems=0, real_checks=70, control_ran=True,
-                control_leaks={"A": 12, "B": 9}, stub_answers=100)  # fmt: skip
+                control_leaks={"A": 12, "B": 9}, stub_answers=100,
+                cross_asked=64, positives_passed=14)  # fmt: skip
     return Outcome(**{**base, **kw})
 
 

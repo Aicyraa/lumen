@@ -46,6 +46,7 @@ class Run:
     checks: int = 0
     results: list = field(default_factory=list)  # (tenant label, check name, passed)
     cross: int = 0  # cross-tenant questions asked
+    positives_passed: int = 0
     positives: int = 0  # own-data questions that must find their data
 
     def add(self, label, name, findings):
@@ -151,6 +152,7 @@ def run_questions(api: Api, tenants, run: Run, *, positives: bool):
         other = next(o for o in tenants if o is not t)
         own_ids = set(t.doc_ids.values())
         for q in cross_tenant_questions(t.spec, other.spec, other.tenant_id):
+            run.cross += 1
             run.add(
                 t.spec.label,
                 f"chat[{q.kind}] {q.text[:60]}",
@@ -164,6 +166,7 @@ def run_questions(api: Api, tenants, run: Run, *, positives: bool):
                 found += check_positive(
                     r, own_ids, t.spec.code if p.expects_code else None, t.doc_ids[p.expected_doc]
                 )
+                run.positives_passed += not found
                 run.add(t.spec.label, f"positive {p.text[:60]}", found)
 
 

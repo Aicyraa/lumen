@@ -188,30 +188,44 @@ def main() -> int:
             f"chat calls in total: {sum(t.chat_calls for t in tenants)}"
         )
 
-        # negative control: the same questions against a rag-service whose retrieval ignores tenant_id
-        say("\nbuilding the leaky copy (tenant_id predicates removed from retrieval) ...")
-        leaky_dir = tmp / "leaky"
-        removed = make_leaky_copy(ROOT / "apps/rag-service/app", leaky_dir)
-        say(f"removed {removed} tenant_id predicates in the copy of store.py")
-        leaky_port, api2_port = free_port(), free_port()
-        start_rag(procs, "rag-leaky", leaky_dir, env_rag, leaky_port)
-        env_api2 = api_env(scratch_url, api2_port, leaky_port, sec, tmp / "uploads")
-        start_api(procs, "api-leaky", env_api2, api2_port)
-        api2 = suite.Api(f"http://127.0.0.1:{api2_port}", "http://localhost:5173", sec["internal"])
-        for t in tenants:
-            t.request_ids, t.chat_calls = [], 0
-        control = suite.Run()
-        suite.run_questions(api2, tenants, control, positives=False)
-        out.control_ran = True
-        out.control_leaks = {
-            t.spec.label: sum(1 for lb, _, _ in control.leaks if lb == t.spec.label)
-            for t in tenants
-        }
-        say(
-            f"control: {control.checks} questions, {len(control.leaks)} leak(s) detected, {len(control.problems)} problem(s)"
-        )
-        for lb, nm, f in control.leaks[:6]:
-            say(f"  [{f.kind}] tenant {lb} · {nm[:50]} · {f.detail[:90]}")
+        out.cross_asked, out.positives_passed = run.cross, run.positives_passed
+        # negative control: the same questions against a rag-service whose retrieval ignores tenant_id.
+        # The combined mutation is mandatory; one control per predicate shows which path alone is enough to leak.
+        variants = [
+            ("combined", None),
+            ("vector", ("search",)),  # the dense query; the probe is the same SQL
+            ("keyword", ("keyword_search",)),
+        ]
+        for name, which in variants:
+            say(f"\nnegative control '{name}': building the leaky copy ...")
+            leaky_dir = tmp / f"leaky-{name}"
+            removed = make_leaky_copy(ROOT / "apps/rag-service/app", leaky_dir, which)
+            say(f"  removed {removed} tenant_id predicate(s) in the copy of store.py")
+            leaky_port, api2_port = free_port(), free_port()
+            start_rag(procs, f"rag-{name}", leaky_dir, env_rag, leaky_port)
+            env_api2 = api_env(scratch_url, api2_port, leaky_port, sec, tmp / "uploads")
+            start_api(procs, f"api-{name}", env_api2, api2_port)
+            api2 = suite.Api(
+                f"http://127.0.0.1:{api2_port}", "http://localhost:5173", sec["internal"]
+            )
+            for t in tenants:
+                t.request_ids, t.chat_calls = [], 0
+            control = suite.Run()
+            suite.run_questions(api2, tenants, control, positives=False)
+            per = {
+                t.spec.label: sum(1 for lb, _, _ in control.leaks if lb == t.spec.label)
+                for t in tenants
+            }
+            say(
+                f"  {control.cross} cross-tenant questions, {len(control.leaks)} leak(s) detected {per}, {len(control.problems)} problem(s)"
+            )
+            for lb, nm, f in control.leaks[:3]:
+                say(f"  [{f.kind}] tenant {lb} · {nm[:50]} · {f.detail[:90]}")
+            if which is None:
+                out.control_ran, out.control_leaks = True, per
+            else:
+                out.single_controls[name] = per
+            procs.stop_all()  # free the ports and memory before the next copy
     except StackError as e:
         say(f"\nSTACK ERROR: {e}")
         out.real_problems += 1
