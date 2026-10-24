@@ -1834,3 +1834,80 @@ html.snap-home {
 .in-view .bar {
   animation-play-state: running;
 }
+
+/* analytics: card grid */
+.an-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+.an-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+.an-stats .stat {
+  padding: 20px 24px;
+  gap: 8px;
+}
+.an-stats .stat-value {
+  font-size: 36px;
+}
+.an-row {
+  display: grid;
+  gap: 20px;
+  align-items: stretch;
+}
+.an-row-top {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+.an-row-bottom {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+}
+.an .card {
+  padding: 24px;
+  gap: 16px;
+}
+.card-title {
+  font: 500 11px var(--mono);
+  letter-spacing: 0.14em;
+  color: var(--text-3);
+  text-transform: uppercase;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.card-empty {
+  flex: 1;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 14px;
+}
+table.data.compact {
+  min-width: 600px;
+  font-size: 13px;
+}
+table.data.compact td {
+  padding: 10px 10px 10px 0;
+}
+.an .bars {
+  height: 200px;
+}
+@media (max-width: 1100px) {
+  .an-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .an-row-top,
+  .an-row-bottom {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 520px) {
+  .an-stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
