@@ -77,3 +77,9 @@ def test_no_documents_path_stays_model_free_even_when_forced(client, llm, best_s
     body = ask(client, tenant="tenant_a", models=TIERS, force_tier="cheap").json()
     assert llm.calls == [] and body["answer"] == MESSAGES["no_documents"]
     assert body["route"]["model_tier"] == "none"
+
+
+def test_force_tier_is_documented_in_the_readme():
+    from pathlib import Path
+
+    assert "force_tier" in (Path(__file__).parents[2] / "README.md").read_text()

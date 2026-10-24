@@ -146,6 +146,9 @@ def query(req: QueryRequest, caller=Depends(get_caller)):
             started, messages["not_found"], [], {**none_route, "top_score": best_score}
         )
     route = {**decide(req.query, best_score, cfg), "top_score": best_score}
+    if req.force_tier:  # replaces the tier and k only; difficulty stays as decided
+        forced_k = cfg.k_expensive if req.force_tier == "expensive" else cfg.k_cheap
+        route = {**route, "model_tier": req.force_tier, "k": forced_k, "escalated": False}
     plan = plan_models(route["model_tier"], req.models)
     if not plan:
         raise ApiError(
