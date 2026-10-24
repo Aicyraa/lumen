@@ -21,4 +21,14 @@ describe("text contrast (small text must reach 4.5:1)", () => {
     expect(ratio(token(t), token("bg"))).toBeGreaterThanOrEqual(4.5);
     expect(ratio(token(t), token("surface"))).toBeGreaterThanOrEqual(4.5);
   });
+
+  describe("sidebar safety valve", () => {
+    const css = readFileSync("src/shared/styles/styles.css", "utf8");
+    it("never scrolls normally but may scroll on very short windows", () => {
+      expect(css).toMatch(/\.sidebar\s*\{[^}]*overflow:\s*hidden/);
+      expect(css).toMatch(
+        /@media \(max-height: 560px\)\s*\{\s*\.sidebar\s*\{[^}]*overflow-y:\s*auto/,
+      );
+    });
+  });
 });

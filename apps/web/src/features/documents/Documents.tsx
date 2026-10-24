@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { ApiError, api } from "../../shared/lib/api";
 import { fmtDate, fmtInt } from "../../shared/lib/format";
 import type { Doc, Usage } from "../../shared/lib/types";
+import { StatusMessage } from "../../shared/ui/StatusMessage";
 import { ErrorText, PageHead, StatusDot } from "../../shared/ui/ui";
 import { useOrgId } from "../auth/session";
 
@@ -69,7 +70,7 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
 
   return (
     <div className="stack">
-      <PageHead num="01" title="Documents">
+      <PageHead title="Documents">
         <div className="mono muted-3" aria-live="polite">
           {summary}
         </div>
@@ -105,46 +106,53 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
         </label>
       </div>
       <ErrorText>{error}</ErrorText>
-      <div className="table" role="table" aria-label="Documents">
-        <div className="tr th docs-cols" role="row">
-          <span role="columnheader">FILE</span>
-          <span role="columnheader">STATUS</span>
-          <span role="columnheader">CHUNKS</span>
-          <span role="columnheader">UPLOADED</span>
-          <span role="columnheader" />
-        </div>
-        {list.map((d) => (
-          <div className="tr docs-cols" role="row" key={d.document_id}>
-            <div role="cell" className="cell-min">
-              <div className="ellipsis">{d.filename}</div>
-              {d.error && <div className="small red">{d.error}</div>}
-            </div>
-            <div role="cell">
-              <StatusDot tone={d.status}>{d.status}</StatusDot>
-            </div>
-            <div role="cell" className="mono muted-2">
-              {d.status === "processing" ? "—" : d.chunk_count}
-            </div>
-            <div role="cell" className="small muted-3">
-              {fmtDate(d.created_at)}
-            </div>
-            <div role="cell" className="right">
-              <button
-                type="button"
-                className="link-btn danger-hover"
-                aria-label={`Delete ${d.filename}`}
-                onClick={() => remove.mutate(d.document_id)}
-              >
-                Delete
-              </button>
-            </div>
+      {docs.isPending && <StatusMessage state="loading">Loading documents…</StatusMessage>}
+      {docs.isError && (
+        <StatusMessage state="error" onRetry={() => docs.refetch()}>
+          Could not load documents. {(docs.error as Error).message}
+        </StatusMessage>
+      )}
+      {docs.isSuccess && !list.length && (
+        <StatusMessage state="empty">No documents yet. Upload one to start.</StatusMessage>
+      )}
+      {list.length > 0 && (
+        <div className="table" role="table" aria-label="Documents">
+          <div className="tr th docs-cols" role="row">
+            <span role="columnheader">FILE</span>
+            <span role="columnheader">STATUS</span>
+            <span role="columnheader">CHUNKS</span>
+            <span role="columnheader">UPLOADED</span>
+            <span role="columnheader" />
           </div>
-        ))}
-        {docs.isSuccess && !list.length && (
-          <div className="empty">No documents yet. Upload one to start answering questions.</div>
-        )}
-        {docs.isError && <ErrorText>{(docs.error as Error).message}</ErrorText>}
-      </div>
+          {list.map((d) => (
+            <div className="tr docs-cols" role="row" key={d.document_id}>
+              <div role="cell" className="cell-min">
+                <div className="ellipsis">{d.filename}</div>
+                {d.error && <div className="small red">{d.error}</div>}
+              </div>
+              <div role="cell">
+                <StatusDot tone={d.status}>{d.status}</StatusDot>
+              </div>
+              <div role="cell" className="mono muted-2">
+                {d.status === "processing" ? "—" : d.chunk_count}
+              </div>
+              <div role="cell" className="small muted-3">
+                {fmtDate(d.created_at)}
+              </div>
+              <div role="cell" className="right">
+                <button
+                  type="button"
+                  className="link-btn danger-hover"
+                  aria-label={`Delete ${d.filename}`}
+                  onClick={() => remove.mutate(d.document_id)}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

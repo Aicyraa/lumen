@@ -204,6 +204,23 @@ const { data: accounts } = await authClient.listAccounts();                     
 Not exercised by tests: the real browser redirect round trip with Google or GitHub (tests use a fake provider through the id-token path,
 which runs the same linking rules).
 
+### Account (`GET /api/dashboard/account`)
+
+Session only; no active project needed. Returns only the caller's own data (no id is read from the request); `401` without a session.
+
+```json
+{
+  "user": { "name": "Ada", "email": "ada@example.com", "email_verified": true, "image": null, "created_at": "2026-10-01T08:00:00.000Z" },
+  "providers": [{ "provider": "email", "linked_at": "2026-10-01T08:00:00.000Z" }, { "provider": "google", "linked_at": "2026-10-05T09:30:00.000Z" }],
+  "projects": { "owned": 2, "max": 5 },
+  "totals": { "documents": 12, "requests_this_month": 340, "api_keys": 3, "models": 4 }
+}
+```
+
+`providers` come from Better Auth's `account` rows (`credential` is shown as `email`); tokens, password hashes and provider account ids are never returned.
+`projects.owned` counts projects where the user is owner; `max` is `MAX_PROJECTS_PER_USER`. `totals` are summed over every project the user is a member of
+(`requests_this_month` is the calendar month in UTC, like `GET /usage`).
+
 ### Projects (`/api/dashboard/workspaces`)
 
 Creating a project is serialised per user inside Better Auth's create hook (an in-process lock, no database connection held while waiting), so

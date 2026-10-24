@@ -46,18 +46,24 @@ describe("public copy", () => {
 });
 
 describe("Home", () => {
-  it("has the mockup's numbered sections with the Savings gap and no FAQ", () => {
+  it("has numbered sections in order, with no pricing section and no FAQ", () => {
     const text = view(<Home />).textContent!;
-    for (const l of [
+    const labels = [
       "RAG API FOR YOUR CHATBOT — 01",
-      "HOW IT WORKS — 02",
-      "DEMO — 03",
-      "QUICKSTART — 04",
-      "BUILT IN — 06",
+      "WHAT LUMEN IS — 02",
+      "HOW ROUTING WORKS — 03",
+      "DEMO — 04",
+      "BUILT IN — 05",
+      "USE CASES — 06",
       "SECURITY — 07",
-    ])
-      expect(text).toContain(l);
-    expect(text).not.toContain("— 05");
+      "QUICKSTART — 08",
+    ];
+    let at = -1;
+    for (const l of labels) {
+      const i = text.indexOf(l);
+      expect(i, l).toBeGreaterThan(at);
+      at = i;
+    }
     expect(text).not.toMatch(/FAQ/);
     expect(screen.queryByRole("link", { name: /pricing/i })).not.toBeInTheDocument();
   });

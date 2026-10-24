@@ -2,7 +2,7 @@
 // This is the only place that reads its shape; anything without a user counts as "no session".
 interface Raw {
   data?: {
-    user?: { id?: string; email?: string } | null;
+    user?: { id?: string; email?: string; name?: string | null } | null;
     session?: { activeOrganizationId?: string | null } | null;
   } | null;
   isPending?: boolean;

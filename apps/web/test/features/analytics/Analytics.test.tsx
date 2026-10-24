@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Analytics } from "../../../src/features/analytics/Analytics";
-import { mockFetch, renderWithProviders } from "../../helpers";
+import { mockFetch, renderWithProviders, reply } from "../../helpers";
 
 const summary = (range: string) => ({
   range,
@@ -114,5 +114,78 @@ describe("Analytics", () => {
     const { container } = renderWithProviders(<Analytics />);
     await screen.findByText("840 ms");
     expect(container.textContent).not.toMatch(/saving|pricing|retention|retain/i);
+  });
+
+  it("lays the page out as cards with headings: chart, route mix, unanswered, by model", async () => {
+    mockFetch(handler);
+    renderWithProviders(<Analytics />);
+    await screen.findByText("840 ms");
+    for (const name of ["Requests per day", "Route mix", "Unanswered questions", "By model"]) {
+      const h = screen.getByRole("heading", { level: 2, name });
+      expect(h.closest(".card")).not.toBeNull();
+    }
+  });
+
+  it("shows a centred loading message, then data", async () => {
+    mockFetch(handler);
+    renderWithProviders(<Analytics />);
+    expect(screen.getByRole("status")).toHaveTextContent("Loading analytics");
+    await screen.findByText("840 ms");
+  });
+
+  it("shows an error with Retry that refetches", async () => {
+    let fail = true;
+    const { calls } = mockFetch((url) =>
+      fail && url.includes("/summary")
+        ? reply(500, { error: { code: "boom", message: "Server error." } })
+        : handler(url),
+    );
+    renderWithProviders(<Analytics />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load analytics");
+    fail = false;
+    const before = calls.length;
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("840 ms")).toBeInTheDocument();
+    expect(calls.length).toBeGreaterThan(before);
+  });
+
+  it("has proper empty states for chart, unanswered and by-model when there is no data", async () => {
+    mockFetch((url) =>
+      url.includes("/unanswered")
+        ? { range: "7d", threshold: 0.3, total: 0, items: [] }
+        : {
+            range: "7d",
+            total_requests: 0,
+            per_day: [],
+            route_mix: { cheap: 0, escalated: 0, expensive_hard: 0, none: 0, failed: 0 },
+            latency_ms: { median: null, p95: null },
+            total_cost_usd: null,
+            by_model: [],
+          },
+    );
+    renderWithProviders(<Analytics />);
+    expect(await screen.findByText(/No requests in this range yet/)).toBeInTheDocument();
+    expect(screen.getByText(/No unanswered questions/)).toBeInTheDocument();
+    expect(screen.getByText(/No models yet/)).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Requests per day" })).toBeNull();
+  });
+
+  it("starts the bar animation once the page is seen, even though the data arrives after the first render", async () => {
+    mockFetch(handler);
+    const { container } = renderWithProviders(<Analytics />);
+    await screen.findByText("840 ms");
+    await waitFor(() => expect(container.querySelector(".an")).toHaveClass("in-view"));
+  });
+
+  it("an unused model shows 'no usage yet' instead of 'no price set'; a used unpriced one still says 'no price set'", async () => {
+    mockFetch((url) => {
+      const r = handler(url) as ReturnType<typeof summary>;
+      if (url.includes("/unanswered")) return r;
+      return { ...r, by_model: [{ ...r.by_model[0], requests: 0, cost_usd: null }, r.by_model[1]] };
+    });
+    renderWithProviders(<Analytics />);
+    const table = await screen.findByRole("table", { name: "By model" });
+    expect(within(table).getByText("no usage yet")).toBeInTheDocument();
+    expect(within(table).getAllByText("no price set")).toHaveLength(1);
   });
 });

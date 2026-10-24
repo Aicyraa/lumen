@@ -4,7 +4,9 @@ import { api } from "../../shared/lib/api";
 import { fmtCost, fmtDay, fmtInt, fmtMs, fmtScore } from "../../shared/lib/format";
 import type { Range, Summary, Unanswered } from "../../shared/lib/types";
 import { CountUp } from "../../shared/motion/motion";
-import { ErrorText, PageHead, Segmented } from "../../shared/ui/ui";
+import { useInViewOnce } from "../../shared/motion/useInViewOnce";
+import { StatusMessage } from "../../shared/ui/StatusMessage";
+import { PageHead, Segmented } from "../../shared/ui/ui";
 import { useOrgId } from "../auth/session";
 
 const RANGES = [
@@ -33,6 +35,7 @@ export function Analytics() {
     enabled: !!org,
     queryFn: () => api<Unanswered>(`/api/dashboard/analytics/unanswered?range=${range}`),
   });
+  const [ref, seen] = useInViewOnce<HTMLDivElement>();
   const s = summary.data;
   const days = s?.per_day ?? [];
   const dayTotal = (d: Summary["per_day"][number]) => d.cheap + d.expensive + d.none + d.failed;
@@ -42,14 +45,25 @@ export function Analytics() {
   const note = range === "7d" ? "Last 7 days" : "Last 30 days";
 
   return (
-    <div className="stack">
-      <PageHead num="04" title="Analytics">
+    <div className={`stack an${seen ? " in-view" : ""}`} ref={ref}>
+      <PageHead title="Analytics">
         <Segmented label="Range" options={RANGES} value={range} onChange={setRange} />
       </PageHead>
-      {summary.isError && <ErrorText>{(summary.error as Error).message}</ErrorText>}
+      {summary.isPending && <StatusMessage state="loading">Loading analytics…</StatusMessage>}
+      {summary.isError && (
+        <StatusMessage
+          state="error"
+          onRetry={() => {
+            summary.refetch();
+            unanswered.refetch();
+          }}
+        >
+          Could not load analytics. {(summary.error as Error).message}
+        </StatusMessage>
+      )}
       {s && (
-        <>
-          <div className="stats">
+        <div className="an-body">
+          <div className="an-stats">
             <Stat label="REQUESTS" value={<CountUp value={s.total_requests} />} note={note} />
             <Stat
               label="MEDIAN LATENCY"
@@ -67,53 +81,61 @@ export function Analytics() {
               note="Weak or no match"
             />
           </div>
-          <div className="split">
-            <div className="stack-sm minw0">
-              <div className="label">REQUESTS PER DAY</div>
-              <ol className="bars" aria-label="Requests per day">
-                {days.map((d) => {
-                  const t = dayTotal(d);
-                  const text = `${fmtDay(d.date)}: ${t} requests, ${d.cheap} cheap, ${d.expensive} expensive, ${d.none} no answer, ${d.failed} failed`;
-                  return (
-                    <li
-                      key={d.date}
-                      role="img"
-                      aria-label={text}
-                      title={
-                        text +
-                        (d.cost_usd != null
-                          ? `, estimated provider cost ${fmtCost(d.cost_usd)}`
-                          : "")
-                      }
-                      className="bar"
-                      style={{ height: `${(t / max) * 100}%` }}
-                    >
-                      <span className="seg seg-failed" style={{ flex: d.failed }} />
-                      <span className="seg seg-none" style={{ flex: d.none }} />
-                      <span className="seg seg-expensive" style={{ flex: d.expensive }} />
-                      <span className="seg seg-cheap" style={{ flex: d.cheap }} />
-                    </li>
-                  );
-                })}
-              </ol>
-              <div className="legend mono">
-                <span>
-                  <i className="sw seg-cheap" />
-                  CHEAP
-                </span>
-                <span>
-                  <i className="sw seg-expensive" />
-                  EXPENSIVE
-                </span>
-                <span>
-                  <i className="sw seg-none" />
-                  NO ANSWER
-                </span>
-                <span>
-                  <i className="sw seg-failed" />
-                  FAILED
-                </span>
-              </div>
+          <div className="an-row an-row-top">
+            <section className="card" aria-labelledby="an-chart">
+              <h2 className="card-title" id="an-chart">
+                Requests per day
+              </h2>
+              {s.total_requests === 0 || !days.length ? (
+                <div className="card-empty">No requests in this range yet.</div>
+              ) : (
+                <>
+                  <ol className="bars" aria-label="Requests per day">
+                    {days.map((d) => {
+                      const t = dayTotal(d);
+                      const text = `${fmtDay(d.date)}: ${t} requests, ${d.cheap} cheap, ${d.expensive} expensive, ${d.none} no answer, ${d.failed} failed`;
+                      return (
+                        <li
+                          key={d.date}
+                          role="img"
+                          aria-label={text}
+                          title={
+                            text +
+                            (d.cost_usd != null
+                              ? `, estimated provider cost ${fmtCost(d.cost_usd)}`
+                              : "")
+                          }
+                          className="bar"
+                          style={{ height: `${(t / max) * 100}%` }}
+                        >
+                          <span className="seg seg-failed" style={{ flex: d.failed }} />
+                          <span className="seg seg-none" style={{ flex: d.none }} />
+                          <span className="seg seg-expensive" style={{ flex: d.expensive }} />
+                          <span className="seg seg-cheap" style={{ flex: d.cheap }} />
+                        </li>
+                      );
+                    })}
+                  </ol>
+                  <div className="legend mono">
+                    <span>
+                      <i className="sw seg-cheap" />
+                      CHEAP
+                    </span>
+                    <span>
+                      <i className="sw seg-expensive" />
+                      EXPENSIVE
+                    </span>
+                    <span>
+                      <i className="sw seg-none" />
+                      NO ANSWER
+                    </span>
+                    <span>
+                      <i className="sw seg-failed" />
+                      FAILED
+                    </span>
+                  </div>
+                </>
+              )}
               <div className="small muted-3">
                 Estimated provider cost per day:{" "}
                 {days
@@ -121,9 +143,11 @@ export function Analytics() {
                   .map((d) => `${fmtDay(d.date)} ${fmtCost(d.cost_usd)}`)
                   .join(" · ") || "no price set"}
               </div>
-            </div>
-            <div className="stack-sm">
-              <div className="label">ROUTE MIX</div>
+            </section>
+            <section className="card" aria-labelledby="an-mix">
+              <h2 className="card-title" id="an-mix">
+                Route mix
+              </h2>
               <div className="mixbar" aria-hidden="true">
                 {MIX.map(([k, , c]) => (
                   <div
@@ -133,6 +157,7 @@ export function Analytics() {
                   />
                 ))}
               </div>
+              {mixTotal === 0 && <div className="small muted-3">No routed requests yet.</div>}
               <ul className="list" aria-label="Route mix">
                 {MIX.map(([k, label]) => (
                   <li key={k}>
@@ -141,72 +166,90 @@ export function Analytics() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </section>
           </div>
-
-          <div>
-            <div className="label list-head">
-              <span>UNANSWERED QUESTIONS — ADD DOCUMENTS FOR THESE</span>
-              <span>BEST MATCH</span>
-            </div>
-            <ul className="list">
-              {(unanswered.data?.items ?? []).map((u) => (
-                <li key={u.id}>
-                  <span>{u.query}</span>
-                  <span className="mono red">
-                    {u.top_score == null ? "no match" : fmtScore(u.top_score)}
-                  </span>
-                </li>
-              ))}
+          <div className="an-row an-row-bottom">
+            <section className="card" aria-labelledby="an-unanswered">
+              <h2 className="card-title" id="an-unanswered">
+                Unanswered questions
+              </h2>
+              <div className="small muted-3">Add documents that cover these.</div>
+              {unanswered.isPending && <div className="card-empty">Loading…</div>}
+              {unanswered.isError && (
+                <div className="card-empty">
+                  Could not load unanswered questions.{" "}
+                  <button type="button" className="link-btn" onClick={() => unanswered.refetch()}>
+                    Retry
+                  </button>
+                </div>
+              )}
               {unanswered.isSuccess && !unanswered.data.items.length && (
-                <li className="muted-3">No unanswered questions in this range.</li>
+                <div className="card-empty">No unanswered questions in this range.</div>
               )}
-            </ul>
-          </div>
-
-          <div>
-            <div className="label pb">BY MODEL</div>
-            <div className="scroll-x">
-              <table className="data" aria-label="By model">
-                <thead>
-                  <tr>
-                    <th>MODEL</th>
-                    <th>TIER</th>
-                    <th>REQUESTS</th>
-                    <th>TOKENS IN / OUT</th>
-                    <th>FAILURES</th>
-                    <th>BACKUP / FALLBACK USES</th>
-                    <th>MEDIAN</th>
-                    <th>EST. PROVIDER COST</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {s.by_model.map((m) => (
-                    <tr key={m.id}>
-                      <td className="mono">{m.model_id}</td>
-                      <td>{m.tier}</td>
-                      <td className="mono">{fmtInt(m.requests)}</td>
-                      <td className="mono">
-                        {fmtInt(m.tokens_in)} / {fmtInt(m.tokens_out)}
-                      </td>
-                      <td className="mono">
-                        {m.failures.error + m.failures.timeout + m.failures.rate_limited}
-                      </td>
-                      <td className="mono">
-                        {m.backup_uses} / {m.fallback_uses}
-                      </td>
-                      <td className="mono">{fmtMs(m.median_latency_ms)}</td>
-                      <td className="mono">{fmtCost(m.cost_usd)}</td>
-                    </tr>
+              {unanswered.isSuccess && unanswered.data.items.length > 0 && (
+                <ul className="list">
+                  {unanswered.data.items.map((u) => (
+                    <li key={u.id}>
+                      <span className="grow ellipsis">{u.query}</span>
+                      <span className="mono red">
+                        {u.top_score == null ? "no match" : fmtScore(u.top_score)}
+                      </span>
+                    </li>
                   ))}
-                </tbody>
-              </table>
-              {!s.by_model.length && (
-                <div className="empty small">No models yet. Add one in the Models tab.</div>
+                </ul>
               )}
-            </div>
+            </section>
+            <section className="card" aria-labelledby="an-models">
+              <h2 className="card-title" id="an-models">
+                By model
+              </h2>
+              {!s.by_model.length ? (
+                <div className="card-empty">No models yet. Add one in the Models tab.</div>
+              ) : (
+                <div className="scroll-x">
+                  <table className="data compact" aria-label="By model">
+                    <thead>
+                      <tr>
+                        <th>MODEL</th>
+                        <th>TIER</th>
+                        <th>REQUESTS</th>
+                        <th>TOKENS IN / OUT</th>
+                        <th>FAILURES</th>
+                        <th>BACKUP / FALLBACK USES</th>
+                        <th>MEDIAN</th>
+                        <th>EST. PROVIDER COST</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {s.by_model.map((m) => (
+                        <tr key={m.id}>
+                          <td className="mono">{m.model_id}</td>
+                          <td>{m.tier}</td>
+                          <td className="mono">{fmtInt(m.requests)}</td>
+                          <td className="mono">
+                            {fmtInt(m.tokens_in)} / {fmtInt(m.tokens_out)}
+                          </td>
+                          <td className="mono">
+                            {m.failures.error + m.failures.timeout + m.failures.rate_limited}
+                          </td>
+                          <td className="mono">
+                            {m.backup_uses} / {m.fallback_uses}
+                          </td>
+                          <td className="mono">{fmtMs(m.median_latency_ms)}</td>
+                          <td className="mono">
+                            {m.requests === 0 && m.cost_usd == null
+                              ? "no usage yet"
+                              : fmtCost(m.cost_usd)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -214,7 +257,7 @@ export function Analytics() {
 
 function Stat({ label, value, note }: { label: string; value: React.ReactNode; note: string }) {
   return (
-    <div className="stat">
+    <div className="card stat">
       <div className="label">{label}</div>
       <div className="stat-value">{value}</div>
       <div className="small muted-3">{note}</div>

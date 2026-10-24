@@ -268,4 +268,159 @@ describe("Models", () => {
       ),
     ).not.toContain(SECRET);
   });
+
+  it("renders each tier as a card with aligned columns", async () => {
+    mockFetch(router());
+    renderWithProviders(<Models />);
+    await screen.findByText("model-a");
+    const cheap = screen.getByRole("region", { name: "Cheap" });
+    expect(cheap).toHaveClass("card");
+    expect(
+      within(cheap)
+        .getAllByRole("columnheader")
+        .map((h) => h.textContent),
+    ).toEqual(["MODEL", "ENDPOINT", "STATUS", "USAGE", "LIMITS", "COST", ""]);
+    expect(
+      within(screen.getByTestId("model-a")).getByText("OpenAI-compatible"),
+    ).toBeInTheDocument();
+    for (const name of ["Expensive", "Fallback"])
+      expect(screen.getByRole("region", { name })).toHaveClass("card");
+  });
+
+  it("shows centred loading and error (with Retry) states", async () => {
+    let fail = true;
+    mockFetch(
+      router((url) =>
+        fail && !url.includes("/usage")
+          ? reply(500, { error: { code: "boom", message: "Server error." } })
+          : undefined,
+      ),
+    );
+    renderWithProviders(<Models />);
+    expect(screen.getByRole("status")).toHaveTextContent("Loading models");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load models");
+    fail = false;
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("model-a")).toBeInTheDocument();
+  });
+
+  describe("Add model modal", () => {
+    it("opens a modal dialog with focus inside, closes on Escape and gives focus back", async () => {
+      mockFetch(router());
+      renderWithProviders(<Models />);
+      const user = userEvent.setup();
+      const opener = await screen.findByRole("button", { name: "Add model" });
+      expect(opener).toHaveAttribute("aria-haspopup", "dialog");
+      await user.click(opener);
+      const dialog = screen.getByRole("dialog", { name: "Add model" });
+      expect(dialog).toHaveAttribute("aria-modal", "true");
+      expect(dialog.contains(document.activeElement)).toBe(true);
+      expect(within(dialog).getByLabelText("API key")).toHaveAttribute("type", "password");
+      expect(within(dialog).getByLabelText(/Input price/)).toBeInTheDocument();
+      await user.keyboard("{Escape}");
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(opener).toHaveFocus();
+    });
+
+    it("keeps Tab inside the dialog", async () => {
+      mockFetch(router());
+      renderWithProviders(<Models />);
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole("button", { name: "Add model" }));
+      const dialog = screen.getByRole("dialog");
+      for (let i = 0; i < 25; i++) {
+        await user.tab();
+        expect(dialog.contains(document.activeElement)).toBe(true);
+      }
+    });
+
+    it("closes after a successful save and the page behind has no inline form", async () => {
+      mockFetch(
+        router((_url, init) =>
+          init?.method === "POST" ? reply(201, { model: m("z", "cheap", 2) }) : undefined,
+        ),
+      );
+      renderWithProviders(<Models />);
+      const user = userEvent.setup();
+      await fillForm(user);
+      await user.click(screen.getByRole("button", { name: "Test & save" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(document.body.innerHTML).not.toContain(SECRET);
+    });
+  });
+
+  describe("cost wording follows the model's prices", () => {
+    const cost = (id: string) => within(screen.getByTestId(`model-${id}`));
+    it("a priced model with no usage shows $0, never 'no price set'", async () => {
+      mockFetch(router());
+      renderWithProviders(<Models />);
+      await screen.findByText("model-a");
+      // model-c is unpriced and unused; give it prices in a second render below
+      expect(cost("b").getByText(/no price set/)).toBeInTheDocument();
+    });
+    it("shows $0 for priced-but-unused and keeps the real figure when there is usage", async () => {
+      mockFetch(
+        router((url) =>
+          url.includes("/models/usage")
+            ? {
+                ...usageBody,
+                models: [
+                  u("a", "cheap", 0, { cost_usd: 0.0123, requests: 12 }),
+                  u("b", "cheap", 1),
+                ],
+              }
+            : {
+                models: {
+                  ...base.models,
+                  cheap: [
+                    m("a", "cheap", 0, { input_price_per_1m: 0.1, output_price_per_1m: 0.4 }),
+                    m("b", "cheap", 1, { input_price_per_1m: 0.1, output_price_per_1m: 0.5 }),
+                  ],
+                },
+              },
+        ),
+      );
+      renderWithProviders(<Models />);
+      await screen.findByText("model-a");
+      expect(cost("a").getByText("$0.0123")).toBeInTheDocument();
+      expect(cost("b").getByText("$0")).toBeInTheDocument();
+      expect(cost("b").queryByText(/no price set/)).toBeNull();
+    });
+  });
+
+  describe("usage failures and wording", () => {
+    it("when usage fails, rows say 'usage unavailable' (not 'loading' forever), the list still renders and Retry refetches usage", async () => {
+      let fail = true;
+      const { calls } = mockFetch(
+        router((url) =>
+          fail && url.includes("/models/usage")
+            ? reply(500, { error: { code: "boom", message: "Usage is down." } })
+            : undefined,
+        ),
+      );
+      renderWithProviders(<Models />);
+      await screen.findByText("model-a");
+      await waitFor(() => expect(screen.getAllByText("usage unavailable").length).toBe(3));
+      expect(screen.queryByText("usage loading…")).toBeNull();
+      expect(screen.getByRole("alert")).toHaveTextContent(/Could not load usage/);
+      fail = false;
+      const before = calls.filter((c) => c.url.includes("/models/usage")).length;
+      await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+      await waitFor(() =>
+        expect(within(screen.getByTestId("model-a")).getByText(/12 requests/)).toBeInTheDocument(),
+      );
+      expect(calls.filter((c) => c.url.includes("/models/usage")).length).toBeGreaterThan(before);
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("uses one wording for a missing price: 'no price set', never 'none set'", async () => {
+      mockFetch(router());
+      const { container } = renderWithProviders(<Models />);
+      await screen.findByText("model-b");
+      expect(within(screen.getByTestId("model-b")).getByText(/no price set/)).toBeInTheDocument();
+      expect(container.textContent).not.toMatch(/none set/i);
+      await userEvent.click(screen.getByRole("button", { name: "Add model" }));
+      expect(screen.getByRole("dialog")).toHaveTextContent(/Leave empty to show "no price set"/);
+    });
+  });
 });

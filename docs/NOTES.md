@@ -129,3 +129,10 @@
 - Reviewer findings fixed before Supabase: RLS and revokes for Better Auth tables (infra/sql/auth/001), default privileges and sequences (007), composite chunk FK for request_sources (008). Advisor follow-up: 009 (FK-ordered indexes).
 - Supabase main project `lumen` migrated (human's explicit decision, Free plan has no branching, project was empty): see docs/DATABASE.md. Security advisor: no errors; one accepted WARN (vector in public). Mistake worth remembering: apply Supabase migrations one at a time; sending several in parallel made 004, 006 and 008 fail and run out of order.
 - Not done: the services have not connected to Supabase yet (needs DATABASE_URL from infra/.env with the session pooler or direct string); the hook gap where an organization exists without a tenants row is documented, not repaired.
+
+## 2026-10-24 Phase 4C (UI tweaks) results
+
+- API: GET /api/dashboard/account (own profile, providers without secrets, projects owned vs max, totals across member projects); web: the 13 tweaks (Product page with 9 full-screen sections and an animated routing diagram, Docs tabs with hash and keyboard, viewport-triggered animations, sidebar without logo/Docs/numbers and not scrolling, All projects button, provider display name, centred StatusMessage on every tab, Analytics and Models redesigns with Add model modal, richer Account page, SVG logo + favicon + apple-touch).
+- Counts: api 392, rag-service 168, web 206; `pnpm check` green (lead). Reviewer: no critical/high; fixed afterwards: usage-error state on Models, missing per-tab state tests, one "no price set" wording, short-window sidebar scroll valve (<560px tall), favicon hex fallback. Cost text bug (prices set but "no price set" shown) fixed in a236be2.
+- Engineer browser-verified at 1366x768, 1440x900, 390x844 (screenshots v4-*), sidebar 700/700. Lead looked at 4 screenshots. Not run: Google/GitHub display names and linking in a real browser (email+password only), real touch devices, other browsers.
+- Still open: the human's own Google/GitHub round trip; deleting `.env.root-backup`; Biome rules left off (see R2 notes); Supabase `vector` extension warning accepted.

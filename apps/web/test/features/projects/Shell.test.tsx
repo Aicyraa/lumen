@@ -4,6 +4,7 @@ import { Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const signOut = vi.fn();
+let sessionUser: Record<string, unknown> = { id: "u1", email: "maya@campus.test", name: "Maya" };
 let getSessionImpl: () => unknown = () => Promise.resolve({ data: null });
 let signOutImpl: () => unknown = () => signOut(); // a plain function: vitest 5 flags a vi.fn that throws or rejects
 vi.mock("../../../src/features/auth/session", () => ({ useOrgId: () => "o1" }));
@@ -11,7 +12,7 @@ vi.mock("../../../src/shared/lib/auth-client", () => ({
   authClient: {
     useSession: () => ({
       data: {
-        user: { id: "u1", email: "maya@campus.test", name: "Maya" },
+        user: sessionUser,
         session: { activeOrganizationId: "o1" },
       },
       isPending: false,
@@ -62,6 +63,7 @@ const handler = (url: string) => (url.endsWith("/workspaces") ? { workspaces: [P
 
 describe("Shell", () => {
   beforeEach(() => {
+    sessionUser = { id: "u1", email: "maya@campus.test", name: "Maya" };
     signOut.mockReset().mockResolvedValue({ data: { success: true } });
     signOutImpl = () => signOut();
     getSessionImpl = () => Promise.resolve({ data: null });
@@ -74,12 +76,43 @@ describe("Shell", () => {
     expect(
       within(nav)
         .getAllByRole("link")
-        .map((a) => a.textContent?.replace(/\d+$/, "")),
+        .map((a) => a.textContent),
     ).toEqual(["Documents", "API keys", "Try it", "Analytics", "Requests", "Models", "Settings"]);
     expect(screen.getByText("docs page")).toBeInTheDocument();
-    expect(screen.getAllByText("Maya's workspace").length).toBeGreaterThan(0); // switcher option and chip
-    expect(screen.getByText("maya@campus.test")).toBeInTheDocument();
+    expect(screen.getAllByText("Maya's workspace").length).toBeGreaterThan(0); // switcher option
     expect(await screen.findByRole("meter", { name: "Documents" })).toBeInTheDocument();
+  });
+
+  it("has no logo, no Docs link and no numbers, and 'All projects' is a button-styled link to /projects", () => {
+    mockFetch(handler);
+    renderWithProviders(tree(), { route: "/projects/mayas/documents" });
+    const side = screen.getByRole("complementary");
+    expect(within(side).queryByRole("link", { name: "Lumen home" })).toBeNull();
+    expect(within(side).queryByRole("link", { name: "Docs" })).toBeNull();
+    expect(side.querySelector(".nav-num")).toBeNull();
+    const all = within(side).getByRole("link", { name: "All projects" });
+    expect(all).toHaveAttribute("href", "/projects");
+    expect(all).toHaveClass("btn");
+  });
+
+  it("shows the provider display name with the email below it", () => {
+    mockFetch(handler);
+    renderWithProviders(tree(), { route: "/projects/mayas/documents" });
+    const chip = screen.getByRole("link", { name: /Maya.*maya@campus.test/s });
+    expect(chip).toHaveAttribute("href", "/account");
+    expect(within(chip).getByText("Maya")).toBeInTheDocument();
+    expect(within(chip).getByText("maya@campus.test")).toBeInTheDocument();
+  });
+
+  it.each([
+    [{ id: "u1", email: "jo.lee@campus.test" }, "jo.lee"],
+    [{ id: "u1", email: "jo.lee@campus.test", name: "  " }, "jo.lee"],
+  ])("falls back to the email name when the provider gave no name (%j)", (user, shown) => {
+    sessionUser = user;
+    mockFetch(handler);
+    renderWithProviders(tree(), { route: "/projects/mayas/documents" });
+    const chip = screen.getByRole("link", { name: /jo\.lee@campus\.test/ });
+    expect(within(chip).getByText(shown)).toBeInTheDocument();
   });
 
   it("signs out and leaves the dashboard", async () => {
