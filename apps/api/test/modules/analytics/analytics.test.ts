@@ -38,9 +38,9 @@ beforeAll(async () => {
   await L(a, 10, { tier: "cheap", latency: 50, cost: 0.5 }); // only inside 30d
   await L(a, 40, { tier: "cheap", latency: 50, cost: 9 }); // outside both
   await L(b, 0, { tier: "expensive", escalated: true, latency: 7777, cost: 3 });
-  // model_calls: same fixtures as the models usage endpoint, plus a fallback model
+  // model_calls: same fixtures as the models usage endpoint, plus an expensive-tier model
   const m = await ctx.seedModel(a, "cheap", "m1");
-  const f = await ctx.seedModel(a, "fallback", "f1");
+  const f = await ctx.seedModel(a, "expensive", "e1");
   const r = randomUUID();
   const call = (
     model: string,
@@ -56,7 +56,7 @@ beforeAll(async () => {
       [a.tenantId, r, model, name, tier, outcome, tin, cost, at(0)],
     );
   await call(m, "m1", "cheap", "error", null, null);
-  await call(f, "f1", "fallback", "ok", 30, 0.0005);
+  await call(f, "e1", "expensive", "ok", 30, 0.0005);
 });
 afterAll(async () => {
   await ctx.close();
@@ -130,17 +130,18 @@ describe("GET /api/dashboard/analytics/summary", () => {
     expect(res.body.route_mix.cheap).toBe(3);
   });
 
-  it("by_model has the same per-model figures as /models/usage for the range, fallback models included", async () => {
+  it("by_model has the same per-model figures as /models/usage for the range", async () => {
     const usage = await request(ctx.app)
       .get("/api/dashboard/models/usage?range=7d")
       .set("cookie", a.cookie);
     const res = await summary(a);
     expect(res.body.by_model).toEqual(usage.body.models);
-    expect(res.body.by_model.map((m: { model_id: string }) => m.model_id)).toEqual(["m1", "f1"]);
+    expect(res.body.by_model.map((m: { model_id: string }) => m.model_id)).toEqual(["m1", "e1"]);
+    for (const m of res.body.by_model) expect(m).not.toHaveProperty("fallback_uses");
     expect(res.body.by_model[1]).toMatchObject({
-      tier: "fallback",
+      tier: "expensive",
       requests: 1,
-      fallback_uses: 1,
+      backup_uses: 1, // ok after m1 failed in the same request
       tokens_in: 30,
       cost_usd: 0.0005,
     });

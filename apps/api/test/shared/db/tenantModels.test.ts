@@ -29,6 +29,14 @@ describe("infra/sql/002_tenant_models.sql", () => {
     await expect(insert("huge", 5)).rejects.toThrow(/check/);
     await expect(insert("cheap", 6, "mystery")).rejects.toThrow(/check/);
   });
+  it("010: tenant_models has no fallback tier, but model_calls keeps it so old history stays valid", async () => {
+    await expect(insert("fallback", 7)).rejects.toThrow(/tenant_models_tier_check/);
+    await pool.query(
+      `INSERT INTO model_calls (tenant_id, request_id, provider, model_id, tier, outcome) VALUES ($1, gen_random_uuid(), 'p', 'old', 'fallback', 'ok')`,
+      [tenant],
+    );
+    await pool.query("DELETE FROM model_calls WHERE tenant_id = $1", [tenant]);
+  });
   it("defaults status to connected and leaves rate_limits null", async () => {
     const { rows } = await pool.query(
       "SELECT status, rate_limits, rate_limits_seen_at FROM tenant_models WHERE tenant_id = $1 LIMIT 1",

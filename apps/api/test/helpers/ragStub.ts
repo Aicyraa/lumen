@@ -29,12 +29,12 @@ export async function startRagStub(secret: string) {
   const handlers: Record<StubCall["name"], Handler> = {
     ingest: () => ({ status: 200, body: { chunk_count: 3 } }),
     // Mirrors the contract the Python service must follow (see the Phase 3B report): with `models` it answers
-    // from the first model of the cheap tier (else expensive, else fallback) and reports one attempt;
+    // from the first model of the cheap tier (else expensive) and reports one attempt;
     // without `models` it reports the dev default model (tier 'default'); with include_snippets each source
     // carries filename and snippet. `attempts` and per-attempt `rate_limits` are internal: Express strips them.
     query: ({ body }) => {
       const models = body.models as Record<string, Attempt[]> | undefined;
-      const tiers = ["cheap", "expensive", "fallback"] as const;
+      const tiers = ["cheap", "expensive"] as const;
       const tier = tiers.find((t) => models?.[t]?.length);
       const m = tier ? models![tier][0] : undefined;
       const sources: Record<string, unknown>[] = [

@@ -3,7 +3,7 @@ import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type Ctx, makeCtx, type Tenant } from "../../helpers/ctx.js";
 
-let ctx: Ctx, a: Tenant, b: Tenant, m1: string, m2: string, f1: string, _idle: string;
+let ctx: Ctx, a: Tenant, b: Tenant, m1: string, m2: string, e1: string, _idle: string;
 type Call = {
   model?: string | null;
   tier: string;
@@ -38,10 +38,10 @@ beforeAll(async () => {
   ctx = await makeCtx({ ratePerMinute: 1000, globalLlmCapPerMinute: 1000 });
   a = await ctx.createTenant("a");
   b = await ctx.createTenant("b");
-  [m1, m2, f1, _idle] = [
+  [m1, m2, e1, _idle] = [
     await ctx.seedModel(a, "cheap", "m1"),
     await ctx.seedModel(a, "cheap", "m2"),
-    await ctx.seedModel(a, "fallback", "f1"),
+    await ctx.seedModel(a, "expensive", "e1"),
     await ctx.seedModel(a, "expensive", "idle"),
   ];
   await ctx.pool.query(
@@ -75,8 +75,8 @@ beforeAll(async () => {
   await call(a.tenantId, r3, m2, "m2", { tier: "cheap", outcome: "ok", tin: 50, tout: 5, ms: 200 });
   await call(a.tenantId, r4, m1, "m1", { tier: "cheap", outcome: "timeout", ms: 1000 });
   await call(a.tenantId, r4, m2, "m2", { tier: "cheap", outcome: "rate_limited", ms: 20 });
-  await call(a.tenantId, r4, f1, "f1", {
-    tier: "fallback",
+  await call(a.tenantId, r4, e1, "e1", {
+    tier: "expensive",
     outcome: "ok",
     tin: 30,
     tout: 3,
@@ -120,19 +120,19 @@ const byName = (body: { models: any[] }) =>
   Object.fromEntries(body.models.map((m) => [m.model_id, m])) as Record<string, any>;
 
 describe("GET /api/dashboard/models/usage", () => {
-  it("lists every model of the tenant (fallback and idle ones too) in tier then position order", async () => {
+  it("lists every model of the tenant (idle ones too) in tier then position order", async () => {
     const res = await usage(a);
     expect(res.status).toBe(200);
     expect(res.body.range).toBe("7d");
     expect(res.body.models.map((m: { model_id: string }) => m.model_id)).toEqual([
       "m1",
       "m2",
+      "e1",
       "idle",
-      "f1",
     ]);
   });
 
-  it("computes requests, tokens, failures by outcome, backup and fallback uses, median latency, status and limits from model_calls", async () => {
+  it("computes requests, tokens, failures by outcome, backup uses (no fallback_uses any more), median latency, status and limits from model_calls", async () => {
     const m = byName((await usage(a)).body);
     expect(m.m1).toMatchObject({
       tier: "cheap",
@@ -142,7 +142,6 @@ describe("GET /api/dashboard/models/usage", () => {
       tokens_out: 30,
       failures: { error: 1, timeout: 1, rate_limited: 0 },
       backup_uses: 0,
-      fallback_uses: 0,
       median_latency_ms: 200,
       rate_limits: { "x-ratelimit-remaining-requests": "3" },
       rate_limits_seen_at: expect.any(String),
@@ -153,16 +152,15 @@ describe("GET /api/dashboard/models/usage", () => {
       tokens_out: 5,
       failures: { error: 0, timeout: 0, rate_limited: 1 },
       backup_uses: 1,
-      fallback_uses: 0,
       median_latency_ms: 110,
     });
-    expect(m.f1).toMatchObject({
-      tier: "fallback",
+    expect(m.e1).toMatchObject({
+      tier: "expensive",
       requests: 1,
-      backup_uses: 0,
-      fallback_uses: 1,
+      backup_uses: 1, // succeeded after two earlier attempts of the same request
       median_latency_ms: 400,
     });
+    for (const x of Object.values(m)) expect(x).not.toHaveProperty("fallback_uses");
     expect(m.idle).toMatchObject({
       requests: 0,
       tokens_in: 0,
@@ -179,7 +177,7 @@ describe("GET /api/dashboard/models/usage", () => {
   it("estimated provider cost per model sums priced attempts and is null when nothing was priced; the total sums all calls in range", async () => {
     const res = await usage(a);
     const m = byName(res.body);
-    expect([m.m1.cost_usd, m.m2.cost_usd, m.f1.cost_usd, m.idle.cost_usd]).toEqual([
+    expect([m.m1.cost_usd, m.m2.cost_usd, m.e1.cost_usd, m.idle.cost_usd]).toEqual([
       0.003,
       null,
       0.0005,
