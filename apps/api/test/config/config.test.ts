@@ -85,4 +85,11 @@ describe("loadConfig", () => {
     expect([c.projectNameMaxChars, c.projectDescriptionMaxChars, c.verificationResendWindowSeconds, c.verificationResendMax, c.verificationEmailExpiresSeconds]).toEqual([60, 500, 60, 3, 3600]);
     expect(loadConfig({ ...good, PROJECT_NAME_MAX_CHARS: "30", VERIFICATION_RESEND_MAX: "1" })).toMatchObject({ projectNameMaxChars: 30, verificationResendMax: 1 });
   });
+
+  it("has the pool, project-shape and per-email resend tunables, all overridable from the environment", () => {
+    const c = loadConfig(good);
+    expect([c.dbConnectionTimeoutMs, c.projectIdMaxChars, c.projectSlugMaxChars, c.projectSlugRandomBytes, c.projectCreateLockMs,
+      c.verificationResendPerEmailWindowSeconds, c.verificationResendPerEmailMax]).toEqual([5000, 100, 30, 3, 15000, 3600, 5]);
+    expect(loadConfig({ ...good, DB_CONNECTION_TIMEOUT_MS: "900", VERIFICATION_RESEND_PER_EMAIL_MAX: "2" })).toMatchObject({ dbConnectionTimeoutMs: 900, verificationResendPerEmailMax: 2 });
+  });
 });
