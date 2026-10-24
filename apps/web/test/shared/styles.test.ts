@@ -72,9 +72,6 @@ describe("sticky nav offsets and dead CSS", () => {
     for (const m of css.matchAll(/scroll-(?:padding|margin)-top:\s*([^;]+);/g))
       expect(["calc(var(--nav-h) + 24px)", "16px"]).toContain(m[1]);
     expect(css).toMatch(
-      /\.doc-content section\s*\{[^}]*scroll-margin-top:\s*calc\(var\(--nav-h\) \+ 24px\)/,
-    );
-    expect(css).toMatch(
       /html\.snap-home\s*\{[^}]*scroll-padding-top:\s*calc\(var\(--nav-h\) \+ 24px\)/,
     );
   });

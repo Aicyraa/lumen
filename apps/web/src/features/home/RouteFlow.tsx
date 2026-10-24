@@ -1,6 +1,21 @@
 import { useState } from "react";
 import { useInView } from "../../shared/motion/useInViewOnce";
 
+// Entrance timing (seconds). The whole staggered sequence (delays plus durations) must stay within 600 ms.
+export const RF_TIMING = {
+  duration: 0.28,
+  nodeStep: 0.04,
+  edgeStart: 0.04,
+  edgeStep: 0.04,
+  labelDelay: 0.2,
+};
+export const rfTotalSeconds = () =>
+  Math.max(
+    (6 - 1) * RF_TIMING.nodeStep + RF_TIMING.duration,
+    RF_TIMING.edgeStart + (7 - 1) * RF_TIMING.edgeStep + RF_TIMING.duration,
+    RF_TIMING.labelDelay + RF_TIMING.duration,
+  );
+
 type NodeId = "question" | "router" | "cheap" | "expensive" | "answer" | "error";
 type ScenarioId = "easy" | "hard" | "fail" | "none";
 
@@ -109,6 +124,14 @@ const EDGES: {
   { id: "e-a", from: "expensive", to: "answer", d: "M710 148 C745 148 745 190 780 190" },
 ];
 
+// Edge labels sit on chips placed beside the lines (centre x, y), never on a stroke.
+const LABELS: { text: string; x: number; y: number; edge: string }[] = [
+  { text: "easy", x: 392, y: 92, edge: "r-c" },
+  { text: "hard", x: 392, y: 140, edge: "r-e" },
+  { text: "every model fails", x: 262, y: 280, edge: "r-x" },
+  { text: "no match: no model called", x: 556, y: 232, edge: "r-a" },
+];
+
 const SCENARIOS: Record<
   ScenarioId,
   { label: string; path: NodeId[]; desc: string; item: [string, string] }
@@ -193,24 +216,42 @@ export function RouteExplorer() {
           {EDGES.map((e, i) => {
             const on = edgeOn(e);
             return (
-              <g key={`${e.id}-${on ? scenario : "off"}`}>
-                <path
-                  d={e.d}
-                  className={`rf-edge${on ? " rf-on" : ""}`}
-                  pathLength={1}
-                  data-edge={e.id}
-                  data-active={on}
-                  style={{ animationDelay: `${0.1 + i * 0.08}s` }}
+              <path
+                key={e.id}
+                d={e.d}
+                className={`rf-edge${on ? " rf-on" : ""}`}
+                pathLength={1}
+                data-edge={e.id}
+                data-active={on}
+                style={{ animationDelay: `${RF_TIMING.edgeStart + i * RF_TIMING.edgeStep}s` }}
+              />
+            );
+          })}
+          {LABELS.map((l) => {
+            const on = edgeOn(EDGES.find((e) => e.id === l.edge)!);
+            const w = l.text.length * 7.8 + 18;
+            return (
+              <g
+                key={l.text}
+                className="rf-chip"
+                style={{ animationDelay: `${RF_TIMING.labelDelay}s` }}
+              >
+                <rect
+                  className="rf-chip-bg"
+                  x={l.x - w / 2}
+                  y={l.y - 13}
+                  width={w}
+                  height={26}
+                  rx={7}
                 />
-                {e.label && (
-                  <text
-                    x={e.label[1]}
-                    y={e.label[2]}
-                    className={`rf-label${on ? " rf-label-on" : ""}`}
-                  >
-                    {e.label[0]}
-                  </text>
-                )}
+                <text
+                  x={l.x}
+                  y={l.y + 4}
+                  textAnchor="middle"
+                  className={`rf-label${on ? " rf-label-on" : ""}`}
+                >
+                  {l.text}
+                </text>
               </g>
             );
           })}
@@ -226,7 +267,7 @@ export function RouteExplorer() {
                 role="img"
                 aria-label={`${n.label}: ${n.desc}`}
                 className={`rf-node${on ? " rf-on" : ""}${n.id === "error" ? " rf-error" : ""}`}
-                style={{ animationDelay: `${i * 0.07}s` }}
+                style={{ animationDelay: `${i * RF_TIMING.nodeStep}s` }}
                 onMouseEnter={() => setHover(n.id)}
                 onMouseLeave={() => setHover(null)}
                 onFocus={() => setHover(n.id)}

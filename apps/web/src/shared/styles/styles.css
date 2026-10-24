@@ -1559,7 +1559,7 @@ html.snap-home {
   gap: 16px;
   padding-top: 32px;
   border-top: 1px solid var(--line);
-  scroll-margin-top: calc(var(--nav-h) + 24px);
+  scroll-margin-top: 16px;
 }
 .doc {
   padding: clamp(48px, 7vw, 88px) var(--pad) 80px;
@@ -2160,34 +2160,6 @@ table.data.compact td {
   font-weight: 500;
   letter-spacing: -0.01em;
 }
-.rf-edge {
-  fill: none;
-  stroke: var(--line-dashed);
-  stroke-width: 1.5;
-  transition: stroke 0.3s ease;
-}
-.route-flow .rf-node,
-.route-flow .rf-edge,
-.route-flow .rf-label {
-  animation-duration: 0.45s;
-  animation-fill-mode: backwards;
-  animation-play-state: paused;
-  animation-timing-function: ease-out;
-}
-.route-flow .rf-node {
-  animation-name: rf-node;
-}
-.route-flow .rf-edge {
-  animation-name: rf-draw;
-}
-.route-flow .rf-label {
-  animation-name: rf-fade;
-}
-.route-flow.in-view .rf-node,
-.route-flow.in-view .rf-edge,
-.route-flow.in-view .rf-label {
-  animation-play-state: running;
-}
 @keyframes rf-node {
   from {
     opacity: 0;
@@ -2225,21 +2197,9 @@ table.data.compact td {
 .feature-card .feature-title {
   font-size: clamp(22px, 2vw, 30px);
 }
-@media (max-width: 900px) {
-  .what-grid,
-  .feature-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 @media (max-width: 520px) {
   .facts {
     grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (max-width: 640px) {
-  .route-flow {
-    min-width: 640px;
   }
 }
 
@@ -2457,7 +2417,7 @@ table.data.compact td {
 }
 .rf-node {
   cursor: default;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.2s ease;
 }
 .route-flow .rf-node:not(.rf-on) {
   opacity: 0.5;
@@ -2466,7 +2426,7 @@ table.data.compact td {
   fill: var(--bg);
   stroke: var(--line-strong);
   stroke-width: 1.5;
-  transition: stroke 0.3s ease;
+  transition: stroke 0.2s ease;
 }
 .route-flow .rf-node.rf-on rect {
   stroke: var(--lime);
@@ -2490,6 +2450,21 @@ table.data.compact td {
   font: 13px var(--mono);
   fill: var(--text-3);
 }
+.rf-edge {
+  fill: none;
+  stroke: var(--line-dashed);
+  stroke-width: 1.5;
+  transition:
+    stroke 0.2s ease,
+    stroke-width 0.2s ease;
+}
+.route-flow .rf-edge.rf-on {
+  stroke: var(--lime);
+  stroke-width: 3;
+}
+.rf-chip-bg {
+  fill: var(--surface);
+}
 .rf-label {
   font: 13px var(--mono);
   fill: var(--text-3);
@@ -2497,13 +2472,32 @@ table.data.compact td {
 .rf-label-on {
   fill: var(--text);
 }
-.route-flow .rf-edge.rf-on {
-  stroke: var(--lime);
-  stroke-width: 3;
+/* entrance: plays once the diagram is seen, again on each re-entry; scenario clicks only change colours (transitions above) */
+.route-flow .rf-node,
+.route-flow .rf-edge,
+.route-flow .rf-chip {
+  animation-duration: 0.28s;
+  animation-fill-mode: backwards;
+  animation-play-state: paused;
+  animation-timing-function: ease-out;
+}
+.route-flow .rf-node {
+  animation-name: rf-node;
+}
+.route-flow .rf-edge {
+  animation-name: rf-draw;
+}
+.route-flow .rf-chip {
+  animation-name: rf-fade;
+}
+.route-flow.in-view .rf-node,
+.route-flow.in-view .rf-edge,
+.route-flow.in-view .rf-chip {
+  animation-play-state: running;
 }
 .route-flow.is-out .rf-node,
 .route-flow.is-out .rf-edge,
-.route-flow.is-out .rf-label {
+.route-flow.is-out .rf-chip {
   animation: none;
 }
 .route-desc {
@@ -2538,6 +2532,7 @@ table.data.compact td {
 }
 @media (max-width: 900px) {
   .what-grid,
+  .feature-grid,
   .route-items {
     grid-template-columns: minmax(0, 1fr);
   }

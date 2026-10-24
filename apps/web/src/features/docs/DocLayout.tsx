@@ -29,7 +29,8 @@ function useScrollSpy(ids: string[]) {
         const current = [...ids].reverse().find((id) => visible.has(id));
         if (current) setActive(current);
       },
-      { rootMargin: "-15% 0px -70% 0px" },
+      // the page scrolls inside .doc-scroll, so that element is the observer root and the margins are relative to it
+      { root: document.querySelector(".doc-scroll"), rootMargin: "-15% 0px -70% 0px" },
     );
     ids.forEach((id) => {
       const el = document.getElementById(id);
