@@ -20,9 +20,16 @@ def is_production() -> bool:
     return os.environ.get("NODE_ENV") == "production"
 
 
+REQUIRED_ENV = ["INTERNAL_SECRET", "DATABASE_URL"]
+
+
+def missing_env() -> list[str]:
+    """Names of required variables that are unset or empty (never their values)."""
+    return [n for n in REQUIRED_ENV if not os.environ.get(n)]
+
+
 def load_settings() -> dict:
-    names = ["INTERNAL_SECRET", "DATABASE_URL"]
-    missing = [n for n in names if not os.environ.get(n)]
+    missing = missing_env()
     if missing:  # names only: never print values
         raise RuntimeError(f"missing required environment variables: {', '.join(missing)}")
     return {"internal_secret": os.environ["INTERNAL_SECRET"]}
