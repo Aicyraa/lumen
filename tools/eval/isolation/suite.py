@@ -44,11 +44,13 @@ class Run:
 
     findings: list = field(default_factory=list)  # (tenant label, check name, Finding)
     checks: int = 0
+    results: list = field(default_factory=list)  # (tenant label, check name, passed)
     cross: int = 0  # cross-tenant questions asked
     positives: int = 0  # own-data questions that must find their data
 
     def add(self, label, name, findings):
         self.checks += 1
+        self.results.append((label, name, not findings))
         self.findings += [(label, name, f) for f in findings]
 
     @property

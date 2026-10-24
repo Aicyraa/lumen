@@ -97,6 +97,9 @@ def print_run(title, run: suite.Run, verbose=False):
     say(
         f"\n== {title}: {run.checks} checks, {len(run.leaks)} leak(s), {len(run.problems)} problem(s)"
     )
+    for label, name, ok in run.results:
+        if verbose and not name.startswith("chat["):
+            say(f"  {'PASS' if ok else 'FAIL'} tenant {label} · {name}")
     for label, name, f in run.findings:
         say(f"  [{f.kind}] tenant {label} · {name} · {f.detail}")
 
@@ -178,9 +181,11 @@ def main() -> int:
             run.checks,
         )
         out.stub_answers = stub.answer_calls
-        print_run("REAL STACK", run)
+        print_run("REAL STACK", run, verbose=True)
         say(
-            f"cross-tenant questions asked: {sum(t.chat_calls for t in tenants)} chat calls in total"
+            f"cross-tenant questions: {run.cross}; positive checks: {run.positives}; "
+            f"object-level and dashboard checks: {run.checks - run.cross - run.positives}; "
+            f"chat calls in total: {sum(t.chat_calls for t in tenants)}"
         )
 
         # negative control: the same questions against a rag-service whose retrieval ignores tenant_id
