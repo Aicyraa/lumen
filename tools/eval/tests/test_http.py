@@ -45,3 +45,44 @@ def test_other_errors_are_returned_not_retried(server):
 def test_connection_failure_is_an_http_error():
     with pytest.raises(HttpError):
         request("GET", "http://127.0.0.1:1/x", timeout=2)
+
+
+def test_set_cookies_are_all_kept(server):
+    import http.server
+
+    # FakeServer cannot repeat a header, so use a tiny raw server
+    class H(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Set-Cookie", "a=1; Path=/")
+            self.send_header("Set-Cookie", "b=2; HttpOnly")
+            self.send_header("Content-Length", "2")
+            self.end_headers()
+            self.wfile.write(b"{}")
+
+        def log_message(self, *a):
+            pass
+
+    httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
+    import threading
+
+    threading.Thread(
+        target=httpd.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True
+    ).start()
+    try:
+        r = request("GET", f"http://127.0.0.1:{httpd.server_address[1]}/")
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+    assert r.set_cookies == ("a=1; Path=/", "b=2; HttpOnly")
+
+
+def test_raw_bytes_body_is_sent_with_the_given_content_type(server):
+    s = server(lambda *a: (200, {}, {}))
+    request(
+        "POST",
+        s.url + "/up",
+        data=b"--x--",
+        headers={"content-type": "multipart/form-data; boundary=x"},
+    )
+    assert s.calls[0]["headers"]["content-type"].startswith("multipart/form-data")

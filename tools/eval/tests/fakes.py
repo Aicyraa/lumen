@@ -16,7 +16,10 @@ class FakeServer:
             def _do(self):
                 n = int(self.headers.get("content-length") or 0)
                 raw = self.rfile.read(n) if n else b""
-                body = json.loads(raw) if raw else None
+                try:
+                    body = json.loads(raw) if raw else None
+                except ValueError:
+                    body = raw.decode("utf-8", "replace")  # multipart and other raw bodies
                 headers = {k.lower(): v for k, v in self.headers.items()}
                 outer.calls.append({"method": self.command, "path": self.path,
                                     "headers": headers, "body": body})  # fmt: skip

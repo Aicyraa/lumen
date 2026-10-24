@@ -19,11 +19,14 @@ class HttpResult(NamedTuple):
     headers: dict
     body: Any  # parsed JSON, or None when the body is not JSON
     text: str
+    set_cookies: tuple = ()  # every Set-Cookie header, in order
 
 
-def request(method, url, *, headers=None, json_body=None, timeout=60.0) -> HttpResult:
-    data = None if json_body is None else json.dumps(json_body).encode()
-    h = {"content-type": "application/json", **(headers or {})}
+def request(method, url, *, headers=None, json_body=None, data=None, timeout=60.0) -> HttpResult:
+    """JSON by default; `data` sends raw bytes (set your own content-type, for example multipart)."""
+    if json_body is not None:
+        data = json.dumps(json_body).encode()
+    h = {"content-type": "application/json", **{k.lower(): v for k, v in (headers or {}).items()}}
     req = urllib.request.Request(url, data=data, headers=h, method=method)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -37,7 +40,8 @@ def request(method, url, *, headers=None, json_body=None, timeout=60.0) -> HttpR
         body = json.loads(text)
     except ValueError:
         body = None
-    return HttpResult(status, {k.lower(): v for k, v in hdrs.items()}, body, text)
+    cookies = tuple(hdrs.get_all("Set-Cookie") or ())
+    return HttpResult(status, {k.lower(): v for k, v in hdrs.items()}, body, text, cookies)
 
 
 _PART = re.compile(r"(\d+(?:\.\d+)?)(ms|h|m|s)")
