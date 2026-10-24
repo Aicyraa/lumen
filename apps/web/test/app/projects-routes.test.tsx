@@ -166,7 +166,7 @@ describe("project routes", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Projects" })).toBeInTheDocument();
   });
 
-  it("the sidebar has a project switcher, a link back to Projects and a link to the docs; switching goes to the same tab of the other project", async () => {
+  it("the sidebar has a project switcher, a link back to Projects and no Docs link; switching goes to the same tab of the other project", async () => {
     mockFetch(api());
     mount("/projects/my-project/requests");
     const side = await screen.findByRole("complementary");
@@ -180,7 +180,7 @@ describe("project routes", () => {
       "href",
       "/projects",
     );
-    expect(within(side).getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
+    expect(within(side).queryByRole("link", { name: "Docs" })).toBeNull();
     expect(within(side).getByRole("link", { name: /^Requests/ })).toHaveAttribute(
       "href",
       "/projects/my-project/requests",
