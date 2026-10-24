@@ -39,4 +39,29 @@ describe("tenants row for every organization", () => {
     ]);
     expect(await registered(t.tenantId)).toBe(1);
   });
+
+  it("when the tenants insert fails the create call fails, and the per-user lock is released so the next create works", async () => {
+    const t = await ctx.createTenant("fail");
+    await ctx.pool.query(
+      `CREATE OR REPLACE FUNCTION test_block_tenants() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'blocked for test'; END $$ LANGUAGE plpgsql`,
+    );
+    await ctx.pool.query(
+      "CREATE TRIGGER test_block_tenants BEFORE INSERT ON tenants FOR EACH ROW EXECUTE FUNCTION test_block_tenants()",
+    );
+    let failed;
+    try {
+      failed = await request(ctx.app)
+        .post("/api/dashboard/workspaces")
+        .set("cookie", t.cookie)
+        .send({ name: "Broken" });
+    } finally {
+      await ctx.pool.query("DROP TRIGGER test_block_tenants ON tenants");
+    }
+    expect(failed.status).toBeGreaterThanOrEqual(500); // known: the organization row already exists, without a tenants row
+    const ok = await request(ctx.app)
+      .post("/api/dashboard/workspaces")
+      .set("cookie", t.cookie)
+      .send({ name: "Fine" });
+    expect(ok.status).toBe(201);
+  });
 });

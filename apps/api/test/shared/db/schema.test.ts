@@ -160,6 +160,40 @@ describe("request_sources", () => {
   });
 });
 
+describe("request_sources and chunks", () => {
+  it("cannot point at another tenant's chunk (foreign keys on)", async () => {
+    const a = await tenant();
+    const b = await tenant();
+    const chunkB = await chunk(b, await doc(b));
+    const ra = await log(a);
+    expect(
+      await code(
+        pool.query(
+          "INSERT INTO request_sources (request_id, tenant_id, position, chunk_id) VALUES ($1, $2, 0, $3)",
+          [ra, a, chunkB],
+        ),
+      ),
+    ).toBe("23503");
+  });
+
+  it("deleting a chunk leaves the source row with a NULL chunk_id and keeps its tenant", async () => {
+    const t = await tenant();
+    const d = await doc(t);
+    const c = await chunk(t, d);
+    const r = await log(t);
+    await pool.query(
+      "INSERT INTO request_sources (request_id, tenant_id, position, document_id, chunk_id) VALUES ($1, $2, 0, $3, $4)",
+      [r, t, d, c],
+    );
+    await pool.query("DELETE FROM chunks WHERE id = $1 AND tenant_id = $2", [c, t]);
+    const { rows } = await pool.query(
+      "SELECT tenant_id, document_id, chunk_id FROM request_sources WHERE request_id = $1 AND tenant_id = $2",
+      [r, t],
+    );
+    expect(rows).toEqual([{ tenant_id: t, document_id: d, chunk_id: null }]);
+  });
+});
+
 describe("derived values are views, not columns", () => {
   it("has no chunk_count, token, cost or sources column left", async () => {
     const { rows } = await pool.query(
@@ -265,6 +299,44 @@ describe("indexes and row level security", () => {
                OR ARRAY(SELECT unnest((i.indkey::int2[])[0:cardinality(c.conkey) - 1]) ORDER BY 1)
                 = ARRAY(SELECT unnest(c.conkey) ORDER BY 1)))`,
       [APP],
+    );
+    expect(rows).toEqual([]);
+  });
+});
+
+describe("Better Auth tables and Data API roles", () => {
+  const AUTH = [
+    "user",
+    "session",
+    "account",
+    "verification",
+    "organization",
+    "member",
+    "invitation",
+    "apikey",
+  ];
+
+  it("has row level security enabled on all 8 Better Auth tables (after auth:migrate)", async () => {
+    const { rows } = await pool.query(
+      "SELECT relname FROM pg_class WHERE relnamespace = 'public'::regnamespace AND relname = ANY($1) AND relrowsecurity",
+      [AUTH],
+    );
+    expect(rows.map((r) => r.relname).sort()).toEqual([...AUTH].sort());
+  });
+
+  // Only where the Supabase roles exist (a scratch database with CREATE ROLE anon/authenticated); skipped on plain Postgres.
+  it("gives anon and authenticated no privilege on any table, view or sequence", async () => {
+    const roles = (
+      await pool.query("SELECT rolname FROM pg_roles WHERE rolname IN ('anon', 'authenticated')")
+    ).rows.map((r) => r.rolname as string);
+    if (!roles.length) return;
+    const { rows } = await pool.query(
+      `SELECT c.relname, r AS role, c.relkind
+       FROM pg_class c CROSS JOIN unnest($1::text[]) AS r
+       WHERE c.relnamespace = 'public'::regnamespace AND c.relkind IN ('r', 'v', 'S')
+         AND CASE WHEN c.relkind = 'S' THEN has_sequence_privilege(r, c.oid, 'USAGE, SELECT, UPDATE')
+                  ELSE has_table_privilege(r, c.oid, 'SELECT, INSERT, UPDATE, DELETE') END`,
+      [roles],
     );
     expect(rows).toEqual([]);
   });
