@@ -36,9 +36,10 @@ Run from `apps/rag-service` (or `pnpm --filter @lumen/rag-service <script>`).
 
 The handler also has `ingest <tenant_id> <file>` (.txt, .md, .pdf) and `ask <tenant_id> "<question>"` (top 3 chunks, no LLM):
 `.venv/bin/python -m app.cli ingest tenant_a samples/harbor_cafe_handbook.md`.
+`ingest` creates the tenant's `tenants` row if missing (local testing only); the service endpoint does not, because the API inserts it before the document. Chunk counts are not stored: read them from the `document_stats` view.
 
 ## Environment
 
 The app reads only `apps/rag-service/.env` plus the real environment (real variables win). There is no repo-root `.env` lookup.
 `DATABASE_URL` and `INTERNAL_SECRET` are required; the service refuses to start without them. `INTERNAL_SECRET` must equal the one in `apps/api/.env`.
-Tests use `TEST_DATABASE_URL`, or `DATABASE_URL` with the database name replaced by `lumen_test` (the schema comes from `infra/sql/001_app_tables.sql`). Tests use a fake LLM client and never call a provider.
+Tests use `TEST_DATABASE_URL`, or `DATABASE_URL` with the database name replaced by `lumen_test` (every `infra/sql/NNN_*.sql` is applied in order; tests insert the `tenants` rows they need). Tests use a fake LLM client and never call a provider.

@@ -2,7 +2,6 @@ import os
 
 import psycopg
 
-from app.retrieval import store
 from tests.conftest import AUTH, add_document
 
 LONG_TEXT = " ".join(
@@ -31,16 +30,16 @@ def chunk_count(tenant, doc_id):
 
 
 def test_ingest_writes_chunks_for_the_given_document(client):
-    doc_id = add_document(
-        "tenant_a", "notes.txt"
-    )  # Express creates this row before calling Python
+    doc_id = add_document("tenant_a", "notes.txt")  # Express creates this row before calling Python
     resp = post(client, "tenant_a", doc_id)
     assert resp.status_code == 200
     body = resp.json()
     assert set(body) == {"chunk_count"} and body["chunk_count"] >= 2
     assert chunk_count("tenant_a", doc_id) == body["chunk_count"]
     stored = db_rows(
-        "SELECT chunk_count FROM document_stats WHERE tenant_id = %s AND id = %s", "tenant_a", doc_id
+        "SELECT chunk_count FROM document_stats WHERE tenant_id = %s AND document_id = %s",
+        "tenant_a",
+        doc_id,
     )
     assert stored == [(body["chunk_count"],)]
 
@@ -106,7 +105,9 @@ def test_ingesting_the_same_document_twice_keeps_chunk_count(client):
     assert second == first
     assert chunk_count("tenant_a", doc_id) == first
     stored = db_rows(
-        "SELECT chunk_count FROM document_stats WHERE tenant_id = %s AND id = %s", "tenant_a", doc_id
+        "SELECT chunk_count FROM document_stats WHERE tenant_id = %s AND document_id = %s",
+        "tenant_a",
+        doc_id,
     )
     assert stored == [(first,)]
 

@@ -53,7 +53,9 @@ def test_delete_document_of_another_tenant_does_nothing():
 
 def test_chunk_with_other_tenant_than_its_document_is_rejected():
     doc = add_document("tenant_a", "a.txt")
-    ensure_tenant("tenant_b")  # so the rejection is the document's tenant, not a missing tenants row
+    ensure_tenant(
+        "tenant_b"
+    )  # so the rejection is the document's tenant, not a missing tenants row
     with pytest.raises(psycopg.errors.ForeignKeyViolation):
         store.add_chunks("tenant_b", doc, ["x"], np.array([vec(0)]))
 
@@ -69,7 +71,8 @@ def test_add_chunks_does_not_need_a_chunk_count_column():
     store.add_chunks("t", doc, ["x", "y"], np.array([vec(0), vec(1)]))
     with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
         rows = conn.execute(
-            "SELECT chunk_count FROM document_stats WHERE tenant_id = %s AND id = %s", ("t", doc)
+            "SELECT chunk_count FROM document_stats WHERE tenant_id = %s AND document_id = %s",
+            ("t", doc),
         ).fetchall()
     assert rows == [(2,)]
 

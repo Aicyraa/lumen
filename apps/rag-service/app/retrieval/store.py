@@ -12,6 +12,12 @@ def _connect() -> psycopg.Connection:
     return conn
 
 
+def ensure_tenant(tenant_id: str) -> None:
+    """Create the tenants row if missing. Only the local CLI calls this; in production the API inserts it first."""
+    with _connect() as conn:
+        conn.execute("INSERT INTO tenants (id) VALUES (%s) ON CONFLICT DO NOTHING", (tenant_id,))
+
+
 def add_document(tenant_id: str, filename: str) -> str:
     with _connect() as conn:  # the with-block commits on success
         row = conn.execute(
@@ -33,11 +39,6 @@ def add_chunks(tenant_id: str, document_id: str, chunks: list[str], vectors: np.
                 "INSERT INTO chunks (tenant_id, document_id, content, embedding) VALUES (%s, %s, %s, %s)",
                 [(tenant_id, document_id, text, vec) for text, vec in zip(chunks, vectors)],
             )
-        conn.execute(
-            "UPDATE documents SET chunk_count = (SELECT count(*) FROM chunks WHERE tenant_id = %s AND document_id = %s)"
-            " WHERE tenant_id = %s AND id = %s",
-            (tenant_id, document_id, tenant_id, document_id),
-        )
 
 
 def search(tenant_id: str, query_vector: np.ndarray, k: int) -> list[tuple[int, str, str, float]]:

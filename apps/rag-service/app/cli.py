@@ -40,8 +40,12 @@ def check_env(args) -> int:
 
 def ingest(args) -> int:
     from app.ingest.service import ingest_file  # loads the embedding model
+    from app.retrieval.store import ensure_tenant
 
     try:
+        ensure_tenant(
+            args.tenant_id
+        )  # local testing only: the API creates the tenants row in production
         document_id, count = ingest_file(args.tenant_id, args.file)
     except ValueError as e:
         print(e, file=sys.stderr)
