@@ -67,22 +67,22 @@ These are never negotiable. If a task seems to require breaking one, stop and sa
 ```text
 lumen/                       # root: tooling and docs only, no application code
   AGENTS.md  CLAUDE.md  README.md
-  package.json  pnpm-workspace.yaml  turbo.json     # Turborepo: dev, build, test, bootstrap
-  docker-compose.yml         # db first; api and rag-service added later
-  .env.example
-  infra/sql/001_app_tables.sql
-  docs/                      # AI_BUILD_BRIEF.md, PROJECT_WORKFLOW.md, DESIGN.md, NOTES.md
+  package.json  pnpm-workspace.yaml  turbo.json  biome.json  tsconfig.base.json  .editorconfig  .nvmrc
+  docker-compose.yml         # db (the db scripts use podman or docker directly)
+  scripts/                   # env.mjs (env:init, env:check), db.mjs (db:up, db:migrate, ...)
+  infra/                     # sql/ numbered migrations, .env.example (database password, Supabase strings)
+  docs/                      # AI_BUILD_BRIEF.md, PROJECT_WORKFLOW.md, WEBSITE_GUIDE.md, DESIGN.md, NOTES.md, mockups
   tools/eval/                # questions.csv, run_eval.py, results.csv (scripts, not an app)
   apps/
-    api/                     # Node/Express + Better Auth (ES modules), own package.json
-      src/ (server.ts, app.ts, config/, db/, auth/, middleware/, routes/, services/, lib/, types/)
-      test/ (mirrors src/: routes/, middleware/, services/, config/, auth/, helpers/)
-    web/                     # React + Vite dashboard, own package.json
-      src/ (lib/auth-client.ts, pages/, components/)
-    rag-service/             # Python/FastAPI; package.json only wraps pytest/uvicorn for Turborepo
-      app/ (main.py, chunking.py, embeddings.py, store.py, router.py, llm.py, config.yaml)
-      scripts/ (ingest_sample.py, ask.py)
-      tests/  requirements.txt  pytest.ini
+    api/                     # Node/Express + Better Auth (TypeScript), own .env
+      src/ (server.ts, app.ts, modules/<feature>/, shared/{config,db,middleware,lib,services,types})
+      test/ (mirrors src/)   tsconfig.{json,app,test,scripts}.json
+    web/                     # React + Vite dashboard and public site, own .env (VITE_ only)
+      src/ (app/, features/<feature>/, shared/{ui,motion,lib,styles})
+      test/ (mirrors src/)   tsconfig.{json,app,node,test}.json
+    rag-service/             # Python/FastAPI, own .env, pyproject.toml
+      app/ (main.py, cli.py, config.yaml, api/, core/, ingest/, retrieval/, llm/)
+      tests/ (mirrors app/)
 ```
 
 | Variable | Used by | Meaning |

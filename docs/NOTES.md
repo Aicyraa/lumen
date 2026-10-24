@@ -109,3 +109,11 @@
 - Human asked for 13 UI tweaks, database normalization with a development branch, and 8 codebase restructure items. Order decided: R2 restructure (+ env split) -> DB normalization (+ Supabase branch `development`, cost approved in principle by the human; confirm the plan/price first) -> 4C UI tweaks. phase-4-dashboard is still unmerged (waiting on the human's merge decision); R2 branches from it.
 - Supabase project `lumen` (ap-northeast-2) exists, empty, no branches (checked with MCP, read-only).
 - Duplicate scan (content hash): only empty files (.gitkeep, __init__.py); no duplicated sources. `apps/web/.gitkeep` removed in R2.
+
+## 2026-10-24 Phase R2 (codebase restructure) results
+
+- Behaviour-preserving restructure of all apps on `phase-r2-restructure`: rag-service (api/core/ingest/retrieval/llm, pyproject.toml, `python -m app.cli`), api (modules/<feature> + shared, tests mirror src, tsconfig split, Biome), web (app/features/shared, tests in test/, tsconfig split, Biome). Root: scripts (bootstrap, dev, build, test, typecheck, lint, format, check, clean, db:*, env:*), turbo tasks with inputs/outputs, biome.json, tsconfig.base.json, .editorconfig, .nvmrc, scripts/env.mjs and scripts/db.mjs (numbered migrations tracked in schema_migrations; existing dev DB baselined).
+- Test counts: api 364 (names identical), web 150 (names identical), rag-service 149 originals plus 13 new CLI/env tests = 162. Lead ran `pnpm check` from the root: all green.
+- Env split: `.env` files now live in apps/api, apps/rag-service, apps/web, infra; the repo-root .env and .env.example were removed. A local backup `.env.root-backup` (git-ignored, contains secrets) still exists at the root: delete it when you are happy. `pnpm env:check` verifies required variables and that DATABASE_URL and INTERNAL_SECRET agree between api and rag-service (never prints values).
+- Biome rules switched off deliberately (api: non-null assertion, template literal, explicit any; web: hook dependencies, array index keys, several a11y rules for the role=row grids): clean up later. Web `styles.css` is one global file (not split).
+- Not run: `pnpm dev` from the root (the human's servers hold 5173 and 8000; dev task graph resolves to api, rag-service and web).
