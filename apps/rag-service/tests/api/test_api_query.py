@@ -4,9 +4,9 @@ import uuid
 import numpy as np
 import pytest
 
-from app import store
-from app.config import load_config
-from app.llm import SYSTEM_PROMPT
+from app.retrieval import store
+from app.core.config import load_config
+from app.llm.prompt import SYSTEM_PROMPT
 from tests.conftest import AUTH
 
 MESSAGES = load_config()["messages"]

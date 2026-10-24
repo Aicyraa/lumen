@@ -1,5 +1,5 @@
-from app.config import router_cfg
-from app.router import decide
+from app.core.config import router_cfg
+from app.retrieval.router import decide
 
 CFG = router_cfg()
 STRONG = 0.60  # a good match: above weak_score, so only the wording can add points

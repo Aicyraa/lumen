@@ -4,7 +4,7 @@ import numpy as np
 import yaml
 from sentence_transformers import SentenceTransformer
 
-_CONFIG = yaml.safe_load((Path(__file__).parent / "config.yaml").read_text())
+_CONFIG = yaml.safe_load((Path(__file__).parents[1] / "config.yaml").read_text())
 _model = SentenceTransformer(_CONFIG["embedding"]["model"])  # loaded once, at import
 
 

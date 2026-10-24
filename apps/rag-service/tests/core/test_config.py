@@ -1,4 +1,4 @@
-from app.config import load_config
+from app.core.config import load_config
 
 
 def test_config_has_no_prices_before_phase_7():

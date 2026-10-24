@@ -1,6 +1,6 @@
 import numpy as np
 
-from app import store
+from app.retrieval import store
 from tests.conftest import AUTH
 
 

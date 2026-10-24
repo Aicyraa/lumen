@@ -7,7 +7,7 @@ import yaml
 
 @lru_cache
 def load_config() -> dict:
-    return yaml.safe_load((Path(__file__).parent / "config.yaml").read_text())
+    return yaml.safe_load((Path(__file__).parents[1] / "config.yaml").read_text())
 
 
 def router_cfg() -> SimpleNamespace:

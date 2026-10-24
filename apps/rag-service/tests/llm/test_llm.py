@@ -1,4 +1,4 @@
-from app.llm import build_prompt
+from app.llm.prompt import build_prompt
 
 
 def test_prompt_numbers_the_passages_and_marks_them_untrusted():

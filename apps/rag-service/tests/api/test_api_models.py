@@ -3,8 +3,8 @@ import logging
 
 import pytest
 
-from app import store
-from tests.test_api_query import add_doc, ask, best_score  # noqa: F401 (best_score is a fixture)
+from app.retrieval import store
+from tests.api.test_api_query import add_doc, ask, best_score  # noqa: F401 (best_score is a fixture)
 
 KEY = "sk-tenant-secret-key-abcdef"
 

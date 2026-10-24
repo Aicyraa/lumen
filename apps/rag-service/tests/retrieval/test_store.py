@@ -4,7 +4,7 @@ import numpy as np
 import psycopg
 import pytest
 
-from app import store
+from app.retrieval import store
 
 
 def vec(i):

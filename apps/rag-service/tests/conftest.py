@@ -5,7 +5,7 @@ from urllib.parse import urlparse, urlunparse
 import psycopg
 import pytest
 
-from app.env import load_env
+from app.core.env import load_env
 
 SCHEMA = Path(__file__).resolve().parents[3] / "infra" / "sql" / "001_app_tables.sql"
 
@@ -57,7 +57,7 @@ def fake_env(monkeypatch):
 @pytest.fixture(autouse=True)
 def public_dns(monkeypatch):
     """Hostnames resolve to a public address, so no test touches real DNS (the guard's own tests inject resolvers)."""
-    monkeypatch.setattr("app.endpoint_guard._resolve", lambda host: ["93.184.216.34"])
+    monkeypatch.setattr("app.llm.endpoint_guard._resolve", lambda host: ["93.184.216.34"])
 
 
 class FakeCaller:
@@ -71,7 +71,7 @@ class FakeCaller:
         self.extra = {}  # model_id -> fields to set on its attempt (rate_limits, reported_cost_usd)
 
     def __call__(self, m, tier, system, user):
-        from app.llm import Attempt
+        from app.llm.client import Attempt
 
         self.calls.append({"tier": tier, "model_id": m["model_id"], "model": m, "system": system, "user": user})
         outcome = self.outcomes.get(m["model_id"], "ok")

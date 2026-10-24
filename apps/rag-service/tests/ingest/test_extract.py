@@ -1,6 +1,6 @@
 import pytest
 
-from app.extract import extract_text
+from app.ingest.extract import extract_text
 
 def make_pdf(text: str) -> bytes:
     """Smallest valid one-page PDF, with a real xref table so pypdf accepts it."""

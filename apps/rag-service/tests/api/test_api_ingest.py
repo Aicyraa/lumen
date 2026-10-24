@@ -2,7 +2,7 @@ import os
 
 import psycopg
 
-from app import store
+from app.retrieval import store
 from tests.conftest import AUTH
 
 LONG_TEXT = " ".join(f"word{i}" for i in range(300))  # 300 words -> several chunks (120 words, 30 overlap)

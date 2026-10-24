@@ -1,6 +1,6 @@
 import numpy as np
 
-from app.embeddings import embed
+from app.retrieval.embeddings import embed
 
 
 def test_embed_gives_normalized_384_vectors():

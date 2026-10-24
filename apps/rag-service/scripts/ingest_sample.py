@@ -4,14 +4,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.env import load_env
+from app.core.env import load_env
 
 load_env()  # DATABASE_URL from the repo-root .env
 
-from app.chunking import chunk
-from app.embeddings import embed
-from app.extract import extract_text
-from app.store import add_chunks, add_document
+from app.ingest.chunking import chunk
+from app.retrieval.embeddings import embed
+from app.ingest.extract import extract_text
+from app.retrieval.store import add_chunks, add_document
 
 
 def main(tenant_id: str, file: str) -> None:

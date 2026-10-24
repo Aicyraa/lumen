@@ -4,12 +4,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.env import load_env
+from app.core.env import load_env
 
 load_env()
 
-from app.embeddings import embed
-from app.store import search
+from app.retrieval.embeddings import embed
+from app.retrieval.store import search
 
 
 def main(tenant_id: str, question: str) -> None:

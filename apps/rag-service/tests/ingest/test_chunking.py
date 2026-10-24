@@ -1,4 +1,4 @@
-from app.chunking import chunk
+from app.ingest.chunking import chunk
 
 
 def words(n, start=0):

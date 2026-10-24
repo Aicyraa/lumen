@@ -17,14 +17,15 @@ from pydantic import BaseModel, Field
 from pypdf.errors import PyPdfError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app import store
-from app.chunking import chunk
-from app.config import load_config, router_cfg
-from app.embeddings import embed  # loads the model at import, before the server starts listening
-from app.env import load_env
-from app.extract import extract_text
-from app.llm import build_prompt, call_model
-from app.router import decide
+from app.retrieval import store
+from app.ingest.chunking import chunk
+from app.core.config import load_config, router_cfg
+from app.retrieval.embeddings import embed  # loads the model at import, before the server starts listening
+from app.core.env import load_env
+from app.ingest.extract import extract_text
+from app.llm.client import call_model
+from app.llm.prompt import build_prompt
+from app.retrieval.router import decide
 
 load_env()  # DATABASE_URL etc. from the repo-root .env; real environment variables win
 

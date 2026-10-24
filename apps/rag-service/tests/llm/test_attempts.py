@@ -5,7 +5,7 @@ import logging
 import httpx2
 import pytest
 
-from app import llm
+from app.llm import client as llm
 
 KEY = "sk-secret-key-1234567890"
 CFG = {

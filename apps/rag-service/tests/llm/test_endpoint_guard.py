@@ -1,6 +1,6 @@
 import pytest
 
-from app.endpoint_guard import EndpointError, assert_endpoint
+from app.llm.endpoint_guard import EndpointError, assert_endpoint
 
 PUBLIC = "93.184.216.34"
 
