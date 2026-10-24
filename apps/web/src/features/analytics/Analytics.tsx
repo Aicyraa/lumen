@@ -215,7 +215,7 @@ export function Analytics() {
                         <th>REQUESTS</th>
                         <th>TOKENS IN / OUT</th>
                         <th>FAILURES</th>
-                        <th>BACKUP / FALLBACK USES</th>
+                        <th>BACKUP USES</th>
                         <th>MEDIAN</th>
                         <th>EST. PROVIDER COST</th>
                       </tr>
@@ -232,9 +232,7 @@ export function Analytics() {
                           <td className="mono">
                             {m.failures.error + m.failures.timeout + m.failures.rate_limited}
                           </td>
-                          <td className="mono">
-                            {m.backup_uses} / {m.fallback_uses}
-                          </td>
+                          <td className="mono">{m.backup_uses}</td>
                           <td className="mono">{fmtMs(m.median_latency_ms)}</td>
                           <td className="mono">
                             {m.requests === 0 && m.cost_usd == null
