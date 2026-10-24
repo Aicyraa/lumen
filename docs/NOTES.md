@@ -117,3 +117,8 @@
 - Env split: `.env` files now live in apps/api, apps/rag-service, apps/web, infra; the repo-root .env and .env.example were removed. A local backup `.env.root-backup` (git-ignored, contains secrets) still exists at the root: delete it when you are happy. `pnpm env:check` verifies required variables and that DATABASE_URL and INTERNAL_SECRET agree between api and rag-service (never prints values).
 - Biome rules switched off deliberately (api: non-null assertion, template literal, explicit any; web: hook dependencies, array index keys, several a11y rules for the role=row grids): clean up later. Web `styles.css` is one global file (not split).
 - Not run: `pnpm dev` from the root (the human's servers hold 5173 and 8000; dev task graph resolves to api, rag-service and web).
+
+## 2026-10-24 Phase DB planning
+
+- Reviewer R2 findings fixed (5a43ae3): db baseline now records a migration as applied only when its own table exists (tested on a fresh DB and a DB with only 001), docker compose gives a clear message when the password is missing, Biome key rules re-enabled in web src (index keys off), URL path for the api env file.
+- Supabase org is on the Free plan (no branching). Human decision: apply the normalized schema to the main project `lumen` (empty, no data). Design in docs/DATABASE.md.
