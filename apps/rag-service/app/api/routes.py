@@ -110,14 +110,14 @@ def env_default(tier: str) -> list[dict]:
 
 
 def plan_models(tier: str, models: TenantModels | None) -> list[tuple[str, dict]]:
-    """Ordered (attempt tier label, model) pairs: the chosen tier, else the other tier, then the fallback group."""
+    """Ordered (attempt tier label, model) pairs: the chosen tier, else the other tier."""
     if models is None:
         return [("default", m) for m in env_default(tier)]
     other = "expensive" if tier == "cheap" else "cheap"
     group = (
         tier if getattr(models, tier) else other
     )  # a tier with no models borrows the other tier's
-    return [(g, m.model_dump()) for g in (group, "fallback") for m in getattr(models, g)]
+    return [(group, m.model_dump()) for m in getattr(models, group)]
 
 
 @internal.post("/query")

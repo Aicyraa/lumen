@@ -14,7 +14,6 @@ class ModelSpec(BaseModel):
 class TenantModels(BaseModel):
     cheap: list[ModelSpec] = []
     expensive: list[ModelSpec] = []
-    fallback: list[ModelSpec] = []
 
 
 class QueryRequest(BaseModel):
