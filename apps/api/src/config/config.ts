@@ -23,6 +23,13 @@ interface Tunables {
   verificationResendWindowSeconds: number;
   verificationResendMax: number;
   verificationEmailExpiresSeconds: number;
+  verificationResendPerEmailWindowSeconds: number;
+  verificationResendPerEmailMax: number;
+  dbConnectionTimeoutMs: number;
+  projectIdMaxChars: number;
+  projectSlugMaxChars: number;
+  projectSlugRandomBytes: number;
+  projectCreateLockMs: number;
   modelAttemptsMax: number;
   rateLimitHeadersMax: number;
   modelTestMaxTokens: number;

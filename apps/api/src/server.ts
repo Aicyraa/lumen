@@ -18,7 +18,7 @@ try {
   process.exit(1);
 }
 
-const pool = createPool(config.databaseUrl);
+const pool = createPool(config.databaseUrl, config.dbConnectionTimeoutMs);
 const auth = createAuth({ pool, config, mailer: createMailer({ config, log }), log });
 const rag = createRagClient(config);
 await sweepInterrupted({ pool, config, log });

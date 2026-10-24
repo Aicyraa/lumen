@@ -5,6 +5,7 @@ import { apiKey } from "@better-auth/api-key";
 import type { Config } from "../config/config.js";
 import type { Pool } from "../db/pool.js";
 import type { Logger } from "pino";
+import { KeyedLock } from "../lib/keyedLock.js";
 import { ownedProjectCount } from "../services/projects.js";
 import type { Mailer } from "../services/mailer.js";
 
@@ -26,6 +27,11 @@ export function createAuth({ pool, config, mailer, log, social }: { pool: Pool; 
     const org = await createOrganization({ name: "My project", slug: `personal-${userId.toLowerCase()}`, userId });
     return org.id;
   }
+
+  // One project creation per user at a time, from the cap check to the insert, for every way of creating one. No DB connection is held while waiting.
+  const createLock = new KeyedLock();
+  const held = new Map<string, () => void>();
+  const releaseProjectLock = (userId: string) => { held.get(userId)?.(); held.delete(userId); };
 
   const auth = betterAuth({
     database: pool,
@@ -73,8 +79,14 @@ export function createAuth({ pool, config, mailer, log, social }: { pool: Pool; 
         organizationHooks: {
           // The cap holds for every way of creating a project, including the client's organization.create call.
           beforeCreateOrganization: async ({ user }) => {
-            if (user?.id && await ownedProjectCount(pool, user.id) >= config.maxProjectsPerUser) throw new APIError("UNPROCESSABLE_ENTITY", { message: "Project limit reached.", code: "PROJECT_LIMIT" });
+            if (!user?.id) return;
+            held.set(user.id, await createLock.acquire(user.id, config.projectCreateLockMs));
+            if (await ownedProjectCount(pool, user.id).catch((err) => { releaseProjectLock(user.id); throw err; }) >= config.maxProjectsPerUser) {
+              releaseProjectLock(user.id);
+              throw new APIError("UNPROCESSABLE_ENTITY", { message: "Project limit reached.", code: "PROJECT_LIMIT" });
+            }
           },
+          afterCreateOrganization: async ({ user }) => { if (user?.id) releaseProjectLock(user.id); },
           // Deleting only the organization row would orphan the tenant's documents, logs and keys; DELETE /api/dashboard/workspaces/:id does it all in one transaction.
           beforeDeleteOrganization: async () => {
             throw new APIError("FORBIDDEN", { message: "Delete a project with DELETE /api/dashboard/workspaces/:id.", code: "USE_WORKSPACE_DELETE" });
@@ -87,5 +99,5 @@ export function createAuth({ pool, config, mailer, log, social }: { pool: Pool; 
     ],
   });
   createOrganization = (body) => auth.api.createOrganization({ body }) as Promise<{ id: string }>;
-  return auth;
+  return Object.assign(auth, { releaseProjectLock });
 }

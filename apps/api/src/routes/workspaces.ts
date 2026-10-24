@@ -20,6 +20,7 @@ export function workspacesRouter({ pool, config }: Deps, auth: Auth) {
   const description = z.string().trim().max(config.projectDescriptionMaxChars);
   const createBody = z.object({ name, description: description.nullish() });
   const patchBody = z.object({ name: name.optional(), description: description.nullish() }).refine((b) => b.name !== undefined || b.description !== undefined);
+  const limit = () => new ApiError(422, "project_limit", `You can own at most ${config.maxProjectsPerUser} projects.`);
   const invalid = (e: z.ZodError) => new ApiError(422, "invalid_request", `Invalid request: ${e.issues[0]?.path.join(".") || "body"}.`);
 
   // Counts are keyed by tenant_id = the organization id, and only for organizations the user belongs to (rule 1).
@@ -44,30 +45,27 @@ export function workspacesRouter({ pool, config }: Deps, auth: Auth) {
     const parsed = createBody.safeParse(req.body);
     if (!parsed.success) throw invalid(parsed.error);
     const { name: n, description: d } = parsed.data;
-    const client = await pool.connect();
+    // No database connection is held here: the per-user lock and the cap check live in Better Auth's create hook (auth.ts),
+    // so this path and the client's own organization.create share one cap. This check only fails fast in the common case.
+    if (await ownedProjectCount(pool, req.userId!) >= config.maxProjectsPerUser) throw limit();
     let id: string;
     try {
-      await client.query("BEGIN");
-      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["projects:" + req.userId]); // two creates cannot both pass the cap check
-      if (await ownedProjectCount(client, req.userId!) >= config.maxProjectsPerUser) throw new ApiError(422, "project_limit", `You can own at most ${config.maxProjectsPerUser} projects.`);
       const org = await auth.api.createOrganization({
-        body: { name: n, slug: projectSlug(n), metadata: d ? { description: d } : undefined, keepCurrentActiveOrganization: true },
+        body: { name: n, slug: projectSlug(n, config), metadata: d ? { description: d } : undefined, keepCurrentActiveOrganization: true },
         headers: fromNodeHeaders(req.headers), // the session decides the owner; a userId in our body is never read
       });
       id = (org as { id: string }).id;
-      await client.query("COMMIT");
     } catch (err) {
-      await client.query("ROLLBACK");
+      auth.releaseProjectLock(req.userId!); // a failure before the insert must not hold the next create up
+      if ((err as { body?: { code?: string } }).body?.code === "PROJECT_LIMIT") throw limit();
       throw err;
-    } finally {
-      client.release();
     }
     res.status(201).json({ workspace: await one(req.userId!, id) });
   });
 
   // The caller's membership of one project, or a 404 (also for ids that are not ids).
   const membership = async (userId: string, id: string) => {
-    if (!z.string().min(1).max(100).safeParse(id).success) throw notFound();
+    if (!z.string().min(1).max(config.projectIdMaxChars).safeParse(id).success) throw notFound();
     const { rows } = await pool.query(
       `SELECT o.name, m.role FROM member m JOIN organization o ON o.id = m."organizationId" WHERE m."userId" = $1 AND m."organizationId" = $2`, [userId, id]);
     if (!rows[0]) throw notFound();
