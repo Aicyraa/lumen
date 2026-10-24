@@ -1877,7 +1877,7 @@ html.snap-home {
   }
 }
 @media (max-width: 640px) {
-  .snap-section {
+  .hero {
     min-height: 100dvh;
   }
   .hero-foot .row-gap,
