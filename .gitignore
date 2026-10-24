@@ -7,7 +7,7 @@ node_modules/
 __pycache__/
 *.pyc
 uploads/
-
+docs/
 # Per-worktree generated navigation output
 graphify-out/
 .serena/logs/
