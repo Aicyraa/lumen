@@ -233,11 +233,11 @@ function ModelRow({
     <div className="model-row" role="row" data-testid={`model-${m.id}`}>
       <div className="model-cell" role="cell">
         <span className={`mono small rank${first ? " lime" : " muted-3"}`}>{rank}</span>
-        <span className="mono ellipsis">{m.model_id}</span>
+        <span className="mono wrap-any">{m.model_id}</span>
         <span className="small muted-3">{PROVIDERS.find((p) => p[0] === m.provider)?.[1]}</span>
       </div>
       <div className="model-cell" role="cell">
-        <span className="mono small ellipsis">{m.endpoint_url}</span>
+        <span className="mono small wrap-any">{m.endpoint_url}</span>
         <span className="mono small muted-3">{m.key_hint}</span>
       </div>
       <div className="model-cell" role="cell">

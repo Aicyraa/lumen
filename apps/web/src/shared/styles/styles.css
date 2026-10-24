@@ -2303,3 +2303,10 @@ table.data.compact td {
     padding: 6px 12px;
   }
 }
+
+.wrap-any {
+  overflow-wrap: anywhere;
+}
+.an .bar {
+  max-width: 72px;
+}
