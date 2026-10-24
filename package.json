@@ -10,6 +10,7 @@
     "db:up": "podman start lumen-db || docker compose up -d db"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.6.2",
     "turbo": "^2.11.10"
   }
 }

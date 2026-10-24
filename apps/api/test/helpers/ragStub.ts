@@ -13,8 +13,16 @@ export interface StubCall {
   params: Record<string, string>;
   file?: Express.Multer.File;
 }
-interface Attempt { provider: string; model_id: string; tenant_model_id?: string | null; endpoint_url?: string; api_key?: string }
-type Handler = (call: StubCall) => { status: number; body: unknown } | Promise<{ status: number; body: unknown }>;
+interface Attempt {
+  provider: string;
+  model_id: string;
+  tenant_model_id?: string | null;
+  endpoint_url?: string;
+  api_key?: string;
+}
+type Handler = (
+  call: StubCall,
+) => { status: number; body: unknown } | Promise<{ status: number; body: unknown }>;
 
 export async function startRagStub(secret: string) {
   const calls: StubCall[] = [];
@@ -29,8 +37,15 @@ export async function startRagStub(secret: string) {
       const tiers = ["cheap", "expensive", "fallback"] as const;
       const tier = tiers.find((t) => models?.[t]?.length);
       const m = tier ? models![tier][0] : undefined;
-      const sources: Record<string, unknown>[] = [{ document_id: randomUUID(), chunk_id: 12, score: 0.71 }];
-      if (body.include_snippets) for (const src of sources) Object.assign(src, { filename: "stub-from-python.txt", snippet: "A short passage from the document." });
+      const sources: Record<string, unknown>[] = [
+        { document_id: randomUUID(), chunk_id: 12, score: 0.71 },
+      ];
+      if (body.include_snippets)
+        for (const src of sources)
+          Object.assign(src, {
+            filename: "stub-from-python.txt",
+            snippet: "A short passage from the document.",
+          });
       return {
         status: 200,
         body: {
@@ -39,18 +54,29 @@ export async function startRagStub(secret: string) {
           sources,
           route: { model_tier: "cheap", k: 3, escalated: false, difficulty: 0.0, top_score: 0.71 },
           usage: { tokens_in: 812, tokens_out: 96, cost_usd: null, latency_ms: 820 },
-          attempts: [{
-            provider: m?.provider ?? "openai_compatible", model_id: m?.model_id ?? "env-default",
-            tenant_model_id: m?.tenant_model_id ?? null, tier: tier ?? "default",
-            outcome: "ok", tokens_in: 812, tokens_out: 96, latency_ms: 700, rate_limits: null,
-          }],
+          attempts: [
+            {
+              provider: m?.provider ?? "openai_compatible",
+              model_id: m?.model_id ?? "env-default",
+              tenant_model_id: m?.tenant_model_id ?? null,
+              tier: tier ?? "default",
+              outcome: "ok",
+              tokens_in: 812,
+              tokens_out: 96,
+              latency_ms: 700,
+              rate_limits: null,
+            },
+          ],
         },
       };
     },
     delete: () => ({ status: 200, body: { deleted_chunks: 3 } }),
   };
   const defaults = { ...handlers };
-  const reset = () => { Object.assign(handlers, defaults); calls.length = 0; };
+  const reset = () => {
+    Object.assign(handlers, defaults);
+    calls.length = 0;
+  };
   const app = express();
   app.use((req, res, next) => {
     if (req.get("x-internal-secret") !== secret) {
@@ -59,7 +85,13 @@ export async function startRagStub(secret: string) {
     next();
   });
   const run = (name: StubCall["name"]) => async (req: Request, res: Response) => {
-    const call: StubCall = { name, body: req.body, query: req.query as Record<string, string>, params: req.params as Record<string, string>, file: req.file };
+    const call: StubCall = {
+      name,
+      body: req.body,
+      query: req.query as Record<string, string>,
+      params: req.params as Record<string, string>,
+      file: req.file,
+    };
     calls.push(call);
     const out = await handlers[name](call);
     res.status(out.status).json(out.body);
@@ -70,5 +102,11 @@ export async function startRagStub(secret: string) {
   const server = await new Promise<Server>((resolve) => {
     const s = app.listen(0, "127.0.0.1", () => resolve(s));
   });
-  return { url: `http://127.0.0.1:${(server.address() as { port: number }).port}`, calls, handlers, reset, close: () => server.close() };
+  return {
+    url: `http://127.0.0.1:${(server.address() as { port: number }).port}`,
+    calls,
+    handlers,
+    reset,
+    close: () => server.close(),
+  };
 }

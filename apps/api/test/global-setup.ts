@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import "../src/shared/config/env.js";
-import { createPool } from "../src/shared/db/pool.js";
 import { migrateAuth } from "../scripts/migrate.js";
+import { createPool } from "../src/shared/db/pool.js";
 import { testConfig } from "./helpers/env.js";
 
 // Tests only ever touch lumen_test: create it if missing, apply the app SQL and Better Auth's tables.
@@ -13,8 +13,13 @@ export default async function setup() {
   await admin.end();
   const pool = createPool(config.databaseUrl);
   const { rows } = await pool.query("SELECT to_regclass('public.documents') AS t");
-  if (!rows[0].t) await pool.query(readFileSync(new URL("../../../infra/sql/001_app_tables.sql", import.meta.url), "utf8"));
-  await pool.query(readFileSync(new URL("../../../infra/sql/002_tenant_models.sql", import.meta.url), "utf8")); // idempotent
+  if (!rows[0].t)
+    await pool.query(
+      readFileSync(new URL("../../../infra/sql/001_app_tables.sql", import.meta.url), "utf8"),
+    );
+  await pool.query(
+    readFileSync(new URL("../../../infra/sql/002_tenant_models.sql", import.meta.url), "utf8"),
+  ); // idempotent
   await pool.end();
   await migrateAuth(config);
 }

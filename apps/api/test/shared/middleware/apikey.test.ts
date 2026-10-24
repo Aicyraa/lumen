@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
-import { makeCtx, type Ctx, type Tenant } from "../../helpers/ctx.js";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { type Ctx, makeCtx, type Tenant } from "../../helpers/ctx.js";
 
 let ctx: Ctx, a: Tenant, b: Tenant;
 beforeAll(async () => {
@@ -9,12 +9,17 @@ beforeAll(async () => {
   a = await ctx.createTenant("a");
   b = await ctx.createTenant("b");
 });
-afterAll(async () => { await ctx.close(); });
+afterAll(async () => {
+  await ctx.close();
+});
 
 const insertDoc = async (tenantId: string, filename = "handbook.md") =>
-  (await ctx.pool.query(
-    `INSERT INTO documents (tenant_id, filename, status, chunk_count) VALUES ($1, $2, 'ready', 3) RETURNING id`,
-    [tenantId, filename])).rows[0].id;
+  (
+    await ctx.pool.query(
+      `INSERT INTO documents (tenant_id, filename, status, chunk_count) VALUES ($1, $2, 'ready', 3) RETURNING id`,
+      [tenantId, filename],
+    )
+  ).rows[0].id;
 
 describe("requireApiKey on /v1/*", () => {
   const routes: ["get" | "delete" | "post", string][] = [

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.2/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/build",
+      "!**/.turbo",
+      "!**/coverage",
+      "!**/.venv",
+      "!graphify-out",
+      "!docs",
+      "!apps/rag-service",
+      "!apps/web/src/components/animate-ui",
+      "!pnpm-lock.yaml"
+    ]
+  },
+  "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "style": { "noNonNullAssertion": "off", "useTemplate": "off" },
+      "suspicious": { "noExplicitAny": "off" }
+    }
+  },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } }
+}

@@ -1,17 +1,22 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
-import { makeCtx, type Ctx } from "../../helpers/ctx.js";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { type Ctx, makeCtx } from "../../helpers/ctx.js";
 
 let ctx: Ctx;
-beforeAll(async () => { ctx = await makeCtx({ verificationResendMax: 2, verificationEmailExpiresSeconds: 3600 }); });
-afterAll(async () => { await ctx.close(); });
+beforeAll(async () => {
+  ctx = await makeCtx({ verificationResendMax: 2, verificationEmailExpiresSeconds: 3600 });
+});
+afterAll(async () => {
+  await ctx.close();
+});
 
 const origin = () => ctx.config.dashboardOrigin;
 const PASSWORD = "correct-horse-battery";
 const post = (path: string, body: object, headers: Record<string, string> = {}) =>
   request(ctx.app).post(`/api/auth${path}`).set("origin", origin()).set(headers).send(body);
-const signUp = (email: string, extra: object = {}) => post("/sign-up/email", { email, password: PASSWORD, name: "New", ...extra });
+const signUp = (email: string, extra: object = {}) =>
+  post("/sign-up/email", { email, password: PASSWORD, name: "New", ...extra });
 const signIn = (email: string) => post("/sign-in/email", { email, password: PASSWORD });
 const newEmail = () => `v-${randomUUID()}@example.test`;
 const mailsTo = (email: string) => ctx.mails.filter((m) => m.to === email);
@@ -21,7 +26,12 @@ const linkPath = (email: string) => {
   const url = new URL(text.match(/https?:\/\/\S+/)![0]);
   return url.pathname + url.search;
 };
-const userRow = async (email: string) => (await ctx.pool.query(`SELECT id, "emailVerified" AS verified FROM "user" WHERE email = $1`, [email])).rows[0];
+const userRow = async (email: string) =>
+  (
+    await ctx.pool.query(`SELECT id, "emailVerified" AS verified FROM "user" WHERE email = $1`, [
+      email,
+    ])
+  ).rows[0];
 
 describe("email verification", () => {
   it("sign-up creates the user unverified, starts no session and sends one verification email", async () => {
@@ -61,7 +71,9 @@ describe("email verification", () => {
     const click = await request(ctx.app).get(linkPath(email));
     expect(click.status).toBe(302);
     expect(click.headers.location).toBe(`${origin()}/verify-email?status=verified`);
-    const cookie = (click.headers["set-cookie"] as unknown as string[]).map((c) => c.split(";")[0]).join("; ");
+    const cookie = (click.headers["set-cookie"] as unknown as string[])
+      .map((c) => c.split(";")[0])
+      .join("; ");
     expect((await userRow(email)).verified).toBe(true);
     const session = await request(ctx.app).get("/api/auth/get-session").set("cookie", cookie);
     expect(session.body.user.email).toBe(email);
@@ -74,7 +86,12 @@ describe("email verification", () => {
     await signUp(email);
     const path = linkPath(email);
     await request(ctx.app).get(path);
-    const sessions = async () => (await ctx.pool.query(`SELECT count(*)::int AS n FROM session WHERE "userId" = $1`, [(await userRow(email)).id])).rows[0].n;
+    const sessions = async () =>
+      (
+        await ctx.pool.query(`SELECT count(*)::int AS n FROM session WHERE "userId" = $1`, [
+          (await userRow(email)).id,
+        ])
+      ).rows[0].n;
     const before = await sessions();
     const again = await request(ctx.app).get(path);
     expect(again.status).toBe(302);
@@ -86,7 +103,10 @@ describe("email verification", () => {
   it("a tampered token redirects to /verify-email with error=INVALID_TOKEN and verifies nobody", async () => {
     const email = newEmail();
     await signUp(email);
-    const bad = linkPath(email).replace(/token=([^&]+)/, (_m, t: string) => `token=${t.slice(0, -4)}AAAA`);
+    const bad = linkPath(email).replace(
+      /token=([^&]+)/,
+      (_m, t: string) => `token=${t.slice(0, -4)}AAAA`,
+    );
     const res = await request(ctx.app).get(bad);
     expect(res.status).toBe(302);
     const loc = new URL(res.headers.location);
@@ -99,25 +119,40 @@ describe("email verification", () => {
     const short = await makeCtx({ verificationEmailExpiresSeconds: 1 });
     try {
       const email = newEmail();
-      await request(short.app).post("/api/auth/sign-up/email").set("origin", short.config.dashboardOrigin).send({ email, password: PASSWORD, name: "X" });
-      const url = new URL(short.mails.find((m) => m.to === email)!.text.match(/https?:\/\/\S+/)![0]);
+      await request(short.app)
+        .post("/api/auth/sign-up/email")
+        .set("origin", short.config.dashboardOrigin)
+        .send({ email, password: PASSWORD, name: "X" });
+      const url = new URL(
+        short.mails.find((m) => m.to === email)!.text.match(/https?:\/\/\S+/)![0],
+      );
       await new Promise((r) => setTimeout(r, 2200));
       const res = await request(short.app).get(url.pathname + url.search);
       expect(new URL(res.headers.location).searchParams.get("error")).toBe("TOKEN_EXPIRED");
-    } finally { await short.close(); }
+    } finally {
+      await short.close();
+    }
   });
 
   it("resend sends a new email, is generic for unknown addresses (no mail, no enumeration) and is rate limited per client address", async () => {
     const email = newEmail();
     await signUp(email);
     const ip = { "x-forwarded-for": "198.51.100.7" }; // a client-sent header must not matter, see below
-    const first = await post("/send-verification-email", { email, callbackURL: `${origin()}/verify-email` }, ip);
+    const first = await post(
+      "/send-verification-email",
+      { email, callbackURL: `${origin()}/verify-email` },
+      ip,
+    );
     expect(first.status).toBe(200);
     expect(mailsTo(email)).toHaveLength(2);
     const unknown = await post("/send-verification-email", { email: newEmail() });
     expect(unknown.status).toBe(200);
     // the limit is 2 per window (config): the third call from the same client is refused, even with a different spoofed header
-    const third = await post("/send-verification-email", { email }, { "x-forwarded-for": "203.0.113.99" });
+    const third = await post(
+      "/send-verification-email",
+      { email },
+      { "x-forwarded-for": "203.0.113.99" },
+    );
     expect(third.status).toBe(429);
     expect(mailsTo(email)).toHaveLength(2);
   });

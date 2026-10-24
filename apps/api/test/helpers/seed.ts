@@ -28,8 +28,26 @@ export async function insertLog(pool: Pool, tenantId: string, s: LogSeed = {}): 
     `INSERT INTO request_logs (id, tenant_id, api_key_id, query, sources, model_tier, k, escalated, difficulty, top_score,
                                tokens_in, tokens_out, cost_usd, latency_ms, status, feedback, created_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, COALESCE($17::timestamptz, now() - $18::interval))`,
-    [id, tenantId, s.apiKeyId ?? null, s.query ?? "a question", JSON.stringify(s.sources ?? []), s.tier === undefined ? "cheap" : s.tier,
-      s.k === undefined ? 3 : s.k, s.escalated === undefined ? false : s.escalated, s.difficulty === undefined ? 0 : s.difficulty, s.topScore === undefined ? 0.7 : s.topScore, s.tokensIn ?? null, s.tokensOut ?? null,
-      s.cost ?? null, s.latency ?? null, s.status ?? "ok", s.feedback ?? null, s.createdAt ?? null, s.ago ?? "0 seconds"]);
+    [
+      id,
+      tenantId,
+      s.apiKeyId ?? null,
+      s.query ?? "a question",
+      JSON.stringify(s.sources ?? []),
+      s.tier === undefined ? "cheap" : s.tier,
+      s.k === undefined ? 3 : s.k,
+      s.escalated === undefined ? false : s.escalated,
+      s.difficulty === undefined ? 0 : s.difficulty,
+      s.topScore === undefined ? 0.7 : s.topScore,
+      s.tokensIn ?? null,
+      s.tokensOut ?? null,
+      s.cost ?? null,
+      s.latency ?? null,
+      s.status ?? "ok",
+      s.feedback ?? null,
+      s.createdAt ?? null,
+      s.ago ?? "0 seconds",
+    ],
+  );
   return id;
 }

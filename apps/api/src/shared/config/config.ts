@@ -43,7 +43,9 @@ interface Tunables {
   maxPricePerMillion: number;
   endpointGuardCacheTtlMs: number;
 }
-const tunables: Tunables = JSON.parse(readFileSync(new URL("../../../config.json", import.meta.url), "utf8"));
+const tunables: Tunables = JSON.parse(
+  readFileSync(new URL("../../../config.json", import.meta.url), "utf8"),
+);
 const posInt = z.coerce.number().int().positive();
 const required = z.object({
   DATABASE_URL: z.string().min(1),
@@ -57,7 +59,10 @@ const required = z.object({
   MAX_REQUESTS_PER_MONTH: posInt,
   MAX_PROJECTS_PER_USER: posInt,
   MODEL_KEY_ENCRYPTION_SECRET: z.string().regex(/^[0-9a-fA-F]{64}$/), // 32 bytes as hex
-  TRUST_PROXY: z.string().optional().refine((v) => v?.trim().toLowerCase() !== "true"), // `true` would trust any client's X-Forwarded-For
+  TRUST_PROXY: z
+    .string()
+    .optional()
+    .refine((v) => v?.trim().toLowerCase() !== "true"), // `true` would trust any client's X-Forwarded-For
 });
 
 export interface OAuthCredentials {
@@ -93,10 +98,15 @@ function parseTrustProxy(v: string | undefined): boolean | number | string {
 }
 
 // Throws naming the missing variables (never their values) so the server refuses to start.
-export function loadConfig(env: NodeJS.ProcessEnv = process.env, overrides: Partial<Config> = {}): Config {
+export function loadConfig(
+  env: NodeJS.ProcessEnv = process.env,
+  overrides: Partial<Config> = {},
+): Config {
   const production = env.NODE_ENV === "production";
   // Production cannot verify emails without a mail server.
-  const schema = production ? required.extend({ SMTP_URL: z.string().min(1), MAIL_FROM: z.string().min(1) }) : required;
+  const schema = production
+    ? required.extend({ SMTP_URL: z.string().min(1), MAIL_FROM: z.string().min(1) })
+    : required;
   const parsed = schema.safeParse(env);
   if (!parsed.success) {
     const names = [...new Set(parsed.error.issues.map((i) => String(i.path[0])))];
@@ -107,7 +117,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, overrides: Part
   const t: Tunables = { ...tunables };
   for (const k of Object.keys(t) as (keyof Tunables)[]) {
     const v = env[k.replace(/[A-Z]/g, (c) => "_" + c).toUpperCase()];
-    if (v) (t as unknown as Record<string, number | string>)[k] = typeof t[k] === "number" ? Number(v) : v;
+    if (v)
+      (t as unknown as Record<string, number | string>)[k] =
+        typeof t[k] === "number" ? Number(v) : v;
   }
   return {
     databaseUrl: e.DATABASE_URL,

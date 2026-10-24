@@ -9,6 +9,7 @@ declare global {
     }
   }
 }
+
 import type { Logger } from "pino";
 import type { Config } from "../config/config.js";
 import type { Pool } from "../db/pool.js";
@@ -23,4 +24,3 @@ export interface Deps {
   pending: Set<Promise<void>>; // background ingests still running
   resolveHost?: import("../lib/endpointGuard.js").GuardOptions["resolve"]; // tests inject DNS answers; default is the OS resolver
 }
-

@@ -14,8 +14,16 @@ describe("encryptSecret / decryptSecret (AES-256-GCM)", () => {
   });
   it("fails when the ciphertext, tag or IV is tampered with", () => {
     const [iv, tag, ct] = encryptSecret("secret-value", key, "t").split(".");
-    const flip = (b64: string) => { const b = Buffer.from(b64, "base64url"); b[0] ^= 1; return b.toString("base64url"); };
-    for (const parts of [[iv, tag, flip(ct)], [iv, flip(tag), ct], [flip(iv), tag, ct]]) {
+    const flip = (b64: string) => {
+      const b = Buffer.from(b64, "base64url");
+      b[0] ^= 1;
+      return b.toString("base64url");
+    };
+    for (const parts of [
+      [iv, tag, flip(ct)],
+      [iv, flip(tag), ct],
+      [flip(iv), tag, ct],
+    ]) {
       expect(() => decryptSecret(parts.join("."), key, "t")).toThrow();
     }
   });

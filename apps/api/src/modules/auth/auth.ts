@@ -1,41 +1,74 @@
+import { apiKey } from "@better-auth/api-key";
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { organization } from "better-auth/plugins";
-import { apiKey } from "@better-auth/api-key";
+import type { Logger } from "pino";
 import type { Config } from "../../shared/config/config.js";
 import type { Pool } from "../../shared/db/pool.js";
-import type { Logger } from "pino";
-import { createWindowCounter } from "./windowCounter.js";
-import { KeyedLock } from "./keyedLock.js";
 import { ownedProjectCount } from "../../shared/services/projects.js";
+import { KeyedLock } from "./keyedLock.js";
 import type { Mailer } from "./mailer.js";
+import { createWindowCounter } from "./windowCounter.js";
 
 export type Auth = ReturnType<typeof createAuth>;
 
 // mailer and log are only needed to send mail; the migration script builds the same auth without them.
-export function createAuth({ pool, config, mailer, log, social }: { pool: Pool; config: Config; mailer?: Mailer; log?: Logger; social?: Record<string, object> }) {
+export function createAuth({
+  pool,
+  config,
+  mailer,
+  log,
+  social,
+}: {
+  pool: Pool;
+  config: Config;
+  mailer?: Mailer;
+  log?: Logger;
+  social?: Record<string, object>;
+}) {
   // A provider without credentials is skipped, so dev works with email + password only.
-  const socialProviders: Partial<Record<"google" | "github", { clientId: string; clientSecret: string }>> = {};
+  const socialProviders: Partial<
+    Record<"google" | "github", { clientId: string; clientSecret: string }>
+  > = {};
   const { google, github } = config;
-  if (google.clientId && google.clientSecret) socialProviders.google = { clientId: google.clientId, clientSecret: google.clientSecret };
-  if (github.clientId && github.clientSecret) socialProviders.github = { clientId: github.clientId, clientSecret: github.clientSecret };
+  if (google.clientId && google.clientSecret)
+    socialProviders.google = { clientId: google.clientId, clientSecret: google.clientSecret };
+  if (github.clientId && github.clientSecret)
+    socialProviders.github = { clientId: github.clientId, clientSecret: github.clientSecret };
 
   // A signed-in user must always have a tenant: create the personal organization once, reuse it afterwards.
-  let createOrganization: (body: { name: string; slug: string; userId: string }) => Promise<{ id: string }>;
+  let createOrganization: (body: {
+    name: string;
+    slug: string;
+    userId: string;
+  }) => Promise<{ id: string }>;
   async function ensurePersonalOrg(userId: string): Promise<string> {
-    const found = await pool.query(`SELECT "organizationId" FROM member WHERE "userId" = $1 ORDER BY "createdAt" LIMIT 1`, [userId]);
+    const found = await pool.query(
+      `SELECT "organizationId" FROM member WHERE "userId" = $1 ORDER BY "createdAt" LIMIT 1`,
+      [userId],
+    );
     if (found.rows[0]) return found.rows[0].organizationId;
-    const org = await createOrganization({ name: "My project", slug: `personal-${userId.toLowerCase()}`, userId });
+    const org = await createOrganization({
+      name: "My project",
+      slug: `personal-${userId.toLowerCase()}`,
+      userId,
+    });
     return org.id;
   }
 
   // One project creation per user at a time, from the cap check to the insert, for every way of creating one. No DB connection is held while waiting.
   // At most N verification emails per address per window, whichever route asks (sign-up, sign-in, resend) and from however many clients.
   // The mail is dropped silently, so responses are the same for every address and nothing can be enumerated.
-  const perEmail = createWindowCounter({ windowMs: config.verificationResendPerEmailWindowSeconds * 1000, max: config.verificationResendPerEmailMax });
+  const perEmail = createWindowCounter({
+    windowMs: config.verificationResendPerEmailWindowSeconds * 1000,
+    max: config.verificationResendPerEmailMax,
+  });
   const createLock = new KeyedLock();
   const held = new Map<string, () => void>();
-  const releaseProjectLock = (userId: string) => { held.get(userId)?.(); held.delete(userId); };
+  const releaseProjectLock = (userId: string) => {
+    held.get(userId)?.();
+    held.delete(userId);
+  };
 
   const auth = betterAuth({
     database: pool,
@@ -49,7 +82,13 @@ export function createAuth({ pool, config, mailer, log, social }: { pool: Pool; 
       accountLinking: { enabled: true, disableImplicitLinking: true, allowDifferentEmails: true },
     },
     databaseHooks: {
-      user: { create: { after: async (user) => { await ensurePersonalOrg(user.id); } } },
+      user: {
+        create: {
+          after: async (user) => {
+            await ensurePersonalOrg(user.id);
+          },
+        },
+      },
       // Also covers users created before the hook existed: no session ever starts without an active tenant.
       session: {
         create: {
@@ -70,7 +109,10 @@ export function createAuth({ pool, config, mailer, log, social }: { pool: Pool; 
         if (!perEmail.allow(user.email.toLowerCase())) return;
         // Whatever callbackURL the client sent, the user lands on the dashboard's /verify-email page (errors add ?error=...).
         const link = new URL(url);
-        link.searchParams.set("callbackURL", `${config.dashboardOrigin}/verify-email?status=verified`);
+        link.searchParams.set(
+          "callbackURL",
+          `${config.dashboardOrigin}/verify-email?status=verified`,
+        );
         // Not awaited: the response time must not reveal whether the address exists.
         void mailer?.({
           to: user.email,
@@ -86,15 +128,28 @@ export function createAuth({ pool, config, mailer, log, social }: { pool: Pool; 
           beforeCreateOrganization: async ({ user }) => {
             if (!user?.id) return;
             held.set(user.id, await createLock.acquire(user.id, config.projectCreateLockMs));
-            if (await ownedProjectCount(pool, user.id).catch((err) => { releaseProjectLock(user.id); throw err; }) >= config.maxProjectsPerUser) {
+            if (
+              (await ownedProjectCount(pool, user.id).catch((err) => {
+                releaseProjectLock(user.id);
+                throw err;
+              })) >= config.maxProjectsPerUser
+            ) {
               releaseProjectLock(user.id);
-              throw new APIError("UNPROCESSABLE_ENTITY", { message: "Project limit reached.", code: "PROJECT_LIMIT" });
+              throw new APIError("UNPROCESSABLE_ENTITY", {
+                message: "Project limit reached.",
+                code: "PROJECT_LIMIT",
+              });
             }
           },
-          afterCreateOrganization: async ({ user }) => { if (user?.id) releaseProjectLock(user.id); },
+          afterCreateOrganization: async ({ user }) => {
+            if (user?.id) releaseProjectLock(user.id);
+          },
           // Deleting only the organization row would orphan the tenant's documents, logs and keys; DELETE /api/dashboard/workspaces/:id does it all in one transaction.
           beforeDeleteOrganization: async () => {
-            throw new APIError("FORBIDDEN", { message: "Delete a project with DELETE /api/dashboard/workspaces/:id.", code: "USE_WORKSPACE_DELETE" });
+            throw new APIError("FORBIDDEN", {
+              message: "Delete a project with DELETE /api/dashboard/workspaces/:id.",
+              code: "USE_WORKSPACE_DELETE",
+            });
           },
         },
       }),

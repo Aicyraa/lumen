@@ -4,7 +4,8 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 // `aad` (the tenant id) is authenticated, so a blob copied to another tenant's row fails to decrypt.
 const keyBytes = (hex: string) => {
   const key = Buffer.from(hex, "hex");
-  if (!/^[0-9a-fA-F]{64}$/.test(hex) || key.length !== 32) throw new Error("encryption key must be 32 bytes (64 hex characters)");
+  if (!/^[0-9a-fA-F]{64}$/.test(hex) || key.length !== 32)
+    throw new Error("encryption key must be 32 bytes (64 hex characters)");
   return key;
 };
 
@@ -27,4 +28,5 @@ export function decryptSecret(blob: string, hexKey: string, aad: string): string
 }
 
 // 'sk-...a1b2': a leading letters-and-dash prefix (if any) plus the last four characters.
-export const maskKey = (key: string): string => `${key.match(/^[A-Za-z]+-/)?.[0] ?? ""}...${key.slice(-4)}`;
+export const maskKey = (key: string): string =>
+  `${key.match(/^[A-Za-z]+-/)?.[0] ?? ""}...${key.slice(-4)}`;

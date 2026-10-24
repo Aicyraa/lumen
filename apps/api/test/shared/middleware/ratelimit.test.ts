@@ -1,22 +1,35 @@
-import { afterEach, describe, expect, it } from "vitest";
 import request from "supertest";
+import { describe, expect, it } from "vitest";
 import type { Config } from "../../../src/shared/config/config.js";
-import { makeCtx, type Ctx, type Tenant } from "../../helpers/ctx.js";
+import { type Ctx, makeCtx, type Tenant } from "../../helpers/ctx.js";
 
 async function withCtx(overrides: Partial<Config>, fn: (ctx: Ctx) => Promise<void>) {
   const ctx = await makeCtx({ maxRequestsPerMonth: 100000, ...overrides });
-  try { await fn(ctx); } finally { await ctx.close(); }
+  try {
+    await fn(ctx);
+  } finally {
+    await ctx.close();
+  }
 }
-const chat = (ctx: Ctx, t: Tenant) => request(ctx.app).post("/v1/chat").set("x-api-key", t.apiKey).send({ query: "q" });
-const tryIt = (ctx: Ctx, t: Tenant) => request(ctx.app).post("/api/dashboard/try").set("cookie", t.cookie).send({ query: "q" });
+const chat = (ctx: Ctx, t: Tenant) =>
+  request(ctx.app).post("/v1/chat").set("x-api-key", t.apiKey).send({ query: "q" });
+const tryIt = (ctx: Ctx, t: Tenant) =>
+  request(ctx.app).post("/api/dashboard/try").set("cookie", t.cookie).send({ query: "q" });
 
 describe("requireSession on /api/dashboard/*", () => {
   it("rejects missing sessions with 401 unauthorized and lets a signed-in user list only their documents", async () => {
     await withCtx({ ratePerMinute: 1000 }, async (ctx) => {
       const a = await ctx.createTenant("a");
       const b = await ctx.createTenant("b");
-      await ctx.pool.query("INSERT INTO documents (tenant_id, filename, status) VALUES ($1, 'mine.md', 'ready'), ($2, 'theirs.md', 'ready')", [a.tenantId, b.tenantId]);
-      const routes: ["get" | "post", string][] = [["get", "/api/dashboard/documents"], ["post", "/api/dashboard/documents"], ["post", "/api/dashboard/try"]];
+      await ctx.pool.query(
+        "INSERT INTO documents (tenant_id, filename, status) VALUES ($1, 'mine.md', 'ready'), ($2, 'theirs.md', 'ready')",
+        [a.tenantId, b.tenantId],
+      );
+      const routes: ["get" | "post", string][] = [
+        ["get", "/api/dashboard/documents"],
+        ["post", "/api/dashboard/documents"],
+        ["post", "/api/dashboard/try"],
+      ];
       for (const [method, path] of routes) {
         const res = await request(ctx.app)[method](path);
         expect(res.status).toBe(401);
@@ -32,14 +45,23 @@ describe("requireSession on /api/dashboard/*", () => {
     await withCtx({ ratePerMinute: 1000 }, async (ctx) => {
       const a = await ctx.createTenant("a");
       const b = await ctx.createTenant("b");
-      const up = await request(ctx.app).post("/api/dashboard/documents").set("cookie", a.cookie).attach("file", Buffer.from("hi"), "x.txt");
+      const up = await request(ctx.app)
+        .post("/api/dashboard/documents")
+        .set("cookie", a.cookie)
+        .attach("file", Buffer.from("hi"), "x.txt");
       expect(up.status).toBe(202);
-      const row = await ctx.pool.query("SELECT tenant_id FROM documents WHERE id = $1", [up.body.document_id]);
+      const row = await ctx.pool.query("SELECT tenant_id FROM documents WHERE id = $1", [
+        up.body.document_id,
+      ]);
       expect(row.rows[0].tenant_id).toBe(a.tenantId);
       await ctx.app.locals.idle();
-      const other = await request(ctx.app).delete(`/api/dashboard/documents/${up.body.document_id}`).set("cookie", b.cookie);
+      const other = await request(ctx.app)
+        .delete(`/api/dashboard/documents/${up.body.document_id}`)
+        .set("cookie", b.cookie);
       expect(other.status).toBe(404);
-      const own = await request(ctx.app).delete(`/api/dashboard/documents/${up.body.document_id}`).set("cookie", a.cookie);
+      const own = await request(ctx.app)
+        .delete(`/api/dashboard/documents/${up.body.document_id}`)
+        .set("cookie", a.cookie);
       expect(own.status).toBe(204);
     });
   });
@@ -50,7 +72,11 @@ describe("requireSession on /api/dashboard/*", () => {
       const res = await tryIt(ctx, a);
       expect(res.status).toBe(200);
       expect(res.body.answer).toBe("Stub answer [1]");
-      const rows = (await ctx.pool.query("SELECT api_key_id FROM request_logs WHERE tenant_id = $1", [a.tenantId])).rows;
+      const rows = (
+        await ctx.pool.query("SELECT api_key_id FROM request_logs WHERE tenant_id = $1", [
+          a.tenantId,
+        ])
+      ).rows;
       expect(rows).toEqual([{ api_key_id: null }]);
     });
   });
@@ -88,7 +114,10 @@ describe("per-tenant rate limit", () => {
       ctx.stub.calls.length = 0;
       expect((await chat(ctx, a)).status).toBe(429);
       expect(ctx.stub.calls).toHaveLength(0);
-      expect((await ctx.pool.query("SELECT 1 FROM request_logs WHERE tenant_id = $1", [a.tenantId])).rowCount).toBe(1);
+      expect(
+        (await ctx.pool.query("SELECT 1 FROM request_logs WHERE tenant_id = $1", [a.tenantId]))
+          .rowCount,
+      ).toBe(1);
     });
   });
 });

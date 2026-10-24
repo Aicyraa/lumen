@@ -1,7 +1,7 @@
 import { existsSync, readdirSync } from "node:fs";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
-import { makeCtx, type Ctx, type Tenant } from "../../helpers/ctx.js";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { type Ctx, makeCtx, type Tenant } from "../../helpers/ctx.js";
 
 let ctx: Ctx, a: Tenant, b: Tenant;
 beforeAll(async () => {
@@ -9,14 +9,22 @@ beforeAll(async () => {
   a = await ctx.createTenant("a");
   b = await ctx.createTenant("b");
 });
-afterAll(async () => { await ctx.close(); });
+afterAll(async () => {
+  await ctx.close();
+});
 
-const upload = (tenant: Tenant, name = "handbook.md", body = "# Handbook\nOpening hours are nine to five.", extra: Record<string, string> = {}) => {
+const upload = (
+  tenant: Tenant,
+  name = "handbook.md",
+  body = "# Handbook\nOpening hours are nine to five.",
+  extra: Record<string, string> = {},
+) => {
   let req = request(ctx.app).post("/v1/documents").set("x-api-key", tenant.apiKey);
   for (const [k, v] of Object.entries(extra)) req = req.field(k, v);
   return req.attach("file", Buffer.from(body), name);
 };
-const status = (tenant: Tenant, id: string) => request(ctx.app).get(`/v1/documents/${id}`).set("x-api-key", tenant.apiKey);
+const status = (tenant: Tenant, id: string) =>
+  request(ctx.app).get(`/v1/documents/${id}`).set("x-api-key", tenant.apiKey);
 async function settle(tenant: Tenant, id: string) {
   for (let i = 0; i < 50; i++) {
     const res = await status(tenant, id);
@@ -25,7 +33,8 @@ async function settle(tenant: Tenant, id: string) {
   }
   throw new Error("still processing");
 }
-const clean = () => ctx.pool.query("DELETE FROM documents WHERE tenant_id = ANY($1)", [[a.tenantId, b.tenantId]]);
+const clean = () =>
+  ctx.pool.query("DELETE FROM documents WHERE tenant_id = ANY($1)", [[a.tenantId, b.tenantId]]);
 
 describe("POST /v1/documents", () => {
   it("answers 202 processing, forwards to /internal/ingest with the key's tenant, then marks ready", async () => {
@@ -40,12 +49,19 @@ describe("POST /v1/documents", () => {
     const call = ctx.stub.calls.find((c) => c.name === "ingest");
     expect(call?.body).toMatchObject({ tenant_id: a.tenantId, document_id: res.body.document_id });
     expect(call?.file?.buffer.toString()).toBe("hello world");
-    const row = await ctx.pool.query("SELECT tenant_id, filename FROM documents WHERE id = $1", [res.body.document_id]);
+    const row = await ctx.pool.query("SELECT tenant_id, filename FROM documents WHERE id = $1", [
+      res.body.document_id,
+    ]);
     expect(row.rows[0]).toEqual({ tenant_id: a.tenantId, filename: "handbook.md" });
   });
 
   it("marks the document failed with the service's reason when ingest returns 422", async () => {
-    ctx.stub.handlers.ingest = () => ({ status: 422, body: { error: { code: "no_text_extracted", message: "No text could be extracted from the file." } } });
+    ctx.stub.handlers.ingest = () => ({
+      status: 422,
+      body: {
+        error: { code: "no_text_extracted", message: "No text could be extracted from the file." },
+      },
+    });
     const res = await upload(a, "scan.pdf");
     const final = await settle(a, res.body.document_id);
     expect(final.status).toBe("failed");
@@ -56,18 +72,26 @@ describe("POST /v1/documents", () => {
   it("marks the document failed on timeout, keeps the failed row visible and leaves no chunks", async () => {
     // like the real service: it had committed a chunk, then never answered; its DELETE endpoint removes the document row too
     ctx.stub.handlers.ingest = async ({ body }) => {
-      await ctx.pool.query("INSERT INTO chunks (tenant_id, document_id, content, embedding) VALUES ($1, $2, 'partial', $3)",
-        [body.tenant_id, body.document_id, `[${new Array(384).fill(0).join(",")}]`]);
+      await ctx.pool.query(
+        "INSERT INTO chunks (tenant_id, document_id, content, embedding) VALUES ($1, $2, 'partial', $3)",
+        [body.tenant_id, body.document_id, `[${new Array(384).fill(0).join(",")}]`],
+      );
       return new Promise(() => {});
     };
     ctx.stub.handlers.delete = async ({ query, params }) => {
-      await ctx.pool.query("DELETE FROM documents WHERE id = $1 AND tenant_id = $2", [params.id, query.tenant_id]);
+      await ctx.pool.query("DELETE FROM documents WHERE id = $1 AND tenant_id = $2", [
+        params.id,
+        query.tenant_id,
+      ]);
       return { status: 200, body: { deleted_chunks: 1 } };
     };
     const res = await upload(a, "slow.txt");
     const final = await settle(a, res.body.document_id);
     expect(final.status).toBe("failed");
-    expect((await ctx.pool.query("SELECT 1 FROM chunks WHERE document_id = $1", [res.body.document_id])).rowCount).toBe(0);
+    expect(
+      (await ctx.pool.query("SELECT 1 FROM chunks WHERE document_id = $1", [res.body.document_id]))
+        .rowCount,
+    ).toBe(0);
     ctx.stub.reset();
   });
 
@@ -83,7 +107,9 @@ describe("POST /v1/documents", () => {
     const res = await upload(a, "malware.exe");
     expect(res.status).toBe(415);
     expect(res.body.error.code).toBe("unsupported_type");
-    expect((await ctx.pool.query("SELECT 1 FROM documents WHERE tenant_id = $1", [a.tenantId])).rowCount).toBe(0);
+    expect(
+      (await ctx.pool.query("SELECT 1 FROM documents WHERE tenant_id = $1", [a.tenantId])).rowCount,
+    ).toBe(0);
   });
 
   it("rejects files over the configured size with 413 file_too_large", async () => {
@@ -110,19 +136,32 @@ describe("POST /v1/documents", () => {
 });
 
 describe("DELETE /v1/documents/:id", () => {
-  const insertDoc = async (tenantId: string) => (await ctx.pool.query(
-    "INSERT INTO documents (tenant_id, filename, status, chunk_count) VALUES ($1, 'x.md', 'ready', 1) RETURNING id", [tenantId])).rows[0].id;
+  const insertDoc = async (tenantId: string) =>
+    (
+      await ctx.pool.query(
+        "INSERT INTO documents (tenant_id, filename, status, chunk_count) VALUES ($1, 'x.md', 'ready', 1) RETURNING id",
+        [tenantId],
+      )
+    ).rows[0].id;
   const zeroVector = `[${new Array(384).fill(0).join(",")}]`;
 
   it("returns 204, calls the internal delete with the tenant, and the chunks cascade away", async () => {
     const id = await insertDoc(a.tenantId);
-    await ctx.pool.query("INSERT INTO chunks (tenant_id, document_id, content, embedding) VALUES ($1, $2, 'c', $3)", [a.tenantId, id, zeroVector]);
+    await ctx.pool.query(
+      "INSERT INTO chunks (tenant_id, document_id, content, embedding) VALUES ($1, $2, 'c', $3)",
+      [a.tenantId, id, zeroVector],
+    );
     ctx.stub.calls.length = 0;
     const res = await request(ctx.app).delete(`/v1/documents/${id}`).set("x-api-key", a.apiKey);
     expect(res.status).toBe(204);
-    expect(ctx.stub.calls.find((c) => c.name === "delete")).toMatchObject({ query: { tenant_id: a.tenantId }, params: { id } });
+    expect(ctx.stub.calls.find((c) => c.name === "delete")).toMatchObject({
+      query: { tenant_id: a.tenantId },
+      params: { id },
+    });
     expect((await ctx.pool.query("SELECT 1 FROM documents WHERE id = $1", [id])).rowCount).toBe(0);
-    expect((await ctx.pool.query("SELECT 1 FROM chunks WHERE document_id = $1", [id])).rowCount).toBe(0);
+    expect(
+      (await ctx.pool.query("SELECT 1 FROM chunks WHERE document_id = $1", [id])).rowCount,
+    ).toBe(0);
   });
 
   it("another tenant's id returns 404, leaves the row alone and never reaches the service", async () => {

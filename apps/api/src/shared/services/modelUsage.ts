@@ -19,11 +19,20 @@ export async function modelUsage(pool: Pool, tenantId: string, since: Date) {
      LEFT JOIN model_calls c ON c.tenant_model_id = m.id AND c.tenant_id = m.tenant_id AND c.created_at >= $2
      WHERE m.tenant_id = $1
      GROUP BY m.id
-     ORDER BY CASE m.tier WHEN 'cheap' THEN 0 WHEN 'expensive' THEN 1 ELSE 2 END, m.position`, [tenantId, since]);
-  const { rows: [{ total }] } = await pool.query(
-    "SELECT sum(cost_usd)::float8 AS total FROM model_calls WHERE tenant_id = $1 AND created_at >= $2", [tenantId, since]);
+     ORDER BY CASE m.tier WHEN 'cheap' THEN 0 WHEN 'expensive' THEN 1 ELSE 2 END, m.position`,
+    [tenantId, since],
+  );
+  const {
+    rows: [{ total }],
+  } = await pool.query(
+    "SELECT sum(cost_usd)::float8 AS total FROM model_calls WHERE tenant_id = $1 AND created_at >= $2",
+    [tenantId, since],
+  );
   return {
     total_cost_usd: total as number | null, // estimated provider cost; null when nothing was priced
-    models: rows.map(({ f_error, f_timeout, f_rate_limited, ...m }) => ({ ...m, failures: { error: f_error, timeout: f_timeout, rate_limited: f_rate_limited } })),
+    models: rows.map(({ f_error, f_timeout, f_rate_limited, ...m }) => ({
+      ...m,
+      failures: { error: f_error, timeout: f_timeout, rate_limited: f_rate_limited },
+    })),
   };
 }

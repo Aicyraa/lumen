@@ -1,24 +1,52 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
-import { makeCtx, type Ctx, type Tenant } from "../../helpers/ctx.js";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { type Ctx, makeCtx, type Tenant } from "../../helpers/ctx.js";
 
 // A fake Google: the "id token" is a JSON profile, accepted as is. Everything else (linking rules, sessions) is the real Better Auth.
 const fakeGoogle = {
-  clientId: "test-client", clientSecret: "test-secret",
+  clientId: "test-client",
+  clientSecret: "test-secret",
   verifyIdToken: async () => true,
-  getUserInfo: async (t: { idToken?: string }) => { const user = JSON.parse(t.idToken!); return { user, data: { sub: user.id } }; }, // sub: Google's account subject
+  getUserInfo: async (t: { idToken?: string }) => {
+    const user = JSON.parse(t.idToken!);
+    return { user, data: { sub: user.id } };
+  }, // sub: Google's account subject
 };
 let ctx: Ctx;
-beforeAll(async () => { ctx = await makeCtx({}, { social: { google: fakeGoogle } }); });
-afterAll(async () => { await ctx.close(); });
+beforeAll(async () => {
+  ctx = await makeCtx({}, { social: { google: fakeGoogle } });
+});
+afterAll(async () => {
+  await ctx.close();
+});
 
 const origin = () => ctx.config.dashboardOrigin;
-const profile = (email: string) => ({ id: `g-${randomUUID()}`, email, name: "G User", emailVerified: true });
+const profile = (email: string) => ({
+  id: `g-${randomUUID()}`,
+  email,
+  name: "G User",
+  emailVerified: true,
+});
 const idToken = (p: object) => ({ token: JSON.stringify(p) });
-const googleSignIn = (p: object) => request(ctx.app).post("/api/auth/sign-in/social").set("origin", origin()).send({ provider: "google", idToken: idToken(p) });
-const googleLink = (t: Tenant, p: object) => request(ctx.app).post("/api/auth/link-social").set("origin", origin()).set("cookie", t.cookie).send({ provider: "google", idToken: idToken(p) });
-const accounts = async (userId: string) => (await ctx.pool.query(`SELECT "providerId" FROM account WHERE "userId" = $1 ORDER BY "providerId"`, [userId])).rows.map((r: { providerId: string }) => r.providerId);
+const googleSignIn = (p: object) =>
+  request(ctx.app)
+    .post("/api/auth/sign-in/social")
+    .set("origin", origin())
+    .send({ provider: "google", idToken: idToken(p) });
+const googleLink = (t: Tenant, p: object) =>
+  request(ctx.app)
+    .post("/api/auth/link-social")
+    .set("origin", origin())
+    .set("cookie", t.cookie)
+    .send({ provider: "google", idToken: idToken(p) });
+const accounts = async (userId: string) =>
+  (
+    await ctx.pool.query(
+      `SELECT "providerId" FROM account WHERE "userId" = $1 ORDER BY "providerId"`,
+      [userId],
+    )
+  ).rows.map((r: { providerId: string }) => r.providerId);
 
 describe("no implicit account linking", () => {
   it("a brand-new email can sign up with the provider: user, session and a default project, no verification email needed", async () => {
@@ -26,7 +54,10 @@ describe("no implicit account linking", () => {
     const res = await googleSignIn(p);
     expect(res.status).toBe(200);
     expect(res.headers["set-cookie"]).toBeDefined();
-    const { rows } = await ctx.pool.query(`SELECT u.id, (SELECT count(*)::int FROM member m WHERE m."userId" = u.id) AS projects FROM "user" u WHERE u.email = $1`, [p.email]);
+    const { rows } = await ctx.pool.query(
+      `SELECT u.id, (SELECT count(*)::int FROM member m WHERE m."userId" = u.id) AS projects FROM "user" u WHERE u.email = $1`,
+      [p.email],
+    );
     expect(rows[0].projects).toBe(1);
     expect(ctx.mails.filter((m) => m.to === p.email)).toHaveLength(0);
   });
@@ -61,14 +92,22 @@ describe("explicit linking from a signed-in session", () => {
     expect(link.status).toBe(200);
     expect(await accounts(owner.userId)).toEqual(["credential", "google"]);
     // what the Account page shows: authClient.listAccounts()
-    const listed = await request(ctx.app).get("/api/auth/list-accounts").set("cookie", owner.cookie);
-    expect(listed.body.map((x: { providerId: string }) => x.providerId).sort()).toEqual(["credential", "google"]);
+    const listed = await request(ctx.app)
+      .get("/api/auth/list-accounts")
+      .set("cookie", owner.cookie);
+    expect(listed.body.map((x: { providerId: string }) => x.providerId).sort()).toEqual([
+      "credential",
+      "google",
+    ]);
     expect(JSON.stringify(listed.body)).not.toMatch(/accessToken|idToken|password/i);
 
     const viaGoogle = await googleSignIn(p);
     expect(viaGoogle.status).toBe(200);
     expect(viaGoogle.body.user.id).toBe(owner.userId);
-    const viaPassword = await request(ctx.app).post("/api/auth/sign-in/email").set("origin", origin()).send({ email: owner.email, password: "correct-horse-battery" });
+    const viaPassword = await request(ctx.app)
+      .post("/api/auth/sign-in/email")
+      .set("origin", origin())
+      .send({ email: owner.email, password: "correct-horse-battery" });
     expect(viaPassword.status).toBe(200);
     expect(viaPassword.body.user.id).toBe(owner.userId);
   });
@@ -84,7 +123,10 @@ describe("explicit linking from a signed-in session", () => {
 
   it("linking needs a session, and a provider account already linked to another user cannot be taken over", async () => {
     const p = profile(`free-${randomUUID()}@example.test`);
-    const anon = await request(ctx.app).post("/api/auth/link-social").set("origin", origin()).send({ provider: "google", idToken: idToken(p) });
+    const anon = await request(ctx.app)
+      .post("/api/auth/link-social")
+      .set("origin", origin())
+      .send({ provider: "google", idToken: idToken(p) });
     expect(anon.status).toBe(401);
     const a = await ctx.createTenant("a");
     const b = await ctx.createTenant("b");

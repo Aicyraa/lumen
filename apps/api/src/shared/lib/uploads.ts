@@ -11,7 +11,14 @@ export async function removeTenantUploads(dir: string, tenantId: string): Promis
   const prefix = `${safe(tenantId)}__`;
   let removed = 0;
   for (const name of await readdir(dir).catch(() => [] as string[])) {
-    if (name.startsWith(prefix) && await unlink(join(dir, name)).then(() => true, () => false)) removed++;
+    if (
+      name.startsWith(prefix) &&
+      (await unlink(join(dir, name)).then(
+        () => true,
+        () => false,
+      ))
+    )
+      removed++;
   }
   return removed;
 }

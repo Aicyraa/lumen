@@ -1,15 +1,25 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
-import { makeCtx, type Ctx, type Tenant } from "../../helpers/ctx.js";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { type Ctx, makeCtx, type Tenant } from "../../helpers/ctx.js";
 import { insertLog } from "../../helpers/seed.js";
 
 let ctx: Ctx, a: Tenant, b: Tenant;
-beforeAll(async () => { ctx = await makeCtx(); a = await ctx.createTenant("a"); b = await ctx.createTenant("b"); });
-afterAll(async () => { await ctx.close(); });
+beforeAll(async () => {
+  ctx = await makeCtx();
+  a = await ctx.createTenant("a");
+  b = await ctx.createTenant("b");
+});
+afterAll(async () => {
+  await ctx.close();
+});
 
-const send = (t: Tenant | null, body: object) => { const r = request(ctx.app).post("/api/dashboard/feedback").send(body); return t ? r.set("cookie", t.cookie) : r; };
-const feedbackOf = async (id: string) => (await ctx.pool.query("SELECT feedback FROM request_logs WHERE id = $1", [id])).rows[0].feedback;
+const send = (t: Tenant | null, body: object) => {
+  const r = request(ctx.app).post("/api/dashboard/feedback").send(body);
+  return t ? r.set("cookie", t.cookie) : r;
+};
+const feedbackOf = async (id: string) =>
+  (await ctx.pool.query("SELECT feedback FROM request_logs WHERE id = $1", [id])).rows[0].feedback;
 
 describe("POST /api/dashboard/feedback (Try it 'Helpful?')", () => {
   it("needs a session", async () => {
@@ -34,7 +44,12 @@ describe("POST /api/dashboard/feedback (Try it 'Helpful?')", () => {
     expect((await send(a, { request_id: randomUUID(), rating: 1 })).status).toBe(404);
   });
 
-  it.each([{ request_id: "nope", rating: 1 }, { rating: 1 }, { request_id: randomUUID(), rating: 5 }, { request_id: randomUUID() }])("rejects %j with 422", async (body) => {
+  it.each([
+    { request_id: "nope", rating: 1 },
+    { rating: 1 },
+    { request_id: randomUUID(), rating: 5 },
+    { request_id: randomUUID() },
+  ])("rejects %j with 422", async (body) => {
     const res = await send(a, body);
     expect([res.status, res.body.error.code]).toEqual([422, "invalid_request"]);
   });

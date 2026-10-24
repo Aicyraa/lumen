@@ -10,6 +10,9 @@ describe("createPool", () => {
       const started = Date.now();
       await expect(pool.query("SELECT 1")).rejects.toThrow(/timeout/i);
       expect(Date.now() - started).toBeLessThan(2000);
-    } finally { held.forEach((c) => c.release()); await pool.end(); }
+    } finally {
+      for (const c of held) c.release();
+      await pool.end();
+    }
   });
 });

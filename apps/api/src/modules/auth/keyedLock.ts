@@ -7,13 +7,20 @@ export class KeyedLock {
   async acquire(key: string, ttlMs: number): Promise<() => void> {
     const prev = this.tails.get(key) ?? Promise.resolve();
     let release!: () => void;
-    const mine = new Promise<void>((resolve) => { release = resolve; });
+    const mine = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     const tail = prev.then(() => mine);
     this.tails.set(key, tail);
-    void tail.then(() => { if (this.tails.get(key) === tail) this.tails.delete(key); });
+    void tail.then(() => {
+      if (this.tails.get(key) === tail) this.tails.delete(key);
+    });
     await prev;
     const timer = setTimeout(release, ttlMs);
     timer.unref();
-    return () => { clearTimeout(timer); release(); };
+    return () => {
+      clearTimeout(timer);
+      release();
+    };
   }
 }

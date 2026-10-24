@@ -1,17 +1,35 @@
-import { afterEach, describe, expect, it } from "vitest";
 import request from "supertest";
-import { makeCtx, type Ctx, type Tenant } from "../../helpers/ctx.js";
+import { afterEach, describe, expect, it } from "vitest";
+import { type Ctx, makeCtx, type Tenant } from "../../helpers/ctx.js";
 
 const KEY_GOOD = "sk-good-endpoint-GGGG1111";
 const KEY_FLIP = "sk-flipped-endpoint-FFFF2222";
 let ctx: Ctx;
-afterEach(async () => { await ctx.close(); });
+afterEach(async () => {
+  await ctx.close();
+});
 
-const chat = (t: Tenant) => request(ctx.app).post("/v1/chat").set("x-api-key", t.apiKey).send({ query: "q" });
-const sent = () => ctx.stub.calls.filter((c) => c.name === "query").at(-1)?.body as { models?: Record<string, { model_id: string }[]> } | undefined;
-const status = async (t: Tenant, id: string) => (await ctx.pool.query("SELECT status FROM tenant_models WHERE id = $1 AND tenant_id = $2", [id, t.tenantId])).rows[0].status;
+const chat = (t: Tenant) =>
+  request(ctx.app).post("/v1/chat").set("x-api-key", t.apiKey).send({ query: "q" });
+const sent = () =>
+  ctx.stub.calls.filter((c) => c.name === "query").at(-1)?.body as
+    | { models?: Record<string, { model_id: string }[]> }
+    | undefined;
+const status = async (t: Tenant, id: string) =>
+  (
+    await ctx.pool.query("SELECT status FROM tenant_models WHERE id = $1 AND tenant_id = $2", [
+      id,
+      t.tenantId,
+    ])
+  ).rows[0].status;
 const setup = async (overrides = {}) => {
-  ctx = await makeCtx({ ratePerMinute: 1000, globalLlmCapPerMinute: 1000, maxRequestsPerMonth: 1000, endpointGuardCacheTtlMs: 0, ...overrides });
+  ctx = await makeCtx({
+    ratePerMinute: 1000,
+    globalLlmCapPerMinute: 1000,
+    maxRequestsPerMonth: 1000,
+    endpointGuardCacheTtlMs: 0,
+    ...overrides,
+  });
   const t = await ctx.createTenant("t");
   const good = await ctx.seedModel(t, "cheap", "good", KEY_GOOD, "https://good.example.test/v1");
   const flip = await ctx.seedModel(t, "cheap", "flip", KEY_FLIP, "https://flip.example.test/v1");
@@ -39,7 +57,13 @@ describe("rule 12 at use time: endpoints are re-checked before a key is sent", (
   it("only touches the calling tenant's rows", async () => {
     const { t, flip } = await setup();
     const other = await ctx.createTenant("other");
-    const theirs = await ctx.seedModel(other, "cheap", "theirs", KEY_FLIP, "https://flip.example.test/v1");
+    const theirs = await ctx.seedModel(
+      other,
+      "cheap",
+      "theirs",
+      KEY_FLIP,
+      "https://flip.example.test/v1",
+    );
     ctx.dns.set("flip.example.test", "10.0.0.7");
     await chat(t);
     expect(await status(t, flip)).toBe("failing");
@@ -74,11 +98,13 @@ describe("rule 12 at use time: endpoints are re-checked before a key is sent", (
 
   it("caches a host's verdict for endpointGuardCacheTtlMs, and re-resolves every time when the TTL is 0", async () => {
     const { t } = await setup({ endpointGuardCacheTtlMs: 60_000 });
-    await chat(t); await chat(t);
+    await chat(t);
+    await chat(t);
     expect(ctx.dnsCalls.filter((h) => h === "good.example.test")).toHaveLength(1);
     await ctx.close();
     const fresh = await setup({ endpointGuardCacheTtlMs: 0 });
-    await chat(fresh.t); await chat(fresh.t);
+    await chat(fresh.t);
+    await chat(fresh.t);
     expect(ctx.dnsCalls.filter((h) => h === "good.example.test")).toHaveLength(2);
   });
 });

@@ -1,12 +1,12 @@
 import "./shared/config/env.js";
-import { createLogger } from "./shared/lib/logger.js";
 import { createApp } from "./app.js";
 import { createAuth } from "./modules/auth/auth.js";
-import { loadConfig, type Config } from "./shared/config/config.js";
-import { createPool } from "./shared/db/pool.js";
-import { createRagClient } from "./shared/services/rag.js";
 import { createMailer } from "./modules/auth/mailer.js";
 import { sweepInterrupted } from "./modules/documents/sweep.js";
+import { type Config, loadConfig } from "./shared/config/config.js";
+import { createPool } from "./shared/db/pool.js";
+import { createLogger } from "./shared/lib/logger.js";
+import { createRagClient } from "./shared/services/rag.js";
 
 const log = createLogger();
 
@@ -25,8 +25,16 @@ await sweepInterrupted({ pool, config, log });
 
 const app = createApp({ config, pool, auth, rag, log });
 const port = Number(process.env.PORT || new URL(config.authUrl).port || 3000);
-const server = app.listen(port, () => log.info({ port, devRoutes: config.devRoutes }, "api listening"));
+const server = app.listen(port, () =>
+  log.info({ port, devRoutes: config.devRoutes }, "api listening"),
+);
 
 for (const sig of ["SIGINT", "SIGTERM"]) {
-  process.on(sig, () => server.close(async () => { await app.locals.idle(); await pool.end(); process.exit(0); }));
+  process.on(sig, () =>
+    server.close(async () => {
+      await app.locals.idle();
+      await pool.end();
+      process.exit(0);
+    }),
+  );
 }
