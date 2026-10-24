@@ -16,6 +16,8 @@ export const fmtCost = (n: number | null | undefined) =>
 
 export const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+export const fmtDateLong = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 export const fmtTime = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 export const fmtDay = (isoDate: string) =>

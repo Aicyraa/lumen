@@ -1977,3 +1977,39 @@ table.data.compact td {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* account */
+.acct-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: stretch;
+}
+.acct-methods {
+  grid-column: 1 / -1;
+}
+.acct-name {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+.acct-totals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+  margin: 0;
+}
+.acct-total {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.acct-total dd {
+  margin: 0;
+  font-size: 32px;
+}
+@media (max-width: 900px) {
+  .acct-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
