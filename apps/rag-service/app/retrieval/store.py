@@ -1,5 +1,4 @@
 import os
-import re
 
 import numpy as np
 import psycopg
@@ -44,55 +43,75 @@ def add_chunks(tenant_id: str, document_id: str, chunks: list[str], vectors: np.
             )
 
 
+def keyword_search(
+    tenant_id: str, query_vector: np.ndarray, query_text: str, k: int
+) -> list[tuple[int, str, str, float, float]]:
+    """Tenant-local BM25 hits, with cosine and BM25 scores kept separate."""
+    cfg = load_config()["retrieval"]
+    with _connect() as conn:
+        # Corpus statistics must be tenant-local too: another tenant cannot affect ranking.
+        rows = conn.execute(
+            """
+            WITH corpus AS MATERIALIZED (
+                SELECT id, document_id, content, embedding, to_tsvector('english', content) AS terms
+                FROM chunks WHERE tenant_id = %(tenant)s
+            ), terms AS MATERIALIZED (
+                SELECT c.id, t.lexeme, cardinality(t.positions)::double precision AS tf
+                FROM corpus c CROSS JOIN LATERAL unnest(c.terms) t
+            ), lengths AS (
+                SELECT c.id, coalesce(sum(t.tf), 0)::double precision AS length
+                FROM corpus c LEFT JOIN terms t ON t.id = c.id GROUP BY c.id
+            ), stats AS (
+                SELECT count(*)::double precision AS n, avg(length) AS avg_length FROM lengths
+            ), frequencies AS (
+                SELECT lexeme, count(*)::double precision AS n FROM terms
+                WHERE lexeme = ANY(tsvector_to_array(to_tsvector('english', %(query)s)))
+                GROUP BY lexeme
+            ), ranked AS (
+                SELECT t.id, sum(
+                    ln(1 + (s.n - f.n + 0.5) / (f.n + 0.5)) *
+                    (t.tf * (%(k1)s + 1)) /
+                    (t.tf + %(k1)s * (1 - %(b)s + %(b)s * l.length / nullif(s.avg_length, 0)))
+                ) AS bm25
+                FROM terms t JOIN frequencies f ON f.lexeme = t.lexeme
+                JOIN lengths l ON l.id = t.id CROSS JOIN stats s GROUP BY t.id
+            )
+            SELECT c.id, c.document_id, c.content, 1 - (c.embedding <=> %(vector)s), r.bm25
+            FROM ranked r JOIN corpus c ON c.id = r.id ORDER BY r.bm25 DESC, c.id LIMIT %(k)s
+            """,
+            {
+                "tenant": tenant_id,
+                "query": query_text,
+                "vector": query_vector,
+                "k": k,
+                "k1": cfg["bm25_k1"],
+                "b": cfg["bm25_b"],
+            },
+        ).fetchall()
+    return [(r[0], str(r[1]), r[2], float(r[3]), float(r[4])) for r in rows]
+
+
 def search(
     tenant_id: str, query_vector: np.ndarray, k: int, *, query_text: str = ""
 ) -> list[tuple[int, str, str, float]]:
-    """Top-k tenant chunks; optional keyword/vector rank fusion, with cosine scores preserved."""
-    terms = " OR ".join(re.findall(r"\w+(?:-\w+)*", query_text))
+    """Top-k tenant chunks; BM25/vector rank fusion preserves exposed cosine scores."""
+    if query_text.strip():
+        cfg = load_config()["retrieval"]
+        limit = max(k, cfg["candidate_limit"])
+        dense = search(tenant_id, query_vector, limit)
+        sparse = keyword_search(tenant_id, query_vector, query_text, limit)
+        hits, ranks = {}, {}
+        for ranking in (dense, sparse):
+            for rank, hit in enumerate(ranking, 1):
+                hits[hit[0]] = hit[:4]
+                ranks[hit[0]] = ranks.get(hit[0], 0) + 1 / (cfg["rrf_rank_constant"] + rank)
+        return sorted(hits.values(), key=lambda h: (-ranks[h[0]], -h[3], h[0]))[:k]
     with _connect() as conn:
-        if terms:
-            cfg = load_config()["retrieval"]
-            # Rank fusion combines word matches and meaning without treating unlike scores as comparable.
-            rows = conn.execute(
-                """
-                WITH semantic AS (
-                    SELECT id, row_number() OVER (ORDER BY embedding <=> %(vector)s, id) AS rank
-                    FROM chunks WHERE tenant_id = %(tenant)s
-                    ORDER BY embedding <=> %(vector)s, id LIMIT %(candidates)s
-                ), lexical AS (
-                    SELECT id, row_number() OVER (
-                        ORDER BY ts_rank(to_tsvector('english', content),
-                            websearch_to_tsquery('english', %(terms)s)) DESC, id
-                    ) AS rank
-                    FROM chunks WHERE tenant_id = %(tenant)s
-                        AND to_tsvector('english', content) @@ websearch_to_tsquery('english', %(terms)s)
-                    ORDER BY rank LIMIT %(candidates)s
-                ), fused AS (
-                    SELECT coalesce(s.id, l.id) AS id,
-                        coalesce(1.0 / (%(constant)s + s.rank), 0) +
-                        coalesce(1.0 / (%(constant)s + l.rank), 0) AS rank
-                    FROM semantic s FULL JOIN lexical l ON l.id = s.id
-                )
-                SELECT c.id, c.document_id, c.content, 1 - (c.embedding <=> %(vector)s) AS score
-                FROM fused f JOIN chunks c ON c.id = f.id
-                WHERE c.tenant_id = %(tenant)s
-                ORDER BY f.rank DESC, c.embedding <=> %(vector)s, c.id LIMIT %(k)s
-                """,
-                {
-                    "vector": query_vector,
-                    "tenant": tenant_id,
-                    "terms": terms,
-                    "candidates": max(k, cfg["candidate_limit"]),
-                    "constant": cfg["rrf_rank_constant"],
-                    "k": k,
-                },
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                "SELECT id, document_id, content, 1 - (embedding <=> %s) AS score FROM chunks"
-                " WHERE tenant_id = %s ORDER BY embedding <=> %s, id LIMIT %s",
-                (query_vector, tenant_id, query_vector, k),
-            ).fetchall()
+        rows = conn.execute(
+            "SELECT id, document_id, content, 1 - (embedding <=> %s) AS score FROM chunks"
+            " WHERE tenant_id = %s ORDER BY embedding <=> %s, id LIMIT %s",
+            (query_vector, tenant_id, query_vector, k),
+        ).fetchall()
     return [(r[0], str(r[1]), r[2], float(r[3])) for r in rows]
 
 

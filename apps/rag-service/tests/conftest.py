@@ -1,4 +1,6 @@
+import json
 import os
+import re
 from pathlib import Path
 from urllib.parse import urlparse, urlunparse
 
@@ -103,7 +105,17 @@ class FakeCaller:
             latency_ms=5,
         )
         if outcome == "ok":
-            a.text = "Fake answer [1]"
+            first = re.search(r"\[1\] (.*?)(?=\n\[\d+\] |\n\nQuestion:)", user, re.S)
+            a.text = json.dumps(
+                {
+                    "claims": [
+                        {
+                            "text": "Fake answer",
+                            "evidence": [{"passage": 1, "quote": first.group(1)}],
+                        }
+                    ]
+                }
+            )
             a.tokens_in, a.tokens_out = self.tokens.get(m["model_id"], (100, 10))
         for k, v in self.extra.get(m["model_id"], {}).items():
             setattr(a, k, v)

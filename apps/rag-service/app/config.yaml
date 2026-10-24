@@ -4,6 +4,8 @@ embedding:
 retrieval:
   candidate_limit: 40
   rrf_rank_constant: 60
+  bm25_k1: 1.2
+  bm25_b: 0.75
 
 # First local calibration: five synthetic campus PDFs; broader validation is still needed.
 router:
@@ -22,6 +24,7 @@ llm:
   connect_timeout_seconds: 5
   timeout_seconds: 30           # read timeout per call; a slow model counts as a timeout attempt
   max_output_tokens: 1024
+  answer_repair_attempts: 1
   temperature: 0
   omit_temperature_providers: [openai, anthropic]   # their newer models reject a fixed temperature
   rate_limit_retry_seconds: 2   # wait before the single retry after a provider 429
