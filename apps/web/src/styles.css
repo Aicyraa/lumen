@@ -340,3 +340,8 @@ html.snap-home { scroll-snap-type: y proximity; }
   .frame-nav { gap: 14px; }
 }
 @media (max-width: 640px) { .snap-section { min-height: 100dvh; } .hero-foot .row-gap, .hero-foot .btn { width: 100%; } }
+.doc-content ol.doc-list { list-style: decimal; padding-left: 22px; }
+.doc-content ul.doc-list { list-style: disc; padding-left: 22px; }
+.doc-content pre.code { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 24px; }
+.doc-content .codewrap pre.code { padding-right: 88px; }
+.doc-content .endpoint { color: var(--text-2); }
