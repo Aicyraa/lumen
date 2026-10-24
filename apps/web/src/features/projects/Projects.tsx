@@ -1,13 +1,16 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
-import { post } from "../../shared/lib/api";
+import { api, post } from "../../shared/lib/api";
+import { authClient } from "../../shared/lib/auth-client";
 import { fmtDate, fmtInt } from "../../shared/lib/format";
 import { Reveal } from "../../shared/motion/motion";
 import { Dialog } from "../../shared/ui/Dialog";
-import { AnimateIcon, Plus } from "../../shared/ui/icons";
+import { Plus } from "../../shared/ui/icons";
 import { Loading } from "../../shared/ui/Loading";
 import { ErrorText } from "../../shared/ui/ui";
+import type { AccountInfo } from "../account/types";
+import { readSession } from "../auth/sessionShape";
 import { useWorkspaces } from "./projectsContext";
 
 export function Projects() {
@@ -42,6 +45,21 @@ export function Projects() {
     create.mutate();
   };
   const list = ws.data ?? [];
+  const userId = readSession(authClient.useSession()).userId;
+  // Optional: the strip falls back to sums over the project list when the account data is not available.
+  const account = useQuery({
+    queryKey: ["account", userId],
+    enabled: !!userId,
+    retry: false,
+    queryFn: () => api<AccountInfo>("/api/dashboard/account"),
+  });
+  const acc = account.data;
+  const docs = acc?.totals?.documents ?? list.reduce((a, p) => a + p.documents, 0);
+  const reqs =
+    acc?.totals?.requests_this_month ?? list.reduce((a, p) => a + p.requests_this_month, 0);
+  const projectsText = acc?.projects
+    ? `${fmtInt(acc.projects.owned)} of ${fmtInt(acc.projects.max)}`
+    : fmtInt(list.length);
 
   return (
     <div className="stack">
@@ -50,17 +68,27 @@ export function Projects() {
           <div className="label">YOUR PROJECTS</div>
           <h1 className="page-title">Projects</h1>
         </div>
-        <AnimateIcon animateOnHover asChild>
-          <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
-            <Plus size={16} />
-            Create project
-          </button>
-        </AnimateIcon>
       </div>
       <p className="body muted-2 maxw">
         Each project has its own documents, API keys, models, requests and analytics. Nothing is
         shared between projects.
       </p>
+      {ws.isSuccess && (
+        <section className="strip" aria-label="Summary">
+          {(
+            [
+              ["Projects", projectsText],
+              ["Documents", fmtInt(docs)],
+              ["Requests this month", fmtInt(reqs)],
+            ] as const
+          ).map(([k, v]) => (
+            <div key={k} className="strip-item">
+              <div className="label">{k}</div>
+              <div className="strip-value">{v}</div>
+            </div>
+          ))}
+        </section>
+      )}
       {ws.isPending && <Loading />}
       {ws.isError && (
         <div>
@@ -79,7 +107,7 @@ export function Projects() {
             <Link to={`/projects/${p.slug}/documents`} className="card project-card">
               <div className="row-between">
                 <h2 className="card-title-sm">{p.name}</h2>
-                <span className="mono small muted-3">{p.role}</span>
+                <span className="badge">{p.role}</span>
               </div>
               <p className="small muted-2 project-desc">{p.description ?? "No description"}</p>
               <dl className="kv">
@@ -92,10 +120,24 @@ export function Projects() {
                   <dd>{fmtInt(p.requests_this_month)}</dd>
                 </div>
               </dl>
-              <div className="mono small muted-3">Created {fmtDate(p.created_at)}</div>
+              <div className="mono small muted-3 project-foot">Created {fmtDate(p.created_at)}</div>
             </Link>
           </Reveal>
         ))}
+        {ws.isSuccess && (
+          <li>
+            <button
+              type="button"
+              className="card create-card"
+              aria-label="Create project"
+              onClick={() => setCreating(true)}
+            >
+              <Plus size={22} />
+              <span>Create project</span>
+              <span className="small muted-3">Its own documents, keys and models.</span>
+            </button>
+          </li>
+        )}
       </ul>
       {creating && (
         <Dialog title="Create project" label="NEW PROJECT" onClose={close}>
