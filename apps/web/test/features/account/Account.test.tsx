@@ -98,7 +98,9 @@ describe("Account", () => {
   });
 
   it("shows why linking failed", async () => {
-    mockFetch(() => body({ providers: [{ provider: "email", linked_at: "2026-10-01T08:00:00Z" }] }));
+    mockFetch(() =>
+      body({ providers: [{ provider: "email", linked_at: "2026-10-01T08:00:00Z" }] }),
+    );
     linkSocial.mockResolvedValue({
       data: null,
       error: { status: 400, message: "Provider is not configured" },
@@ -119,7 +121,9 @@ describe("Account", () => {
 
   it("shows a loading status, then an error with Retry that refetches", async () => {
     let fail = true;
-    mockFetch(() => (fail ? reply(500, { error: { code: "boom", message: "Server error." } }) : body()));
+    mockFetch(() =>
+      fail ? reply(500, { error: { code: "boom", message: "Server error." } }) : body(),
+    );
     renderWithProviders(<Account />);
     expect(screen.getByRole("status")).toHaveTextContent("Loading your account");
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not load your account");

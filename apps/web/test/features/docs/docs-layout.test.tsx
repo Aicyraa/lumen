@@ -1,6 +1,6 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../../src/shared/lib/auth-client", () => ({
@@ -36,55 +36,113 @@ afterEach(() => {
   (window as unknown as { IntersectionObserver: unknown }).IntersectionObserver = original;
 });
 
-const view = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
+function Where() {
+  return <div data-testid="hash">{useLocation().hash}</div>;
+}
+const view = (ui: React.ReactElement, route = "/") =>
+  render(
+    <MemoryRouter initialEntries={[route]}>
+      {ui}
+      <Where />
+    </MemoryRouter>,
+  );
+const NAMES = [
+  "Getting started",
+  "Authentication",
+  "Chat",
+  "Documents",
+  "Feedback",
+  "Errors",
+  "Limits",
+];
 
-describe("Docs layout", () => {
-  it("has a table of contents with a link to every grouped section, and the sections exist", () => {
+describe("Docs tabs", () => {
+  it("has one tab per section, in order, with the first selected and exactly one panel visible", () => {
     view(<Docs />);
-    const toc = screen.getByRole("navigation", { name: "On this page" });
-    const wanted = [
-      "Getting started",
-      "Authentication",
-      "Chat",
-      "Documents",
-      "Feedback",
-      "Errors",
-      "Limits",
-    ];
-    expect(
-      within(toc)
-        .getAllByRole("link")
-        .map((a) => a.textContent),
-    ).toEqual(wanted);
-    for (const l of within(toc).getAllByRole("link")) {
-      const id = l.getAttribute("href")!.slice(1);
-      expect(document.getElementById(id)).not.toBeNull();
-      expect(document.getElementById(id)!.tagName).toBe("SECTION");
-    }
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs.map((t) => t.textContent)).toEqual(NAMES);
+    expect(tabs[0]).toHaveAttribute("aria-selected", "true");
+    expect(tabs.slice(1).every((t) => t.getAttribute("aria-selected") === "false")).toBe(true);
+    const panels = screen.getAllByRole("tabpanel");
+    expect(panels).toHaveLength(1);
+    expect(panels[0]).toHaveAccessibleName("Getting started");
+    expect(tabs[0]).toHaveAttribute("aria-controls", panels[0].id);
+    expect(screen.getByRole("tablist")).toBeInTheDocument();
   });
 
-  it("scroll-spy marks the section in view as current in the table of contents", () => {
+  it("selecting a tab shows only its panel and puts the section in the URL hash", async () => {
     view(<Docs />);
-    const toc = screen.getByRole("navigation", { name: "On this page" });
-    expect(within(toc).getByRole("link", { name: "Getting started" })).toHaveAttribute(
-      "aria-current",
+    await userEvent.click(screen.getByRole("tab", { name: "Errors" }));
+    expect(screen.getByTestId("hash")).toHaveTextContent("#errors");
+    expect(screen.getByRole("tab", { name: "Errors" })).toHaveAttribute("aria-selected", "true");
+    const panels = screen.getAllByRole("tabpanel");
+    expect(panels).toHaveLength(1);
+    expect(panels[0]).toHaveAccessibleName("Errors");
+    expect(screen.getByRole("table", { name: "Error codes" })).toBeInTheDocument();
+    expect(screen.getByText("Quickstart")).not.toBeVisible();
+  });
+
+  it("opens the tab named in the hash, so links work (also in the page's own URL)", () => {
+    view(<Docs />, "/docs#chat");
+    expect(screen.getByRole("tab", { name: "Chat" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getAllByRole("tabpanel")[0]).toHaveAccessibleName("Chat");
+  });
+
+  it("falls back to the first tab for an unknown hash", () => {
+    view(<Docs />, "/docs#nope");
+    expect(screen.getByRole("tab", { name: "Getting started" })).toHaveAttribute(
+      "aria-selected",
       "true",
-    ); // first by default
-    const errors = document.getElementById("errors")!;
+    );
+  });
+
+  it("is keyboard operable: arrows, Home and End move focus and select; only the selected tab is in the tab order", async () => {
+    view(<Docs />);
+    const user = userEvent.setup();
+    const tab = (n: string) => screen.getByRole("tab", { name: n });
+    expect(tab("Getting started")).toHaveAttribute("tabindex", "0");
+    expect(tab("Chat")).toHaveAttribute("tabindex", "-1");
+    tab("Getting started").focus();
+    await user.keyboard("{ArrowRight}");
+    expect(tab("Authentication")).toHaveFocus();
+    expect(tab("Authentication")).toHaveAttribute("aria-selected", "true");
+    await user.keyboard("{ArrowDown}");
+    expect(tab("Chat")).toHaveFocus();
+    await user.keyboard("{End}");
+    expect(tab("Limits")).toHaveFocus();
+    await user.keyboard("{ArrowRight}"); // wraps
+    expect(tab("Getting started")).toHaveFocus();
+    await user.keyboard("{ArrowLeft}"); // wraps back
+    expect(tab("Limits")).toHaveFocus();
+    await user.keyboard("{Home}");
+    expect(tab("Getting started")).toHaveFocus();
+    expect(screen.getByTestId("hash")).toHaveTextContent("#getting-started");
+  });
+
+  it("has no scroll-spy table of contents any more", () => {
+    view(<Docs />);
+    expect(screen.queryByRole("navigation", { name: "On this page" })).toBeNull();
+  });
+});
+
+describe("Privacy scroll-spy", () => {
+  it("marks the section in view as current in the table of contents", () => {
+    view(<Privacy />);
+    const toc = screen.getByRole("navigation", { name: "On this page" });
+    const links = within(toc).getAllByRole("link");
+    expect(links[0]).toHaveAttribute("aria-current", "true"); // first by default
+    const target = document.getElementById(links[3].getAttribute("href")!.slice(1))!;
     act(() =>
       observers.forEach((o) => {
-        o.cb([{ target: errors, isIntersecting: true }]);
+        o.cb([{ target, isIntersecting: true }]);
       }),
     );
-    expect(within(toc).getByRole("link", { name: "Errors" })).toHaveAttribute(
-      "aria-current",
-      "true",
-    );
-    expect(within(toc).getByRole("link", { name: "Getting started" })).not.toHaveAttribute(
-      "aria-current",
-    );
+    expect(links[3]).toHaveAttribute("aria-current", "true");
+    expect(links[0]).not.toHaveAttribute("aria-current");
   });
+});
 
+describe("Docs content", () => {
   it("code blocks are copyable", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
@@ -95,15 +153,13 @@ describe("Docs layout", () => {
     expect(await screen.findByRole("button", { name: "Copied" })).toBeInTheDocument();
   });
 
-  it("has an error-code table, a Limits section that quotes no numbers of its own, and a readable content column", () => {
-    view(<Docs />);
+  it("has an error-code table, a Limits section that quotes no numbers of its own, and a readable content column", async () => {
+    view(<Docs />, "/docs#limits");
     const limits = document.getElementById("limits")!;
     const text = limits.querySelector("p")!.textContent!;
     expect(text).toMatch(/usage/i);
     expect(text).not.toMatch(/\d+\s*(requests|documents|MB|per)/i); // no limit values of its own (status codes are fine)
-    expect(screen.getByRole("table", { name: "Error codes" })).toBeInTheDocument();
     expect(document.querySelector(".doc-content")).not.toBeNull();
-    expect(document.querySelector(".doc-toc")).not.toBeNull();
   });
 });
 
