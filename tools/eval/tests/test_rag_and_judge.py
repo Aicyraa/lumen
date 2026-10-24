@@ -26,7 +26,13 @@ def test_query_rag_sends_secret_models_and_force_tier(server):
     assert call["body"]["tenant_id"] == "tenant-1" and call["body"]["query"] == "Q?"
     assert call["body"]["force_tier"] == "expensive"
     assert call["body"]["models"]["cheap"][0]["model_id"] == "small"
-    assert (a.answer, a.tier, a.latency_ms, a.top_score, a.error) == ("A [1]", "cheap", 321, 0.7, "")
+    assert (a.answer, a.tier, a.latency_ms, a.top_score, a.error) == (
+        "A [1]",
+        "cheap",
+        321,
+        0.7,
+        "",
+    )
     assert len(a.sources) == 1 and a.attempts[0]["tokens_in"] == 10
 
 
