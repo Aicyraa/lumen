@@ -22,7 +22,7 @@ const attemptSchema = (c: Limits) =>
     provider: z.string().max(c.providerNameMaxChars),
     model_id: z.string().max(c.modelIdMaxChars),
     tenant_model_id: z.string().nullish().catch(null),
-    tier: z.enum(["cheap", "expensive", "fallback", "default"]).catch("default"),
+    tier: z.enum(["cheap", "expensive", "default"]).catch("default"),
     outcome: z.enum(["ok", "error", "timeout", "rate_limited"]).catch("error"),
     tokens_in: z.number().int().nonnegative().nullish().catch(null),
     tokens_out: z.number().int().nonnegative().nullish().catch(null),

@@ -10,16 +10,15 @@ export async function modelUsage(pool: Pool, tenantId: string, since: Date) {
             count(c.id) FILTER (WHERE c.outcome = 'error')::int AS f_error,
             count(c.id) FILTER (WHERE c.outcome = 'timeout')::int AS f_timeout,
             count(c.id) FILTER (WHERE c.outcome = 'rate_limited')::int AS f_rate_limited,
-            count(c.id) FILTER (WHERE c.outcome = 'ok' AND c.tier <> 'fallback' AND EXISTS (
+            count(c.id) FILTER (WHERE c.outcome = 'ok' AND EXISTS (
               SELECT 1 FROM model_calls p WHERE p.tenant_id = $1 AND p.request_id = c.request_id AND p.id < c.id))::int AS backup_uses,
-            count(c.id) FILTER (WHERE c.outcome = 'ok' AND c.tier = 'fallback')::int AS fallback_uses,
             round(percentile_cont(0.5) WITHIN GROUP (ORDER BY c.latency_ms))::int AS median_latency_ms,
             sum(c.cost_usd)::float8 AS cost_usd
      FROM tenant_models m
      LEFT JOIN model_calls c ON c.tenant_model_id = m.id AND c.tenant_id = m.tenant_id AND c.created_at >= $2
      WHERE m.tenant_id = $1
      GROUP BY m.id
-     ORDER BY CASE m.tier WHEN 'cheap' THEN 0 WHEN 'expensive' THEN 1 ELSE 2 END, m.position`,
+     ORDER BY CASE m.tier WHEN 'cheap' THEN 0 ELSE 1 END, m.position`,
     [tenantId, since],
   );
   const {

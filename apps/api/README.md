@@ -32,7 +32,7 @@ minute and 8K tokens per minute for `openai/gpt-oss-20b` and `openai/gpt-oss-120
 
 ## Tenant models (Phase 3B)
 
-`/api/dashboard/models` (session) manages a tenant's own provider models: list, add (Test & save makes one tiny
+`/api/dashboard/models` (session) manages a tenant's own provider models in two tiers, `cheap` and `expensive` (the fallback tier was removed; `tier: "fallback"` is a `422 invalid_request`; inside a tier models are tried top to bottom): list, add (Test & save makes one tiny
 completion first and saves nothing on failure), move up/down within a tier, remove, optional per-1M-token prices,
 and `/models/usage?range=7d|30d`. Keys are AES-256-GCM encrypted (bound to the tenant id), only a masked hint is
 ever returned, and endpoint URLs go through `shared/lib/endpointGuard.ts` (https only, `http://localhost` outside
@@ -84,7 +84,7 @@ provider failed, so `cheap + expensive + none + failed` is the day's total):
   "total_cost_usd": 0.031,
   "by_model": [{ "id": "uuid", "tier": "cheap", "position": 0, "provider": "openai_compatible", "model_id": "m1", "status": "connected",
                  "rate_limits": null, "rate_limits_seen_at": null, "requests": 4, "tokens_in": 300, "tokens_out": 30,
-                 "failures": { "error": 1, "timeout": 1, "rate_limited": 0 }, "backup_uses": 0, "fallback_uses": 0,
+                 "failures": { "error": 1, "timeout": 1, "rate_limited": 0 }, "backup_uses": 0,
                  "median_latency_ms": 200, "cost_usd": 0.003 }]
 }
 ```
@@ -92,7 +92,7 @@ provider failed, so `cheap + expensive + none + failed` is the day's total):
 `escalated` is tier `expensive` with `escalated: true` (the router was cautious); `expensive_hard` is tier `expensive`
 without it. Latency covers answered requests only (`status = ok`). `per_day[].cost_usd` and `total_cost_usd` sum
 `request_usage.cost_usd` (the sum of the request's `model_calls.cost_usd`; null when nothing in the period was priced). `by_model` is exactly the `models` array of
-`GET /models/usage` for the same range (fallback models and unused models included, `cost_usd` per model).
+`GET /models/usage` for the same range (unused models included, `cost_usd` per model).
 
 `GET /requests/:id`. The passage is read from `chunks` when the request is opened (tenant-scoped join, cut to
 `passageMaxChars`) and is never stored or logged:
