@@ -140,3 +140,25 @@ def test_misnumbered_quote_is_reassigned_only_when_one_passage_contains_it():
             ],
             "Not found",
         )
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "The serial numbers are not listed in the documents.",
+        "The corpus does not state the application count.",
+    ],
+)
+def test_claims_that_only_describe_missing_document_information_use_not_found(text):
+    from app.llm.prompt import render_answer
+
+    raw = json.dumps({"claims": [{"text": text, "evidence": [{"passage": 1, "quote": text}]}]})
+    assert render_answer(raw, [text], "Not found") == "Not found"
+
+
+def test_known_negative_policy_is_not_mistaken_for_missing_information():
+    from app.llm.prompt import render_answer
+
+    text = "Housing is not provided."
+    raw = json.dumps({"claims": [{"text": text, "evidence": [{"passage": 1, "quote": text}]}]})
+    assert render_answer(raw, [text], "Not found") == "Housing is not provided. [1]"
