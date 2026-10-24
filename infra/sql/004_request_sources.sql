@@ -1,8 +1,13 @@
 -- Phase DB: the sources of a request, one row each, replacing request_logs.sources (JSONB). Safe to run twice.
 -- A deleted or re-ingested document or chunk leaves the row with a NULL id ("deleted document") instead of losing it.
 
-ALTER TABLE request_logs DROP CONSTRAINT IF EXISTS request_logs_id_tenant_key;
-ALTER TABLE request_logs ADD CONSTRAINT request_logs_id_tenant_key UNIQUE (id, tenant_id); -- target for request_sources' composite FK
+-- target for request_sources' composite FK
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'request_logs_id_tenant_key') THEN
+    ALTER TABLE request_logs ADD CONSTRAINT request_logs_id_tenant_key UNIQUE (id, tenant_id);
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS request_sources (
   request_id  UUID    NOT NULL,

@@ -34,8 +34,12 @@ ALTER TABLE model_calls   ADD CONSTRAINT model_calls_tenant_fk   FOREIGN KEY (te
 
 -- model_calls.tenant_model_id becomes a real reference (history survives deleting a model: SET NULL, same tenant only).
 -- Calls that name a model that no longer exists are detached first.
-ALTER TABLE tenant_models DROP CONSTRAINT IF EXISTS tenant_models_id_tenant_key;
-ALTER TABLE tenant_models ADD CONSTRAINT tenant_models_id_tenant_key UNIQUE (id, tenant_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'tenant_models_id_tenant_key') THEN
+    ALTER TABLE tenant_models ADD CONSTRAINT tenant_models_id_tenant_key UNIQUE (id, tenant_id);
+  END IF;
+END $$;
 UPDATE model_calls c SET tenant_model_id = NULL
 WHERE tenant_model_id IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM tenant_models m WHERE m.id = c.tenant_model_id AND m.tenant_id = c.tenant_id);
