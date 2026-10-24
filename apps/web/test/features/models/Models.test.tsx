@@ -423,4 +423,40 @@ describe("Models", () => {
       expect(screen.getByRole("dialog")).toHaveTextContent(/Leave empty to show "no price set"/);
     });
   });
+
+  describe("tier tooltips", () => {
+    it("has no explanatory paragraph under the heading; each tier has an info tooltip", async () => {
+      mockFetch(router());
+      const { container } = renderWithProviders(<Models />);
+      await screen.findByText("model-a");
+      expect(container.textContent).not.toMatch(/Connect your own provider keys/);
+      const tips = {
+        Cheap: /easy questions/i,
+        Expensive: /hard questions and escalations/i,
+        Fallback: /every model in a tier fails or times out/i,
+      };
+      for (const [tier, re] of Object.entries(tips)) {
+        const region = screen.getByRole("region", { name: tier });
+        const btn = within(region).getByRole("button", {
+          name: `About the ${tier.toLowerCase()} tier`,
+        });
+        await userEvent.hover(btn);
+        expect(within(region).getByRole("tooltip")).toHaveTextContent(re);
+        await userEvent.unhover(btn);
+      }
+    });
+
+    it("explains the cost line in a tooltip reachable by keyboard", async () => {
+      mockFetch(router());
+      renderWithProviders(<Models />);
+      await screen.findByText("model-a");
+      const btn = within(screen.getByTestId("model-a")).getByRole("button", {
+        name: "About estimated provider cost",
+      });
+      btn.focus();
+      expect(within(screen.getByTestId("model-a")).getByRole("tooltip")).toHaveTextContent(
+        /prices you enter for each model/i,
+      );
+    });
+  });
 });
