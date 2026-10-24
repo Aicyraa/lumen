@@ -2,12 +2,12 @@ import { Router } from "express";
 import { fromNodeHeaders } from "better-auth/node";
 import { z } from "zod";
 import type { Auth } from "../auth/auth.js";
-import { ApiError } from "../lib/errors.js";
-import { removeTenantUploads } from "../lib/uploads.js";
-import { MONTH_START_SQL } from "../lib/range.js";
-import { descriptionOf, ownedProjectCount, projectSlug } from "../services/projects.js";
-import type { Deps } from "../types/types.js";
-import "../types/types.js";
+import { ApiError } from "../../shared/lib/errors.js";
+import { removeTenantUploads } from "../../shared/lib/uploads.js";
+import { MONTH_START_SQL } from "../../shared/lib/range.js";
+import { descriptionOf, ownedProjectCount, projectSlug } from "../../shared/services/projects.js";
+import type { Deps } from "../../shared/types/types.js";
+import "../../shared/types/types.js";
 
 const notFound = () => new ApiError(404, "not_found", "Project not found.");
 const forbidden = () => new ApiError(403, "forbidden", "Only a project owner or admin can do that.");

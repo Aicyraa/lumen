@@ -2,13 +2,13 @@ import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { organization } from "better-auth/plugins";
 import { apiKey } from "@better-auth/api-key";
-import type { Config } from "../config/config.js";
-import type { Pool } from "../db/pool.js";
+import type { Config } from "../../shared/config/config.js";
+import type { Pool } from "../../shared/db/pool.js";
 import type { Logger } from "pino";
-import { createWindowCounter } from "../lib/windowCounter.js";
-import { KeyedLock } from "../lib/keyedLock.js";
-import { ownedProjectCount } from "../services/projects.js";
-import type { Mailer } from "../services/mailer.js";
+import { createWindowCounter } from "./windowCounter.js";
+import { KeyedLock } from "./keyedLock.js";
+import { ownedProjectCount } from "../../shared/services/projects.js";
+import type { Mailer } from "./mailer.js";
 
 export type Auth = ReturnType<typeof createAuth>;
 

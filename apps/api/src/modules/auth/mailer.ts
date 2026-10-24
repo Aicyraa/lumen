@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 import type { Logger } from "pino";
-import type { Config } from "../config/config.js";
+import type { Config } from "../../shared/config/config.js";
 
 export interface Mail { to: string; subject: string; text: string; html?: string }
 export type Mailer = (mail: Mail) => Promise<void>;

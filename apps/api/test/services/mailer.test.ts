@@ -1,7 +1,7 @@
 import { Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
-import { createLogger } from "../../src/lib/logger.js";
-import { createMailer } from "../../src/services/mailer.js";
+import { createLogger } from "../../src/shared/lib/logger.js";
+import { createMailer } from "../../src/modules/auth/mailer.js";
 import { testConfig } from "../helpers/env.js";
 
 const SMTP = "smtp://mailuser:mail-SECRET@smtp.example.test:587";

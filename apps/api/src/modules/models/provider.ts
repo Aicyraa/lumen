@@ -1,9 +1,9 @@
 // Provider adapter. All four providers are reached the way the Python service reaches them: an
 // OpenAI-compatible POST {endpoint_url}/chat/completions with a Bearer key (Anthropic and Google both
 // publish OpenAI-compatible endpoints). The key goes only into this request and never into a message.
-import type { Config } from "../config/config.js";
-import { ApiError } from "../lib/errors.js";
-import { EndpointError, guardedPost, type GuardOptions } from "../lib/endpointGuard.js";
+import type { Config } from "../../shared/config/config.js";
+import { ApiError } from "../../shared/lib/errors.js";
+import { EndpointError, guardedPost, type GuardOptions } from "../../shared/lib/endpointGuard.js";
 
 export interface ModelTarget { provider: string; model_id: string; endpoint_url: string; api_key: string }
 

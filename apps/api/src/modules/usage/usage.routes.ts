@@ -1,7 +1,7 @@
 import type { RequestHandler } from "express";
-import { MONTH_START_SQL } from "../lib/range.js";
-import type { Deps } from "../types/types.js";
-import "../types/types.js";
+import { MONTH_START_SQL } from "../../shared/lib/range.js";
+import type { Deps } from "../../shared/types/types.js";
+import "../../shared/types/types.js";
 
 // Sidebar meters. Every max comes from the environment; requests_per_minute.used is the rate limiter's own counter.
 export const usageHandler = ({ pool, config }: Deps, rateUsed: (tenantId: string) => Promise<number>): RequestHandler => async (req, res) => {

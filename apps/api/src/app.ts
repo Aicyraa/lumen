@@ -1,23 +1,23 @@
 import express from "express";
 import cors from "cors";
 import { toNodeHandler } from "better-auth/node";
-import { requireSession, requireTenant } from "./middleware/requireSession.js";
-import { createLimiters } from "./middleware/rateLimit.js";
-import { loadTenantModels } from "./middleware/tenantModels.js";
-import { requireApiKey } from "./middleware/requireApiKey.js";
-import { devRouter, devVerifyHandler } from "./routes/dev.js";
-import { chatHandler } from "./routes/chat.js";
-import { feedbackHandler } from "./routes/feedback.js";
-import { modelsRouter } from "./routes/models.js";
-import { workspacesRouter } from "./routes/workspaces.js";
-import { usageHandler } from "./routes/usage.js";
-import { requestsRouter } from "./routes/requests.js";
-import { analyticsRouter } from "./routes/analytics.js";
-import { documentsRouter } from "./routes/documents.js";
-import type { Auth } from "./auth/auth.js";
-import type { Deps } from "./types/types.js";
+import { requireSession, requireTenant } from "./shared/middleware/requireSession.js";
+import { createLimiters } from "./shared/middleware/rateLimit.js";
+import { loadTenantModels } from "./shared/middleware/tenantModels.js";
+import { requireApiKey } from "./shared/middleware/requireApiKey.js";
+import { devRouter, devVerifyHandler } from "./modules/dev/dev.routes.js";
+import { chatHandler } from "./modules/chat/chat.routes.js";
+import { feedbackHandler } from "./modules/feedback/feedback.routes.js";
+import { modelsRouter } from "./modules/models/models.routes.js";
+import { workspacesRouter } from "./modules/projects/projects.routes.js";
+import { usageHandler } from "./modules/usage/usage.routes.js";
+import { requestsRouter } from "./modules/requests/requests.routes.js";
+import { analyticsRouter } from "./modules/analytics/analytics.routes.js";
+import { documentsRouter } from "./modules/documents/documents.routes.js";
+import type { Auth } from "./modules/auth/auth.js";
+import type { Deps } from "./shared/types/types.js";
 import { rateLimit } from "express-rate-limit";
-import { errorHandler, notFoundHandler, sendError } from "./lib/errors.js";
+import { errorHandler, notFoundHandler, sendError } from "./shared/lib/errors.js";
 
 // Everything is injected so tests can pass a test database and a stubbed RAG client.
 export function createApp({ config, pool, auth, rag, log, resolveHost }: Omit<Deps, "pending"> & { auth: Auth }) {

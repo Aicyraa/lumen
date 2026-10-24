@@ -1,7 +1,7 @@
 import type { RequestHandler } from "express";
 import { z } from "zod";
-import type { Deps } from "../types/types.js";
-import { ApiError } from "../lib/errors.js";
+import type { Deps } from "../../shared/types/types.js";
+import { ApiError } from "../../shared/lib/errors.js";
 
 const body = z.object({ request_id: z.uuid(), rating: z.union([z.literal(1), z.literal(-1)]) });
 

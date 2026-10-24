@@ -1,6 +1,6 @@
 import { createServer, type Server } from "node:http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { assertEndpoint, guardedPost } from "../../src/lib/endpointGuard.js";
+import { assertEndpoint, guardedPost } from "../../src/shared/lib/endpointGuard.js";
 
 const publicIp = async () => [{ address: "93.184.216.34", family: 4 }];
 const dev = { production: false, resolve: publicIp };

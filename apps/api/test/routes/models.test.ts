@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
-import { decryptSecret } from "../../src/lib/crypto.js";
+import { decryptSecret } from "../../src/shared/lib/crypto.js";
 import { makeCtx, type Ctx, type Tenant } from "../helpers/ctx.js";
 import { startProviderStub } from "../helpers/providerStub.js";
 

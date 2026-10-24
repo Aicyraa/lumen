@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import express from "express";
-import { createLimiters } from "../../src/middleware/rateLimit.js";
+import { createLimiters } from "../../src/shared/middleware/rateLimit.js";
 import { makeCtx, type Ctx, type Tenant } from "../helpers/ctx.js";
 import { insertLog } from "../helpers/seed.js";
 

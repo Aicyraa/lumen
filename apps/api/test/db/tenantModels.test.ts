@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createPool } from "../../src/db/pool.js";
+import { createPool } from "../../src/shared/db/pool.js";
 import { testConfig } from "../helpers/env.js";
 
 const pool = createPool(testConfig().databaseUrl);

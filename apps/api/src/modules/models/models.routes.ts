@@ -1,13 +1,13 @@
 import { Router } from "express";
 import { z } from "zod";
-import { encryptSecret, maskKey } from "../lib/crypto.js";
-import { assertEndpoint, EndpointError } from "../lib/endpointGuard.js";
-import { ApiError } from "../lib/errors.js";
-import { parseRange, rangeStart } from "../lib/range.js";
-import { modelUsage } from "../services/modelUsage.js";
-import { testCompletion } from "../services/provider.js";
-import type { Deps } from "../types/types.js";
-import "../types/types.js";
+import { encryptSecret, maskKey } from "../../shared/lib/crypto.js";
+import { assertEndpoint, EndpointError } from "../../shared/lib/endpointGuard.js";
+import { ApiError } from "../../shared/lib/errors.js";
+import { parseRange, rangeStart } from "../../shared/lib/range.js";
+import { modelUsage } from "../../shared/services/modelUsage.js";
+import { testCompletion } from "./provider.js";
+import type { Deps } from "../../shared/types/types.js";
+import "../../shared/types/types.js";
 
 const TIERS = ["cheap", "expensive", "fallback"] as const;
 // Never select api_key_encrypted here: the list and every response are built from these columns only.

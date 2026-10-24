@@ -1,15 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { Writable } from "node:stream";
-import type { Config } from "../../src/config/config.js";
-import { createLogger } from "../../src/lib/logger.js";
-import { encryptSecret, maskKey } from "../../src/lib/crypto.js";
-import { createAuth } from "../../src/auth/auth.js";
+import type { Config } from "../../src/shared/config/config.js";
+import { createLogger } from "../../src/shared/lib/logger.js";
+import { encryptSecret, maskKey } from "../../src/shared/lib/crypto.js";
+import { createAuth } from "../../src/modules/auth/auth.js";
 import { createApp } from "../../src/app.js";
-import { createPool } from "../../src/db/pool.js";
-import { createRagClient } from "../../src/services/rag.js";
+import { createPool } from "../../src/shared/db/pool.js";
+import { createRagClient } from "../../src/shared/services/rag.js";
 import { testConfig } from "./env.js";
 import { startRagStub } from "./ragStub.js";
-import type { Mail } from "../../src/services/mailer.js";
+import type { Mail } from "../../src/modules/auth/mailer.js";
 
 // Builds the real app against lumen_test and a stubbed RAG service.
 export interface Tenant {

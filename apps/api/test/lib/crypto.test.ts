@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decryptSecret, encryptSecret, maskKey } from "../../src/lib/crypto.js";
+import { decryptSecret, encryptSecret, maskKey } from "../../src/shared/lib/crypto.js";
 
 const key = "0123456789abcdef".repeat(4);
 

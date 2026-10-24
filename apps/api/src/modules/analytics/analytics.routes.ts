@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { parseRange, rangeStart } from "../lib/range.js";
-import { modelUsage } from "../services/modelUsage.js";
-import type { Deps } from "../types/types.js";
-import "../types/types.js";
+import { parseRange, rangeStart } from "../../shared/lib/range.js";
+import { modelUsage } from "../../shared/services/modelUsage.js";
+import type { Deps } from "../../shared/types/types.js";
+import "../../shared/types/types.js";
 
 // Dashboard Analytics tab. Every statement filters by tenant_id. Days are UTC days; cost is the tenant's estimated provider cost.
 export function analyticsRouter({ pool, config }: Deps) {

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Pool } from "../../src/db/pool.js";
+import type { Pool } from "../../src/shared/db/pool.js";
 
 export interface LogSeed {
   id?: string;

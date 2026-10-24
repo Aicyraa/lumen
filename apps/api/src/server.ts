@@ -1,12 +1,12 @@
-import "./config/env.js";
-import { createLogger } from "./lib/logger.js";
+import "./shared/config/env.js";
+import { createLogger } from "./shared/lib/logger.js";
 import { createApp } from "./app.js";
-import { createAuth } from "./auth/auth.js";
-import { loadConfig, type Config } from "./config/config.js";
-import { createPool } from "./db/pool.js";
-import { createRagClient } from "./services/rag.js";
-import { createMailer } from "./services/mailer.js";
-import { sweepInterrupted } from "./services/sweep.js";
+import { createAuth } from "./modules/auth/auth.js";
+import { loadConfig, type Config } from "./shared/config/config.js";
+import { createPool } from "./shared/db/pool.js";
+import { createRagClient } from "./shared/services/rag.js";
+import { createMailer } from "./modules/auth/mailer.js";
+import { sweepInterrupted } from "./modules/documents/sweep.js";
 
 const log = createLogger();
 

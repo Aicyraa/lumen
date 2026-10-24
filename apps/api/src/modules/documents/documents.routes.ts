@@ -6,10 +6,10 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 import multer from "multer";
 import { z } from "zod";
-import { ApiError } from "../lib/errors.js";
-import { uploadName } from "../lib/uploads.js";
-import type { Deps } from "../types/types.js";
-import "../types/types.js";
+import { ApiError } from "../../shared/lib/errors.js";
+import { uploadName } from "../../shared/lib/uploads.js";
+import type { Deps } from "../../shared/types/types.js";
+import "../../shared/types/types.js";
 
 const ALLOWED = new Set([".pdf", ".txt", ".md"]);
 const isUuid = (v: string) => z.uuid().safeParse(v).success;

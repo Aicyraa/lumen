@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
-import { ApiError } from "../lib/errors.js";
-import { parseRange, rangeStart } from "../lib/range.js";
-import type { Deps } from "../types/types.js";
-import "../types/types.js";
+import { ApiError } from "../../shared/lib/errors.js";
+import { parseRange, rangeStart } from "../../shared/lib/range.js";
+import type { Deps } from "../../shared/types/types.js";
+import "../../shared/types/types.js";
 
 const TIERS = ["all", "cheap", "expensive", "none"];
 // created_at as text keeps microseconds, which a JS Date would cut to milliseconds and break the keyset.

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
-import { loadConfig } from "../../src/config/config.js";
+import { loadConfig } from "../../src/shared/config/config.js";
 import { makeCtx, type Ctx, type Tenant } from "../helpers/ctx.js";
 
 let ctx: Ctx, a: Tenant;

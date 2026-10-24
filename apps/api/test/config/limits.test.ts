@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
-import { loadConfig } from "../../src/config/config.js";
+import { loadConfig } from "../../src/shared/config/config.js";
 import { makeCtx, type Ctx } from "../helpers/ctx.js";
 import { startProviderStub } from "../helpers/providerStub.js";
 
@@ -29,7 +29,7 @@ describe("rule 9: limits live in config.json / the environment", () => {
   });
 
   it("no numeric limit literals remain in the Phase 3B source files", () => {
-    const files = ["routes/models.ts", "routes/chat.ts", "services/modelCalls.ts", "services/provider.ts", "lib/endpointGuard.ts", "middleware/tenantModels.ts"];
+    const files = ["modules/models/models.routes.ts", "modules/chat/chat.routes.ts", "shared/services/modelCalls.ts", "modules/models/provider.ts", "shared/lib/endpointGuard.ts", "shared/middleware/tenantModels.ts"];
     const bad = /\.(?:max|min|slice)\(\s*(?:0\s*,\s*)?(?:[2-9]|\d{2,})|_tokens:\s*\d|size\s*<=\s*\d/;
     for (const f of files) {
       const code = readFileSync(new URL(`../../src/${f}`, import.meta.url), "utf8").split("\n").map((l) => l.replace(/\/\/.*$/, ""));

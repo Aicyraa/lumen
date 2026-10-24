@@ -1,6 +1,6 @@
 import { Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
-import { createLogger } from "../../src/lib/logger.js";
+import { createLogger } from "../../src/shared/lib/logger.js";
 
 describe("createLogger redaction", () => {
   it("masks provider keys and secrets wherever the models payload is logged", () => {

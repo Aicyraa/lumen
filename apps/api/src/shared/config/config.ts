@@ -43,7 +43,7 @@ interface Tunables {
   maxPricePerMillion: number;
   endpointGuardCacheTtlMs: number;
 }
-const tunables: Tunables = JSON.parse(readFileSync(new URL("../../config.json", import.meta.url), "utf8"));
+const tunables: Tunables = JSON.parse(readFileSync(new URL("../../../config.json", import.meta.url), "utf8"));
 const posInt = z.coerce.number().int().positive();
 const required = z.object({
   DATABASE_URL: z.string().min(1),
@@ -129,7 +129,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, overrides: Part
     trustProxy: parseTrustProxy(e.TRUST_PROXY),
     devRoutes: env.NODE_ENV === "development", // dev-only routes are an explicit opt-in
     ...t,
-    uploadDir: resolve(new URL("../..", import.meta.url).pathname, t.uploadDir), // relative to apps/api
+    uploadDir: resolve(new URL("../../..", import.meta.url).pathname, t.uploadDir), // relative to apps/api
     ...overrides,
   };
 }

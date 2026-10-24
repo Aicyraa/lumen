@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { Request, RequestHandler } from "express";
 import { z } from "zod";
-import { ApiError } from "../lib/errors.js";
-import { MONTH_START_SQL } from "../lib/range.js";
-import { priceAttempts, recordAttempts, type Attempt, type KnownModel } from "../services/modelCalls.js";
-import { RagError, type ChatResponse, type ChatSource } from "../services/rag.js";
-import type { Deps } from "../types/types.js";
+import { ApiError } from "../../shared/lib/errors.js";
+import { MONTH_START_SQL } from "../../shared/lib/range.js";
+import { priceAttempts, recordAttempts, type Attempt, type KnownModel } from "../../shared/services/modelCalls.js";
+import { RagError, type ChatResponse, type ChatSource } from "../../shared/services/rag.js";
+import type { Deps } from "../../shared/types/types.js";
 
 interface LogInput {
   sources?: Partial<ChatResponse["sources"][number]>[];

@@ -1,5 +1,5 @@
 import type { RequestHandler } from "express";
-import type { Auth } from "../auth/auth.js";
+import type { Auth } from "../../modules/auth/auth.js";
 import { ApiError } from "../lib/errors.js";
 import "../types/types.js";
 
