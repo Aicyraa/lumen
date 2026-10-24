@@ -184,7 +184,7 @@ describe("project routes", () => {
     await waitFor(() =>
       expect(
         within(screen.getByRole("complementary")).getByRole("link", {
-          name: /^Requests|^Documents/,
+          name: /^Documents/,
         }),
       ).toHaveAttribute("href", expect.stringContaining("/projects/shop-support-3fa9c1/")),
     );
