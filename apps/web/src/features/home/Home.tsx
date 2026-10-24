@@ -3,24 +3,39 @@ import { Link } from "react-router";
 import { Reveal } from "../../shared/motion/motion";
 import { CodeBlock, PublicLayout, SectionLabel } from "../../shared/ui/PublicLayout";
 import { Segmented } from "../../shared/ui/ui";
+import { RouteFlow } from "./RouteFlow";
 
 const STEPS = [
-  [
-    "01",
-    "Upload documents",
-    "Add PDFs, text or Markdown in the dashboard. Lumen splits them into passages and indexes them for your workspace only.",
-  ],
-  [
-    "02",
-    "Create an API key",
-    "Generate a key in one click. It is shown once and tied to your workspace.",
-  ],
-  [
-    "03",
-    "Call /v1/chat",
-    "Your chatbot sends the question. You get the answer, its sources and the route taken.",
-  ],
+  ["01", "Upload documents"],
+  ["02", "Create an API key"],
+  ["03", "Call /v1/chat"],
+] as const;
+const FACTS = [
+  ["1", "endpoint to call", "POST /v1/chat answers from your documents."],
+  ["3", "file types", "PDF, plain text and Markdown."],
+  ["3", "model tiers", "Cheap, expensive and a fallback, each with your own models."],
+  ["3", "steps to a first answer", "Upload, create a key, call the endpoint."],
+] as const;
+const AUDIENCE = [
+  "Teams that run a chatbot or help widget and want it to answer from their own documents.",
+  "Developers who prefer one HTTP call to building retrieval, routing and logging themselves.",
+  "Anyone who brings their own model provider keys and wants control over which model answers what.",
 ];
+const ROUTING = [
+  [
+    "Cheap first",
+    "Easy questions go to the first model of the cheap tier. Models in a tier are tried top to bottom.",
+  ],
+  [
+    "Escalate when unsure",
+    "Long, comparative or weakly matched questions go to the expensive tier instead.",
+  ],
+  [
+    "Fallback when a tier fails",
+    "If every model in a tier fails or times out, the fallback model answers.",
+  ],
+  ["No match, no model", "If nothing in your documents matches, Lumen says so and calls no model."],
+] as const;
 const FEATURES = [
   [
     "Tiered routing",
@@ -35,10 +50,35 @@ const FEATURES = [
     "Connect your own provider keys, order the models inside each tier and set a fallback for when a whole tier fails.",
   ],
   [
-    "Honest when it can’t answer",
+    "Honest when it can\u2019t answer",
     "If nothing in your documents matches, Lumen says so instead of guessing, and lists the question so you can fill the gap.",
   ],
+  [
+    "Cited answers",
+    "Every answer lists the passages it used, each with a match score, so you can see where it came from.",
+  ],
+  [
+    "Request log and analytics",
+    "See the route, tokens and latency of each request, the mix of routes over time and the questions your documents could not answer.",
+  ],
 ];
+const USE_CASES = [
+  [
+    "Campus FAQ",
+    "When does enrollment close?",
+    "A short factual question. Answered by the cheap tier, with the calendar page cited.",
+  ],
+  [
+    "Shop support",
+    "Can I return an opened item?",
+    "One policy document, one clear passage. The answer cites it so a customer can check.",
+  ],
+  [
+    "Internal handbook",
+    "What is the difference between fall and spring refunds?",
+    "A comparison across passages escalates to the expensive tier.",
+  ],
+] as const;
 const SECURITY = [
   [
     "Isolated per workspace",
@@ -131,6 +171,7 @@ export function Home() {
     <PublicLayout>
       <main className="home">
         <section className="snap-section hero" aria-labelledby="hero-h">
+          <GridArt />
           <SectionLabel>RAG API FOR YOUR CHATBOT — 01</SectionLabel>
           <h1 id="hero-h" className="hero-h1">
             Answers from your documents, from the smallest model that gets them right.
@@ -152,39 +193,66 @@ export function Home() {
           </div>
         </section>
 
-        <section className="snap-section" aria-label="Preview">
-          <Reveal>
-            <div
-              className="image-slot"
-              role="img"
-              aria-label="Placeholder for a dashboard screenshot"
-            >
-              dashboard screenshot — analytics view
-            </div>
-          </Reveal>
-        </section>
-
-        <section id="how" className="snap-section" aria-labelledby="how-h">
+        <section className="snap-section" aria-label="What Lumen is">
           <div className="head-grid">
-            <SectionLabel>HOW IT WORKS — 02</SectionLabel>
-            <h2 id="how-h" className="h2">
-              Three steps from a folder of PDFs to a chatbot that cites its sources.
+            <SectionLabel>WHAT LUMEN IS — 02</SectionLabel>
+            <h2 className="h2">
+              A retrieval API that answers from your documents and picks the model for each
+              question.
             </h2>
           </div>
-          <ol className="steps">
-            {STEPS.map(([n, t, b], i) => (
-              <Reveal as="li" key={n} delay={i * 0.1} className="step">
-                <div className="num">{n}</div>
-                <div className="step-title">{t}</div>
-                <div className="body muted-2">{b}</div>
+          <div className="what-grid">
+            <Reveal className="stack-sm">
+              <div className="label">WHO IT'S FOR</div>
+              <ul className="audience">
+                {AUDIENCE.map((t) => (
+                  <li key={t} className="body muted-2">
+                    {t}
+                  </li>
+                ))}
+              </ul>
+              <ol className="mini-steps">
+                {STEPS.map(([n, t]) => (
+                  <li key={n}>
+                    <span className="num">{n}</span> {t}
+                  </li>
+                ))}
+              </ol>
+            </Reveal>
+            <ul className="facts">
+              {FACTS.map(([n, t, b], i) => (
+                <Reveal as="li" key={t} delay={i * 0.08} className="fact">
+                  <div className="fact-num">{n}</div>
+                  <div className="fact-title">{t}</div>
+                  <div className="small muted-2">{b}</div>
+                </Reveal>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        <section id="how" className="snap-section" aria-label="How routing works">
+          <div className="head-grid">
+            <SectionLabel>HOW ROUTING WORKS — 03</SectionLabel>
+            <h2 className="h2">
+              Cheap first, expensive when needed, a fallback when a tier fails.
+            </h2>
+          </div>
+          <RouteFlow />
+          <ul className="cols-4">
+            {ROUTING.map(([t, b], i) => (
+              <Reveal as="li" key={t} delay={i * 0.08} className="step">
+                <div className="num">0{i + 1}</div>
+                <h3 className="card-title-sm">{t}</h3>
+                <div className="small muted-2">{b}</div>
               </Reveal>
             ))}
-          </ol>
+          </ul>
         </section>
 
         <section className="snap-section" aria-label="Demo">
           <div className="row-between">
-            <SectionLabel>DEMO — 03</SectionLabel>
+            <SectionLabel>DEMO — 04</SectionLabel>
             <Segmented
               label="Demo case"
               options={
@@ -210,9 +278,55 @@ export function Home() {
           </div>
         </section>
 
+        <section className="snap-section" aria-label="Built in">
+          <SectionLabel>BUILT IN — 05</SectionLabel>
+          <div className="feature-grid">
+            {FEATURES.map(([t, b], i) => (
+              <Reveal key={t} delay={(i % 3) * 0.08} className="feature-card">
+                <div className="mono muted-3">0{i + 1}</div>
+                <h3 className="feature-title">{t}</h3>
+                <div className="body muted-2">{b}</div>
+              </Reveal>
+            ))}
+          </div>
+        </section>
+
+        <section className="snap-section" aria-label="Use cases">
+          <div className="head-grid">
+            <SectionLabel>USE CASES — 06</SectionLabel>
+            <h2 className="h2">One endpoint, any set of documents.</h2>
+          </div>
+          <ul className="cols-3">
+            {USE_CASES.map(([t, q, b], i) => (
+              <Reveal as="li" key={t} delay={i * 0.08} className="usecase">
+                <h3 className="card-title-sm">{t}</h3>
+                <div className="usecase-q mono">“{q}”</div>
+                <div className="small muted-2">{b}</div>
+                <div className="mono small muted-4">EXAMPLE QUESTION</div>
+              </Reveal>
+            ))}
+          </ul>
+        </section>
+
+        <section className="snap-section" aria-label="Security">
+          <div className="head-grid">
+            <SectionLabel>SECURITY — 07</SectionLabel>
+            <h2 className="h2">Your documents stay yours.</h2>
+          </div>
+          <ul className="cols-4">
+            {SECURITY.map(([t, b], i) => (
+              <Reveal as="li" key={t} delay={i * 0.08} className="step">
+                <div className="num">0{i + 1}</div>
+                <h3 className="card-title-sm">{t}</h3>
+                <div className="small muted-2">{b}</div>
+              </Reveal>
+            ))}
+          </ul>
+        </section>
+
         <section className="snap-section head-grid top" aria-label="Quickstart">
           <div className="stack">
-            <SectionLabel>QUICKSTART — 04</SectionLabel>
+            <SectionLabel>QUICKSTART — 08</SectionLabel>
             <h2 className="h2">Call it from your backend in a few lines.</h2>
             <p className="body muted-2 maxw-sm">
               Keep the key on your server. Your chatbot's frontend talks to your backend, and your
@@ -245,36 +359,7 @@ export function Home() {
           </div>
         </section>
 
-        <section className="snap-section" aria-label="Built in">
-          <SectionLabel>BUILT IN — 06</SectionLabel>
-          <div className="features">
-            {FEATURES.map(([t, b], i) => (
-              <Reveal key={t} delay={i * 0.08} className="feature">
-                <div className="mono muted-3">0{i + 1}</div>
-                <h3 className="feature-title">{t}</h3>
-                <div className="body muted-2">{b}</div>
-              </Reveal>
-            ))}
-          </div>
-        </section>
-
-        <section className="snap-section" aria-label="Security">
-          <div className="head-grid">
-            <SectionLabel>SECURITY — 07</SectionLabel>
-            <h2 className="h2">Your documents stay yours.</h2>
-          </div>
-          <ul className="cols-4">
-            {SECURITY.map(([t, b], i) => (
-              <Reveal as="li" key={t} delay={i * 0.08} className="step">
-                <div className="num">0{i + 1}</div>
-                <h3 className="card-title-sm">{t}</h3>
-                <div className="small muted-2">{b}</div>
-              </Reveal>
-            ))}
-          </ul>
-        </section>
-
-        <section className="snap-section cta">
+        <section className="snap-section cta" aria-label="Closing">
           <h2 className="cta-h">
             Ask your documents
             <br />
@@ -286,5 +371,19 @@ export function Home() {
         </section>
       </main>
     </PublicLayout>
+  );
+}
+
+// Decorative line grid behind the hero (SVG pattern, no gradient).
+function GridArt() {
+  return (
+    <svg className="grid-art" aria-hidden="true" focusable="false">
+      <defs>
+        <pattern id="home-grid" width="48" height="48" patternUnits="userSpaceOnUse">
+          <path d="M48 0H0V48" fill="none" stroke="var(--line-soft)" strokeWidth="1" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#home-grid)" />
+    </svg>
   );
 }

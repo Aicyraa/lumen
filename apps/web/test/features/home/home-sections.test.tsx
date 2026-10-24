@@ -83,7 +83,9 @@ describe("Home animation starts when seen", () => {
     expect(flow.classList.contains("in-view")).toBe(false);
     const o = observers.find((x) => x.el === flow)!;
     expect(o).toBeTruthy();
-    act(() => o.cb([{ isIntersecting: true, target: flow } as IntersectionObserverEntry], o as never));
+    act(() =>
+      o.cb([{ isIntersecting: true, target: flow } as IntersectionObserverEntry], o as never),
+    );
     expect(flow.classList.contains("in-view")).toBe(true);
   });
 });
