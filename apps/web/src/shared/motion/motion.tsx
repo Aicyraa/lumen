@@ -1,5 +1,6 @@
 import { animate, motion, useReducedMotion } from "motion/react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useInViewOnce } from "./useInViewOnce";
 
 // All motion here is opacity and transform only (no layout shift), stays under 600 ms, and is switched off by
 // prefers-reduced-motion (MotionConfig reducedMotion="user" in App plus the checks below). The hidden starting
@@ -53,7 +54,7 @@ export function PageFade({ id, children }: { id: string; children: ReactNode }) 
   );
 }
 
-// Counts a whole number up from 0 (about 0.6 s). Reduced motion, or a value that is not a whole number, shows the value at once.
+// Counts a whole number up from 0 (about 0.6 s) once it is in view. Reduced motion, or a value that is not a whole number, shows the value at once.
 export function CountUp({
   value,
   format = (n: number) => n.toLocaleString("en-US"),
@@ -62,6 +63,7 @@ export function CountUp({
   format?: (n: number) => string;
 }) {
   const reduce = useReducedMotion();
+  const [ref, seen] = useInViewOnce<HTMLSpanElement>();
   const [shown, setShown] = useState(reduce ? value : 0);
   const first = useRef(true);
   useEffect(() => {
@@ -69,6 +71,7 @@ export function CountUp({
       setShown(value);
       return;
     }
+    if (!seen) return; // counts up when it is first seen, not on load
     const c = animate(first.current ? 0 : shown, value, {
       duration: 0.6,
       ease: "easeOut",
@@ -77,6 +80,6 @@ export function CountUp({
     first.current = false;
     return () => c.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, reduce]);
-  return <>{format(reduce ? value : shown)}</>;
+  }, [value, reduce, seen]);
+  return <span ref={ref}>{format(reduce ? value : shown)}</span>;
 }

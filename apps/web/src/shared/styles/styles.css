@@ -875,7 +875,8 @@ label.btn:focus-within {
   border-radius: 3px 3px 0 0;
   overflow: hidden;
   transform-origin: bottom;
-  animation: grow 0.8s cubic-bezier(0.2, 0.7, 0.1, 1) both;
+  animation: grow 0.5s cubic-bezier(0.2, 0.7, 0.1, 1) both;
+  animation-play-state: paused;
 }
 .seg {
   display: block;
@@ -1289,7 +1290,7 @@ label.btn:focus-within {
   font-size: clamp(44px, 6vw, 88px);
   line-height: 0.95;
   letter-spacing: -0.05em;
-  animation: fade 0.8s both;
+  animation: fade 0.5s both;
 }
 .signin-right {
   display: flex;
@@ -1828,4 +1829,8 @@ html.snap-home {
 .all-projects {
   margin: 4px 12px 8px;
   justify-content: center;
+}
+
+.in-view .bar {
+  animation-play-state: running;
 }
