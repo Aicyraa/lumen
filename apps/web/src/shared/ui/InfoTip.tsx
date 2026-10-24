@@ -1,9 +1,17 @@
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useId, useLayoutEffect, useRef, useState } from "react";
 
 // Info icon with a tooltip: opens on hover and keyboard focus, closes on leave, blur and Escape.
 export function InfoTip({ label, children }: { label: string; children: ReactNode }) {
   const id = useId();
   const [open, setOpen] = useState(false);
+  const [alignRight, setAlignRight] = useState(false);
+  const tip = useRef<HTMLSpanElement>(null);
+  // Measure on open: when the tooltip would run past the right edge of the viewport, anchor it to the button's right edge.
+  useLayoutEffect(() => {
+    if (!open) return setAlignRight(false);
+    const r = tip.current?.getBoundingClientRect();
+    if (r && r.right > window.innerWidth - 16) setAlignRight(true);
+  }, [open]);
   return (
     <span className="infotip" onMouseLeave={() => setOpen(false)}>
       <button
@@ -27,7 +35,13 @@ export function InfoTip({ label, children }: { label: string; children: ReactNod
           <circle cx="8" cy="4.7" r="0.9" fill="currentColor" />
         </svg>
       </button>
-      <span id={id} role="tooltip" className="infotip-tip" hidden={!open}>
+      <span
+        ref={tip}
+        id={id}
+        role="tooltip"
+        className={`infotip-tip${alignRight ? " align-right" : ""}`}
+        hidden={!open}
+      >
         {children}
       </span>
     </span>

@@ -2328,7 +2328,7 @@ table.data.compact td {
   top: calc(100% + 6px);
   left: 0;
   width: max-content;
-  max-width: 260px;
+  max-width: min(260px, calc(100vw - 32px));
   padding: 8px 12px;
   background: var(--surface-active);
   border: 1px solid var(--line-strong);
@@ -2338,6 +2338,10 @@ table.data.compact td {
   text-transform: none;
   color: var(--text-2);
   white-space: normal;
+}
+.infotip-tip.align-right {
+  left: auto;
+  right: 0;
 }
 .infotip-tip[hidden] {
   display: none;
