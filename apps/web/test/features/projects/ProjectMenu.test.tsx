@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -133,5 +133,47 @@ describe("ProjectMenu", () => {
     await userEvent.click(trigger);
     await userEvent.click(trigger);
     expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
+  it("Tab closes the list and keeps focus on the button (never on body)", async () => {
+    const { trigger } = setup();
+    await userEvent.click(trigger);
+    expect(screen.getByRole("listbox")).toHaveFocus();
+    await userEvent.tab();
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(document.activeElement).not.toBe(document.body);
+    expect(trigger).toHaveFocus();
+  });
+
+  it("closes when focus leaves the component", async () => {
+    render(
+      <MemoryRouter>
+        <ProjectMenu projects={projects} current="b" onSelect={vi.fn()} />
+        <button type="button">elsewhere</button>
+      </MemoryRouter>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /^Project: Beta/ }));
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    act(() => screen.getByRole("button", { name: "elsewhere" }).focus());
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
+  it("the button controls the listbox (aria-controls matches its id)", async () => {
+    const { trigger } = setup();
+    await userEvent.click(trigger);
+    const list = screen.getByRole("listbox");
+    expect(list.id).toBeTruthy();
+    expect(trigger).toHaveAttribute("aria-controls", list.id);
+  });
+
+  it("shows 'Select project' (not the first project) when the current slug is not in the list", () => {
+    render(
+      <MemoryRouter>
+        <ProjectMenu projects={projects} current="gone" onSelect={vi.fn()} />
+      </MemoryRouter>,
+    );
+    const btn = screen.getByRole("button", { name: "Project: Select project" });
+    expect(btn).toHaveTextContent("Select project");
+    expect(btn).not.toHaveTextContent("Alpha");
   });
 });
