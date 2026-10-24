@@ -1454,10 +1454,10 @@ html {
 }
 html.snap-home {
   scroll-snap-type: y proximity;
+  scroll-padding-top: var(--nav-h);
 }
 .snap-section {
-  min-height: 100dvh;
-  padding: clamp(40px, 7vh, 80px) var(--pad);
+  padding: clamp(72px, 12vh, 128px) var(--pad);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -1470,6 +1470,7 @@ html.snap-home {
 }
 .hero {
   min-height: calc(100dvh - var(--nav-h));
+  padding-block: clamp(40px, 7vh, 80px);
   scroll-snap-align: none;
   gap: clamp(20px, 4vh, 40px);
 }
@@ -1504,6 +1505,14 @@ html.snap-home {
 }
 .pub-nav {
   min-height: var(--nav-h);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line-soft);
 }
 .steps {
   padding: 0;
@@ -1519,7 +1528,7 @@ html.snap-home {
 }
 .doc-toc {
   position: sticky;
-  top: 24px;
+  top: calc(var(--nav-h) + 24px);
   align-self: start;
   display: flex;
   flex-direction: column;
@@ -1835,7 +1844,7 @@ html.snap-home {
   }
   .doc-toc {
     position: sticky;
-    top: 0;
+    top: var(--nav-h);
     z-index: 5;
     background: var(--bg);
     padding: 12px 0;
@@ -2282,38 +2291,10 @@ table.data.compact td {
 .feature-card .feature-title {
   font-size: clamp(22px, 2vw, 30px);
 }
-.cols-3 {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-.usecase {
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface);
-  padding: 28px;
-  min-height: 340px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-.usecase .body {
-  flex: 1;
-}
-.usecase-q {
-  font-size: clamp(20px, 1.8vw, 26px);
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-  color: var(--text);
-}
 @media (max-width: 900px) {
   .what-grid,
   .feature-grid,
-  .cols-3 {
-    grid-template-columns: minmax(0, 1fr);
   }
-}
 @media (max-width: 520px) {
   .facts {
     grid-template-columns: minmax(0, 1fr);
@@ -2531,4 +2512,60 @@ table.data.compact td {
 .brand-mark {
   width: 18px;
   height: 18px;
+}
+
+/* home: stacked section heads, icon tiles, security cards, decoration */
+.sec-head {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 980px;
+}
+.deco-host {
+  position: relative;
+  overflow: hidden;
+}
+.deco-host > * {
+  position: relative;
+}
+.deco-host > .dot-grid,
+.deco-host > .cta-mark {
+  position: absolute;
+  pointer-events: none;
+}
+.dot-grid {
+  top: 32px;
+  right: var(--pad);
+  opacity: 0.8;
+}
+.cta-mark {
+  right: var(--pad);
+  top: 50%;
+  width: min(34vw, 360px);
+  height: auto;
+  transform: translateY(-50%);
+  opacity: 0.1;
+}
+.icon-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--lime);
+}
+.sec-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cols-4 {
+  gap: 16px;
 }

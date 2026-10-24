@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { Reveal } from "../../shared/motion/motion";
+import { LogoMark } from "../../shared/ui/Logo";
 import { CodeBlock, PublicLayout, SectionLabel } from "../../shared/ui/PublicLayout";
-import { Segmented, StatusDot } from "../../shared/ui/ui";
+import { Segmented } from "../../shared/ui/ui";
+import { DotGrid, LineIcon } from "./art";
 import { RouteFlow } from "./RouteFlow";
 
 const STEPS = [
@@ -36,6 +38,8 @@ const ROUTING = [
   ],
   ["No match, no model", "If nothing in your documents matches, Lumen says so and calls no model."],
 ] as const;
+const FEATURE_ICONS = ["route", "shield", "models", "honest", "cited", "chart"] as const;
+const SECURITY_ICONS = ["boxes", "key", "nolog", "data"] as const;
 const FEATURES = [
   [
     "Tiered routing",
@@ -62,26 +66,6 @@ const FEATURES = [
     "See the route, tokens and latency of each request, the mix of routes over time and the questions your documents could not answer.",
   ],
 ];
-const USE_CASES = [
-  [
-    "Student help desk",
-    "When does enrollment close?",
-    "A short factual question. The cheap tier answers it and cites the calendar page.",
-    "cheap",
-  ],
-  [
-    "Shop support",
-    "Can I return an opened item?",
-    "One policy document, one clear passage. The answer cites it so a customer can check.",
-    "cheap",
-  ],
-  [
-    "Internal handbook",
-    "What is the difference between fall and spring refunds?",
-    "A comparison across passages escalates to the expensive tier.",
-    "expensive",
-  ],
-] as const;
 const SECURITY = [
   [
     "Isolated per workspace",
@@ -196,8 +180,9 @@ export function Home() {
           </div>
         </section>
 
-        <section className="snap-section" aria-label="What Lumen is">
-          <div className="head-grid">
+        <section className="snap-section deco-host" aria-label="What Lumen is">
+          <DotGrid id="dg-what" />
+          <div className="sec-head">
             <SectionLabel>WHAT LUMEN IS — 02</SectionLabel>
             <h2 className="h2">
               A retrieval API that answers from your documents and picks the model for each
@@ -235,7 +220,7 @@ export function Home() {
         </section>
 
         <section id="how" className="snap-section" aria-label="How routing works">
-          <div className="head-grid">
+          <div className="sec-head">
             <SectionLabel>HOW ROUTING WORKS — 03</SectionLabel>
             <h2 className="h2">
               Cheap first, expensive when needed, a fallback when a tier fails.
@@ -290,7 +275,12 @@ export function Home() {
           <div className="feature-grid">
             {FEATURES.map(([t, b], i) => (
               <Reveal key={t} delay={(i % 3) * 0.08} className="feature-card">
-                <div className="mono muted-3">0{i + 1}</div>
+                <div className="row-between">
+                  <span className="icon-tile">
+                    <LineIcon name={FEATURE_ICONS[i]} />
+                  </span>
+                  <span className="mono muted-3">0{i + 1}</span>
+                </div>
                 <h3 className="feature-title">{t}</h3>
                 <div className="body muted-2">{b}</div>
               </Reveal>
@@ -298,35 +288,18 @@ export function Home() {
           </div>
         </section>
 
-        <section className="snap-section" aria-label="Use cases">
-          <div className="head-grid">
-            <SectionLabel>USE CASES — 06</SectionLabel>
-            <h2 className="h2">One endpoint, any set of documents.</h2>
-          </div>
-          <ul className="cols-3">
-            {USE_CASES.map(([t, q, b, tier], i) => (
-              <Reveal as="li" key={t} delay={i * 0.08} className="usecase">
-                <div className="row-between">
-                  <h3 className="card-title-sm">{t}</h3>
-                  <StatusDot tone={tier}>{tier}</StatusDot>
-                </div>
-                <div className="usecase-q">“{q}”</div>
-                <div className="body muted-2">{b}</div>
-                <div className="mono small muted-4">EXAMPLE, NOT A CUSTOMER</div>
-              </Reveal>
-            ))}
-          </ul>
-        </section>
-
-        <section className="snap-section" aria-label="Security">
-          <div className="head-grid">
-            <SectionLabel>SECURITY — 07</SectionLabel>
+        <section className="snap-section deco-host" aria-label="Security">
+          <DotGrid id="dg-sec" />
+          <div className="sec-head">
+            <SectionLabel>SECURITY — 06</SectionLabel>
             <h2 className="h2">Your documents stay yours.</h2>
           </div>
           <ul className="cols-4">
             {SECURITY.map(([t, b], i) => (
-              <Reveal as="li" key={t} delay={i * 0.08} className="step">
-                <div className="num">0{i + 1}</div>
+              <Reveal as="li" key={t} delay={i * 0.08} className="sec-card">
+                <span className="icon-tile">
+                  <LineIcon name={SECURITY_ICONS[i]} />
+                </span>
                 <h3 className="card-title-sm">{t}</h3>
                 <div className="small muted-2">{b}</div>
               </Reveal>
@@ -334,9 +307,10 @@ export function Home() {
           </ul>
         </section>
 
-        <section className="snap-section head-grid top" aria-label="Quickstart">
+        <section className="snap-section head-grid top deco-host" aria-label="Quickstart">
+          <DotGrid id="dg-qs" />
           <div className="stack">
-            <SectionLabel>QUICKSTART — 08</SectionLabel>
+            <SectionLabel>QUICKSTART — 07</SectionLabel>
             <h2 className="h2">Call it from your backend in a few lines.</h2>
             <p className="body muted-2 maxw-sm">
               Keep the key on your server. Your chatbot's frontend talks to your backend, and your
@@ -369,7 +343,8 @@ export function Home() {
           </div>
         </section>
 
-        <section className="snap-section cta" aria-label="Closing">
+        <section className="snap-section cta deco-host" aria-label="Closing">
+          <LogoMark className="cta-mark" />
           <h2 className="cta-h">
             Ask your documents
             <br />
