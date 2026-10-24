@@ -43,3 +43,9 @@ Views (derived values are computed, not stored): `document_stats` (document_id, 
 
 - Local development and tests: Podman or Docker Postgres 16 with pgvector (`pnpm db:up`), databases `lumen`, `lumen_test`, `lumen_rag_test`.
 - Supabase project `lumen` (Postgres 17): migrations are applied with the Supabase migration tool, then `get_advisors` (security and performance) is run and findings fixed. The Free plan has no branching, so by the human's decision (2026-10-24) the normalized schema is applied directly to this project, which had no tables or data.
+
+## Supabase status (applied 2026-10-24)
+
+Applied to the main project `lumen` (Postgres 17, was empty) through the Supabase migration tool, in this order: `better_auth_tables`, `better_auth_tables_rls`, `app_001` to `app_009` (the repo's `infra/sql/001` to `009`). Verified afterwards: every public table has RLS enabled and neither `anon` nor `authenticated` can SELECT any table or view. Advisors: security shows 15 INFO `rls_enabled_no_policy` (intentional: deny-all, the services connect as the owner role) and one WARN `extension_in_public` for `vector` (accepted: moving it risks the services not finding the vector type); performance shows the unused-index INFOs (no traffic yet) and one INFO for Better Auth's own `invitation.inviterId` foreign key. The migration history on Supabase lists 005 and 007 before 004, 006 and 008 because three calls were sent together by mistake and had to be re-applied in order; the resulting schema is the same.
+
+Connect the services with the session pooler (port 5432) or the direct connection, not the transaction pooler (6543): psycopg auto-prepares statements. The direct host is IPv6-only unless the IPv4 add-on is enabled.

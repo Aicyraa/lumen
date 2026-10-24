@@ -122,3 +122,10 @@
 
 - Reviewer R2 findings fixed (5a43ae3): db baseline now records a migration as applied only when its own table exists (tested on a fresh DB and a DB with only 001), docker compose gives a clear message when the password is missing, Biome key rules re-enabled in web src (index keys off), URL path for the api env file.
 - Supabase org is on the Free plan (no branching). Human decision: apply the normalized schema to the main project `lumen` (empty, no data). Design in docs/DATABASE.md.
+
+## 2026-10-24 Phase DB results
+
+- Local dev and test databases migrated 003-009 (`pnpm db:migrate`, then `pnpm --filter @lumen/api auth:migrate` for Better Auth RLS). Counts: api 389, rag-service 168, web 150; `pnpm check` green.
+- Reviewer findings fixed before Supabase: RLS and revokes for Better Auth tables (infra/sql/auth/001), default privileges and sequences (007), composite chunk FK for request_sources (008). Advisor follow-up: 009 (FK-ordered indexes).
+- Supabase main project `lumen` migrated (human's explicit decision, Free plan has no branching, project was empty): see docs/DATABASE.md. Security advisor: no errors; one accepted WARN (vector in public). Mistake worth remembering: apply Supabase migrations one at a time; sending several in parallel made 004, 006 and 008 fail and run out of order.
+- Not done: the services have not connected to Supabase yet (needs DATABASE_URL from infra/.env with the session pooler or direct string); the hook gap where an organization exists without a tenants row is documented, not repaired.
