@@ -26,7 +26,7 @@ const down = () => { need(); process.exit(run(["stop", NAME]).status ?? 1); };
 const psql = () => { need(); process.exit(run(["exec", "-it", NAME, "psql", "-U", "postgres", "-d", "lumen"]).status ?? 1); };
 
 async function client() {
-  const url = readAppEnv("apps/api").DATABASE_URL;
+  const url = process.env.DATABASE_URL || readAppEnv("apps/api").DATABASE_URL;
   if (!url) { console.error("DATABASE_URL missing in apps/api/.env"); process.exit(1); }
   const pg = createRequire(join(ROOT, "apps/api/package.json"))("pg");
   const c = new pg.Client({ connectionString: url });
@@ -40,9 +40,17 @@ async function migrate(statusOnly = false) {
   try {
     await c.query("CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())");
     const done = new Set((await c.query("SELECT name FROM schema_migrations")).rows.map((r) => r.name));
-    // Databases created before this tracker: the first files already ran, so record them instead of re-running.
-    const legacy = (await c.query("SELECT to_regclass('public.documents') AS t")).rows[0].t;
-    if (!done.size && legacy) for (const f of files()) { await c.query("INSERT INTO schema_migrations(name) VALUES ($1) ON CONFLICT DO NOTHING", [f]); done.add(f); console.log(`baseline ${f}`); }
+    // Databases created before this tracker: record a file as applied only when what it creates already exists
+    // (add an entry here for every migration that creates a new table). Anything else is run normally.
+    const MARKERS = { "001_app_tables.sql": "documents", "002_tenant_models.sql": "tenant_models" };
+    if (!done.size) {
+      for (const f of files()) {
+        const table = MARKERS[f];
+        if (!table) continue;
+        const exists = (await c.query("SELECT to_regclass($1) AS t", [`public.${table}`])).rows[0].t;
+        if (exists) { await c.query("INSERT INTO schema_migrations(name) VALUES ($1) ON CONFLICT DO NOTHING", [f]); done.add(f); console.log(`baseline ${f}`); }
+      }
+    }
     for (const f of files()) {
       if (done.has(f)) { console.log(`${statusOnly ? "applied" : "skip"}    ${f}`); continue; }
       if (statusOnly) { console.log(`pending    ${f}`); continue; }

@@ -32,7 +32,7 @@
       "includes": ["apps/web/**"],
       "linter": {
         "rules": {
-          "correctness": { "useExhaustiveDependencies": "off", "useJsxKeyInIterable": "off" },
+          "correctness": { "useExhaustiveDependencies": "off" },
           "suspicious": { "noArrayIndexKey": "off" },
           "a11y": {
             "useSemanticElements": "off",
@@ -40,6 +40,15 @@
             "noStaticElementInteractions": "off",
             "noNoninteractiveTabindex": "off"
           }
+        }
+      }
+    },
+    {
+      "includes": ["apps/web/test/**"],
+      "linter": {
+        "rules": {
+          "correctness": { "useJsxKeyInIterable": "off" },
+          "suspicious": { "noArrayIndexKey": "off" }
         }
       }
     }
