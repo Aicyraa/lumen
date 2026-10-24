@@ -1,0 +1,134 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+type Sess = { data: { user: { id: string; email: string; emailVerified: boolean }; session: { activeOrganizationId: string | null } } | null; isPending: boolean; error: null };
+const signedIn = (org: string | null): Sess => ({ data: { user: { id: "u1", email: "maya@x.test", emailVerified: true }, session: { activeOrganizationId: org } }, isPending: false, error: null });
+let sess: Sess;
+const setActive = vi.fn();
+const refetch = vi.fn();
+vi.mock("../../src/shared/lib/auth-client", () => ({
+  authClient: {
+    useSession: () => ({ ...sess, refetch }),
+    useActiveOrganization: () => ({ data: { name: "active" } }),
+    organization: { setActive: (a: unknown) => setActive(a) },
+    getSession: vi.fn(), signOut: vi.fn(), signIn: { social: vi.fn(), email: vi.fn() }, signUp: { email: vi.fn() }, sendVerificationEmail: vi.fn(),
+    apiKey: { list: vi.fn().mockResolvedValue({ data: { apiKeys: [] } }) },
+  },
+}));
+
+import { App } from "../../src/app/App";
+import { mockFetch, reply } from "../helpers";
+
+const P1 = { id: "p1", name: "My project", slug: "my-project", description: null, role: "owner", created_at: "2026-10-24T08:00:00Z", documents: 2, requests_this_month: 14 };
+const P2 = { id: "p2", name: "Shop support", slug: "shop-support-3fa9c1", description: "Orders", role: "owner", created_at: "2026-10-24T09:00:00Z", documents: 0, requests_this_month: 0 };
+const usage = { documents: { used: 1, max: 5 }, requests_per_minute: { used: 0, max: 5 }, requests_this_month: { used: 0, max: 5 } };
+
+let client: QueryClient;
+const mount = (route: string) =>
+  render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[route]}><App /></MemoryRouter></QueryClientProvider>);
+const api = (extra?: (url: string, init?: RequestInit) => unknown) => (url: string, init?: RequestInit) => {
+  const x = extra?.(url, init);
+  if (x !== undefined) return x;
+  if (url.endsWith("/workspaces")) return { workspaces: [P1, P2] };
+  if (url.endsWith("/usage")) return usage;
+  if (url.endsWith("/documents")) return { documents: [] };
+  return {};
+};
+
+describe("project routes", () => {
+  beforeEach(() => {
+    client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    sess = signedIn("p1");
+    setActive.mockReset().mockResolvedValue({ data: {} });
+    refetch.mockReset().mockImplementation(async () => { sess = signedIn("p2"); });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  it("signed out: /projects goes to sign-in", async () => {
+    sess = { data: null, isPending: false, error: null };
+    mockFetch(api());
+    mount("/projects");
+    expect(await screen.findByText("Welcome to Lumen")).toBeInTheDocument();
+  });
+
+  it.each(["/dashboard", "/dashboard/documents", "/dashboard/models"])("%s redirects to /projects", async (route) => {
+    mockFetch(api());
+    mount(route);
+    expect(await screen.findByRole("heading", { level: 1, name: "Projects" })).toBeInTheDocument();
+  });
+
+  it("entering another project activates it, re-reads the session without the cookie cache, clears cached data, then shows the page", async () => {
+    mockFetch(api());
+    client.setQueryData(["documents", "p1"], [{ filename: "p1-secret.md" }]);
+    mount("/projects/shop-support-3fa9c1/documents");
+    expect(await screen.findByText("Drop files to upload")).toBeInTheDocument();
+    expect(setActive).toHaveBeenCalledTimes(1);
+    expect(setActive).toHaveBeenCalledWith({ organizationId: "p2" });
+    expect(refetch).toHaveBeenCalledWith({ query: { disableCookieCache: true } });
+    expect(JSON.stringify(client.getQueryCache().getAll().map((q) => q.state.data))).not.toContain("p1-secret.md");
+  });
+
+  it("does not re-activate a project that is already active", async () => {
+    mockFetch(api());
+    mount("/projects/my-project/documents");
+    expect(await screen.findByText("Drop files to upload")).toBeInTheDocument();
+    expect(setActive).not.toHaveBeenCalled();
+  });
+
+  it("an unknown project slug says so and links back to Projects", async () => {
+    mockFetch(api());
+    mount("/projects/nope/documents");
+    expect(await screen.findByText("Project not found")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "All projects" })).toHaveAttribute("href", "/projects");
+  });
+
+  it("a failed activation shows an error with retry and does not show the project", async () => {
+    setActive.mockResolvedValue({ data: null, error: { status: 403, message: "not a member" } });
+    mockFetch(api());
+    mount("/projects/shop-support-3fa9c1/documents");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not open this project");
+    expect(screen.queryByText("Drop files to upload")).not.toBeInTheDocument();
+  });
+
+  it("403 no_active_project from the API sends the user to /projects", async () => {
+    mockFetch(api((url) => (url.endsWith("/documents") ? reply(403, { error: { code: "no_active_project", message: "Choose a project first." } }) : undefined)));
+    mount("/projects/my-project/documents");
+    expect(await screen.findByRole("heading", { level: 1, name: "Projects" })).toBeInTheDocument();
+  });
+
+  it("the sidebar has a project switcher, a link back to Projects and a link to the docs; switching goes to the same tab of the other project", async () => {
+    mockFetch(api());
+    mount("/projects/my-project/requests");
+    const side = await screen.findByRole("complementary");
+    const switcher = within(side).getByRole("combobox", { name: "Project" });
+    expect(within(switcher).getAllByRole("option").map((o) => o.textContent)).toEqual(["My project", "Shop support"]);
+    expect(within(side).getByRole("link", { name: "All projects" })).toHaveAttribute("href", "/projects");
+    expect(within(side).getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
+    expect(within(side).getByRole("link", { name: /^Requests/ })).toHaveAttribute("href", "/projects/my-project/requests");
+    await userEvent.selectOptions(switcher, "Shop support");
+    await waitFor(() => expect(setActive).toHaveBeenCalledWith({ organizationId: "p2" }));
+    await waitFor(() => expect(within(screen.getByRole("complementary")).getByRole("link", { name: /^Requests/ })).toHaveAttribute("href", "/projects/shop-support-3fa9c1/requests"));
+  });
+});
+
+describe("docs and nav, signed in and out", () => {
+  beforeEach(() => { client = new QueryClient(); mockFetch(() => ({})); });
+  it("/docs is reachable signed out and the nav offers Sign in", async () => {
+    sess = { data: null, isPending: false, error: null };
+    mount("/docs");
+    expect(await screen.findByRole("heading", { level: 1, name: "API reference" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Projects" })).not.toBeInTheDocument();
+  });
+  it("/docs is reachable signed in and the nav shows Projects instead of Sign in", async () => {
+    sess = signedIn("p1");
+    mount("/docs");
+    expect(await screen.findByRole("heading", { level: 1, name: "API reference" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Projects" })).toHaveAttribute("href", "/projects");
+    expect(screen.queryByRole("link", { name: "Get an API key" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Sign in" })).not.toBeInTheDocument();
+  });
+});

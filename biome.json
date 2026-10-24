@@ -13,7 +13,7 @@
       "!graphify-out",
       "!docs",
       "!apps/rag-service",
-      "!apps/web/src/components/animate-ui",
+      "!apps/web/src/shared/motion/animate-ui",
       "!pnpm-lock.yaml",
       "!**/*.md"
     ]
