@@ -390,3 +390,25 @@ def test_corrupt_state_file_is_a_clear_error(env, capsys):
     assert main(args(env, "--resume")) == 2
     err = capsys.readouterr().err
     assert "state file" in err and "Traceback" not in err and rag.calls == []
+
+
+def test_quota_exhaustion_stops_cleanly_and_can_be_resumed(env, server, capsys):
+    q, envp, rag, judge, tmp = env
+    state = {"n": 0}
+
+    def limited(method, path, headers, body):
+        state["n"] += 1
+        if state["n"] > 2:  # the daily cap is hit after two answers
+            return 502, {}, {"error": {"code": "provider_error"},
+                             "attempts": [{"outcome": "rate_limited", "rate_limits": {"retry-after": "9000"}}]}  # fmt: skip
+        return rag_handler()(method, path, headers, body)
+
+    lim = server(limited)
+    envp.write_text(envp.read_text().replace(rag.url, lim.url))
+    assert main(args(env)) == 3
+    assert "quota" in capsys.readouterr().err.lower()
+    assert len(read(tmp / "verdicts.csv")) == 2  # what completed is written
+    envp.write_text(envp.read_text().replace(lim.url, rag.url))
+    assert main(args(env, "--resume")) == 0
+    assert len(read(tmp / "results.csv")) == 6
+    assert len(rag.calls) == 4  # only the 4 pairs that had not completed

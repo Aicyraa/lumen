@@ -40,7 +40,8 @@ def run_pair(cfg, q, setup):
     rec = {"setup": setup, "query": q.query, "qtype": q.type, "split": split_of(q),
            "answer": a.answer, "tier": a.tier, "top_score": a.top_score,
            "latency_ms": a.latency_ms, "error": a.error,
-           "connection_failed": a.connection_failed}  # fmt: skip
+           "connection_failed": a.connection_failed,
+           "quota_exhausted": a.quota_exhausted}  # fmt: skip
     rec["cost"] = None if a.error else cost_of(a.attempts, cfg.prices)
     if a.error:
         v = ("incorrect", f"system error: {a.error}")
@@ -154,12 +155,18 @@ def main(argv=None) -> int:
                 f"error: state file {state_path} is corrupt; delete it, or run without --resume."
             )
     out_dir.mkdir(parents=True, exist_ok=True)
-    in_a_row, aborted = 0, False
+    in_a_row, aborted, quota = 0, False, False
     for n, (setup, q) in enumerate(pairs, 1):
         k = pair_key(cfg, q, setup)
         if k in state and not (state[k]["error"] or state[k]["verdict"] == "error"):
             continue  # done; pairs that failed are run again
-        state[k] = run_pair(cfg, q, setup)
+        rec = run_pair(cfg, q, setup)
+        if rec[
+            "quota_exhausted"
+        ]:  # not stored: this pair has not been answered and is run on --resume
+            quota = True
+            break
+        state[k] = rec
         _save(state_path, state)
         print(f"[{n}/{len(pairs)}] {setup}: {state[k]['verdict']}")
         in_a_row = in_a_row + 1 if state[k]["connection_failed"] else 0
@@ -172,6 +179,12 @@ def main(argv=None) -> int:
     print(
         f"\nwrote {out_dir / 'results.csv'} and {out_dir / 'verdicts.csv'}; spot-check the flagged verdicts."
     )
+    if quota:
+        return fail(
+            "error: the provider's quota is exhausted (it asked for a long wait); "
+            f"{len(records)} of {len(pairs)} runs completed. Run again later with --resume.",
+            3,
+        )
     if aborted:
         return fail(
             f"error: stopped after {in_a_row} consecutive connection failures; is the rag-service "

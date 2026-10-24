@@ -72,8 +72,8 @@ def parse_duration(value: str) -> float | None:
     return sum(float(n) * _UNIT[u] for n, u in parts)
 
 
-def retry_delay(headers: dict, attempt: int) -> float:
-    """Seconds to wait after a 429: Retry-After, or the reset time of an empty rate-limit bucket."""
+def requested_wait(headers: dict) -> float | None:
+    """Seconds the server asks for: Retry-After, or the reset time of an empty rate-limit bucket (uncapped)."""
     waits = []
     if "retry-after" in headers:
         waits.append(parse_duration(headers["retry-after"]))
@@ -82,7 +82,13 @@ def retry_delay(headers: dict, attempt: int) -> float:
         if left is not None and left.strip() in ("0", "0.0"):
             waits.append(parse_duration(headers.get(f"x-ratelimit-reset-{bucket}", "")))
     waits = [w for w in waits if w is not None]
-    return min(max(waits), MAX_WAIT) if waits else min(BASE_WAIT * 2**attempt, MAX_WAIT)
+    return max(waits) if waits else None
+
+
+def retry_delay(headers: dict, attempt: int) -> float:
+    """Seconds to wait after a 429: what the server asked for, else exponential; never more than MAX_WAIT."""
+    wait = requested_wait(headers)
+    return min(wait, MAX_WAIT) if wait is not None else min(BASE_WAIT * 2**attempt, MAX_WAIT)
 
 
 def request_with_backoff(method, url, *, retries=5, **kw) -> HttpResult:

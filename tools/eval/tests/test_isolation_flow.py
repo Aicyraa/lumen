@@ -1,11 +1,10 @@
 """The orchestration against fakes: no process, database or network."""
 
-from isolation.flow import VARIANTS, run_flow
-from isolation.realenv import RealEnv
-
 from isolation import suite as real_suite
 from isolation.__main__ import main
 from isolation.checks import Finding
+from isolation.flow import VARIANTS, run_flow
+from isolation.realenv import RealEnv
 from isolation.stack import drop_statement
 
 

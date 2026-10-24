@@ -92,3 +92,55 @@ def test_unanswerable_correct_only_for_the_not_found_message_without_sources():
     assert not grade_unanswerable(nf, [{"document_id": "d"}], nf).correct  # claims a source
     assert not grade_unanswerable("The president is Ana [1].", [], nf).correct
     assert not grade_unanswerable("", [], nf).correct
+
+
+def rate_limited_502(headers):
+    return (502, {}, {"error": {"code": "provider_error", "message": "m"},
+                      "attempts": [{"tier": "cheap", "outcome": "rate_limited", "rate_limits": headers}]})  # fmt: skip
+
+
+def test_query_rag_waits_out_a_provider_rate_limit_and_retries(server, no_sleep):
+    seq = iter([rate_limited_502({"retry-after": "4"}), (200, {}, OK)])
+    s = server(lambda *a: next(seq))
+    a = query_rag(cfg(s.url), "t", "Q?", None)
+    assert a.error == "" and a.answer == "A [1]" and no_sleep == [4] and len(s.calls) == 2
+
+
+def test_query_rag_uses_the_empty_token_bucket_reset(server, no_sleep):
+    seq = iter(
+        [
+            rate_limited_502(
+                {"x-ratelimit-remaining-tokens": "0", "x-ratelimit-reset-tokens": "6.5s"}
+            ),
+            (200, {}, OK),
+        ]
+    )
+    s = server(lambda *a: next(seq))
+    assert query_rag(cfg(s.url), "t", "Q?", None).error == "" and no_sleep == [6.5]
+
+
+def test_query_rag_gives_up_after_the_retries(server, no_sleep):
+    s = server(lambda *a: rate_limited_502({"retry-after": "1"}))
+    c = cfg(s.url)
+    c.backoff_retries = 2
+    a = query_rag(c, "t", "Q?", None)
+    assert a.error == "provider_error" and len(s.calls) == 3 and no_sleep == [1, 1]
+
+
+def test_a_very_long_wait_means_the_quota_is_exhausted(server, no_sleep):
+    s = server(lambda *a: rate_limited_502({"retry-after": "7200"}))
+    a = query_rag(cfg(s.url), "t", "Q?", None)
+    assert (
+        a.quota_exhausted and a.error == "quota_exhausted" and no_sleep == [] and len(s.calls) == 1
+    )
+
+
+def test_other_502s_are_not_retried(server, no_sleep):
+    s = server(
+        lambda *a: (
+            502,
+            {},
+            {"error": {"code": "provider_error"}, "attempts": [{"outcome": "error"}]},
+        )
+    )
+    assert query_rag(cfg(s.url), "t", "Q?", None).error == "provider_error" and len(s.calls) == 1

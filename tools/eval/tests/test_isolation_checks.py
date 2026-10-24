@@ -1,13 +1,12 @@
 import json
 
+from evalkit.http import HttpResult
 from isolation.checks import (
     check_chat,
     check_no_foreign_rows,
     check_not_found,
     check_positive,
 )
-
-from evalkit.http import HttpResult
 
 OWN = {"own-1", "own-2"}
 FOREIGN_MARKERS = ["COBALTOWL-9082", "Cobalt Marine Supply"]
