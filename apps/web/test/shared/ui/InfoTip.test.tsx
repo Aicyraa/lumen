@@ -74,18 +74,25 @@ describe("InfoTip", () => {
             } as DOMRect);
       });
 
-    it("aligns to the right edge when it would overflow on the right", async () => {
-      rectAt(window.innerWidth - 100, 260); // right edge past the viewport
+    it("shifts left just enough to end 16px inside the viewport when it would overflow on the right", async () => {
+      rectAt(window.innerWidth - 100, 260); // right edge 160px past the viewport
       setup();
       await userEvent.tab();
-      expect(screen.getByRole("tooltip")).toHaveClass("align-right");
+      expect(screen.getByRole("tooltip")).toHaveStyle({ transform: "translateX(-276px)" });
     });
 
-    it("keeps the default alignment when it fits", async () => {
+    it("never shifts past the left edge (stays 16px inside it)", async () => {
+      rectAt(30, 600); // wider than the room: shifting right-aligned would leave the left edge
+      setup();
+      await userEvent.tab();
+      expect(screen.getByRole("tooltip")).toHaveStyle({ transform: "translateX(-14px)" });
+    });
+
+    it("is not moved when it fits", async () => {
       rectAt(20, 200);
       setup();
       await userEvent.tab();
-      expect(screen.getByRole("tooltip")).not.toHaveClass("align-right");
+      expect(screen.getByRole("tooltip").style.transform).toBe("");
     });
 
     it("has a width cap that cannot exceed a 390px phone", () => {
