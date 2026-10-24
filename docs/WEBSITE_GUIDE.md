@@ -22,7 +22,7 @@ page) and the **dashboard** (six tabs behind sign-in).
 | nav | Product / Docs / Pricing, **Sign in**, **Get an API key** | Top bar. Both buttons lead to sign-in. Pricing link is **(Phase 7)**. |
 | 01 | Hero: "RAG API for your chatbot" | One-line pitch, **Sign in to start** and **Read the docs** buttons, and a dashboard screenshot slot. |
 | 02 | How it works | Three steps: upload documents, create an API key, call `/v1/chat`. |
-| 03 | Demo | Toggle EASY / HARD / NO ANSWER to see a sample `POST /v1/chat` request and the JSON response (answer, `route.model_tier`, `k`, `escalated`, usage). Shows how routing differs per question type. |
+| 03 | Demo (removed 2026-10-24) | The mockup's request/response demo with an EASY / HARD / NO ANSWER toggle. Not built: the home page now has an interactive routing diagram (section 03) instead. |
 | 04 | Quickstart | cURL / Node / Python tabs with a copy button. Reminds the reader to call Lumen from their backend so the key stays server-side. |
 | 05 | Savings **(Phase 7)** | Sliders for requests per month and share of easy questions; compares always-large-model against routed cost. |
 | 06 | Built in | Three feature cards: cost-aware routing, tenant isolation, honest "no answer". |
