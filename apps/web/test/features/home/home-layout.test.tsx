@@ -20,19 +20,19 @@ describe("Home layout", () => {
     expect(document.documentElement.classList.contains("snap-home")).toBe(false);
   });
 
-  it("is made of full-screen snap sections (hero, preview, how it works, demo, quickstart, built in, security, closing)", () => {
+  it("is made of full-screen snap sections (hero, what it is, routing, demo, features, use cases, security, quickstart, closing)", () => {
     const { container } = render(
       <MemoryRouter>
         <Home />
       </MemoryRouter>,
     );
     const sections = Array.from(container.querySelectorAll("main > section"));
-    expect(sections.length).toBeGreaterThanOrEqual(8);
+    expect(sections).toHaveLength(9);
     for (const s of sections) expect(s.classList.contains("snap-section")).toBe(true);
     expect(sections[0].classList.contains("hero")).toBe(true);
   });
 
-  it("keeps the screenshot placeholder out of the hero so it cannot push the headline, text and buttons off screen", () => {
+  it("has no empty screenshot placeholder anywhere, and the hero keeps its headline, text and two buttons", () => {
     const { container } = render(
       <MemoryRouter>
         <Home />
@@ -42,6 +42,6 @@ describe("Home layout", () => {
     expect(hero.querySelector(".image-slot")).toBeNull();
     expect(hero.querySelector("h1")).not.toBeNull();
     expect(hero.querySelectorAll("a.btn").length).toBe(2);
-    expect(container.querySelector(".image-slot")).not.toBeNull();
+    expect(container.querySelector(".image-slot")).toBeNull();
   });
 });
