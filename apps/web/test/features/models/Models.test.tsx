@@ -275,16 +275,14 @@ describe("Models", () => {
     await screen.findByText("model-a");
     const cheap = screen.getByRole("region", { name: "Cheap" });
     expect(cheap).toHaveClass("card");
-    expect(within(cheap).getAllByRole("columnheader").map((h) => h.textContent)).toEqual([
-      "MODEL",
-      "ENDPOINT",
-      "STATUS",
-      "USAGE",
-      "LIMITS",
-      "COST",
-      "",
-    ]);
-    expect(within(screen.getByTestId("model-a")).getByText("OpenAI-compatible")).toBeInTheDocument();
+    expect(
+      within(cheap)
+        .getAllByRole("columnheader")
+        .map((h) => h.textContent),
+    ).toEqual(["MODEL", "ENDPOINT", "STATUS", "USAGE", "LIMITS", "COST", ""]);
+    expect(
+      within(screen.getByTestId("model-a")).getByText("OpenAI-compatible"),
+    ).toBeInTheDocument();
     for (const name of ["Expensive", "Fallback"])
       expect(screen.getByRole("region", { name })).toHaveClass("card");
   });
