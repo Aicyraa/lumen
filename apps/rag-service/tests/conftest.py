@@ -1,4 +1,6 @@
+import json
 import os
+import re
 from pathlib import Path
 from urllib.parse import urlparse, urlunparse
 
@@ -77,6 +79,12 @@ def public_dns(monkeypatch):
     monkeypatch.setattr("app.llm.endpoint_guard._resolve", lambda host: ["93.184.216.34"])
 
 
+@pytest.fixture(autouse=True)
+def fake_reranker(monkeypatch):
+    # API tests use deterministic ordering; the reranker's own tests inject model scores.
+    monkeypatch.setattr("app.api.routes.rerank", lambda query, hits, k: hits[:k])
+
+
 class FakeCaller:
     """Stands in for llm.call_model. Records every call; `outcomes` maps a model_id to how that model behaves
     (default ok). Answering models report 100 tokens in and 10 out unless `tokens` says otherwise."""
@@ -103,7 +111,17 @@ class FakeCaller:
             latency_ms=5,
         )
         if outcome == "ok":
-            a.text = "Fake answer [1]"
+            first = re.search(r"\[1\] (.*?)(?=\n\[\d+\] |\n\nQuestion:)", user, re.S)
+            a.text = json.dumps(
+                {
+                    "claims": [
+                        {
+                            "text": "Fake answer",
+                            "evidence": [{"passage": 1, "quote": first.group(1)}],
+                        }
+                    ]
+                }
+            )
             a.tokens_in, a.tokens_out = self.tokens.get(m["model_id"], (100, 10))
         for k, v in self.extra.get(m["model_id"], {}).items():
             setattr(a, k, v)

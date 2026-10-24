@@ -16,11 +16,12 @@ from app.core.errors import ApiError
 from app.core.logging import log
 from app.ingest.chunking import chunk
 from app.ingest.extract import extract_text
-from app.llm.prompt import build_prompt
+from app.llm.prompt import build_prompt, render_answer
 from app.retrieval import store
 from app.retrieval.embeddings import (
     embed,  # loads the model at import, before the server starts listening
 )
+from app.retrieval.reranker import rerank
 from app.retrieval.router import decide
 
 public = APIRouter()
@@ -138,7 +139,9 @@ def query(req: QueryRequest, caller=Depends(get_caller)):
         return query_response(started, messages["no_documents"], [], none_route)
     best_score = probe[0][3]
     cfg = router_cfg()
-    if best_score < cfg.no_answer_score:  # nothing relevant: do not spend a model call
+    if best_score < cfg.no_answer_score and not store.keyword_search(
+        req.tenant_id, qvec, req.query, 1
+    ):  # allow BM25 evidence to rescue an exact match before rejecting the question
         return query_response(
             started, messages["not_found"], [], {**none_route, "top_score": best_score}
         )
@@ -148,20 +151,50 @@ def query(req: QueryRequest, caller=Depends(get_caller)):
         raise ApiError(
             422, "no_models_configured", "No models are configured. Add a model in the Models tab."
         )
-    hits = store.search(req.tenant_id, qvec, route["k"])
+    reranker_cfg = load_config()["reranker"]
+    candidate_k = (
+        max(route["k"], reranker_cfg["candidate_limit"]) if reranker_cfg["enabled"] else route["k"]
+    )
+    hits = store.search(req.tenant_id, qvec, candidate_k, query_text=req.query)
+    hits = rerank(req.query, hits, route["k"]) if reranker_cfg["enabled"] else hits
     system, user = build_prompt(req.query, [content for _, _, content, _ in hits])
     attempts = []
     for label, m in plan:  # top to bottom; the first model that answers wins
         attempts.append(caller(m, label, system, user))
         if attempts[-1].outcome == "ok":
             break
-    public = [a.public() for a in attempts]
     won = attempts[-1]
     if won.outcome != "ok":
         raise ApiError(
             502,
             "provider_error",
             "The language model provider failed. Try again shortly.",
+            {"attempts": [a.public() for a in attempts]},
+        )
+    passages = [content for _, _, content, _ in hits]
+    answer = None
+    for repair in range(load_config()["llm"]["answer_repair_attempts"] + 1):
+        if won.outcome == "ok":
+            try:
+                answer = render_answer(won.text, passages, messages["not_found"])
+                break
+            except ValueError:
+                pass
+        if repair < load_config()["llm"]["answer_repair_attempts"]:
+            won = caller(
+                m,
+                label,
+                system
+                + "\nYour last response failed validation. Return valid JSON with verbatim quotes and correct passage ids only.",
+                user,
+            )
+            attempts.append(won)
+    public = [a.public() for a in attempts]
+    if answer is None:
+        raise ApiError(
+            502,
+            "provider_error",
+            "The model could not produce a supported answer.",
             {"attempts": public},
         )
     sources = [
@@ -181,7 +214,15 @@ def query(req: QueryRequest, caller=Depends(get_caller)):
         best_score,
         len(attempts),
     )
-    return query_response(started, won.text, sources, route, won.tokens_in, won.tokens_out, public)
+    return query_response(
+        started,
+        answer,
+        sources,
+        route,
+        sum(a.tokens_in or 0 for a in attempts),
+        sum(a.tokens_out or 0 for a in attempts),
+        public,
+    )
 
 
 @internal.delete("/documents/{document_id}")

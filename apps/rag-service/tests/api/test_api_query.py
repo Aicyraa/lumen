@@ -64,7 +64,7 @@ def test_answered_response_matches_the_contract_shape(client, llm, best_score):
         assert s["score"] == pytest.approx(0.6, abs=1e-4)
     route = dict(body["route"])
     assert route.pop("top_score") == pytest.approx(0.6, abs=1e-4)  # the probe's best score
-    assert route == {"model_tier": "cheap", "k": 3, "escalated": False, "difficulty": 0.0}
+    assert route == {"model_tier": "cheap", "k": 5, "escalated": False, "difficulty": 0.0}
     usage = body["usage"]
     assert set(usage) == {"tokens_in", "tokens_out", "cost_usd", "latency_ms"}
     assert (usage["tokens_in"], usage["tokens_out"]) == (
@@ -79,8 +79,19 @@ def test_cheap_route_retrieves_k_cheap_chunks_and_calls_the_model_once(client, l
     add_doc("tenant_a", [f"passage number {i}" for i in range(10)])
     best_score(0.6)
     body = ask(client).json()
-    assert len(body["sources"]) == 3
+    assert len(body["sources"]) == 5
     assert [c["model_id"] for c in llm.calls] == ["cheap-model"]
+
+
+def test_query_includes_keyword_evidence_outside_the_semantic_top_k(client, llm, best_score):
+    add_doc("tenant_a", [f"Career events number {i}" for i in range(10)])
+    doc = add_document("tenant_a", "internship.txt")
+    store.add_chunks("tenant_a", doc, ["INT-027 closes September 3"], np.array([axis0(0.0)]))
+    best_score(1.0)
+    body = ask(client, query="When does INT-027 close?").json()
+    assert body["route"]["top_score"] == pytest.approx(1.0)  # semantic probe stays unchanged
+    assert any(s["document_id"] == doc for s in body["sources"])
+    assert "INT-027 closes September 3" in llm.calls[0]["user"]
 
 
 def test_weak_match_goes_to_the_expensive_tier_with_more_chunks(client, llm, best_score):
@@ -134,7 +145,7 @@ def test_no_documents_path_makes_zero_llm_calls(client, llm, best_score):
 
 
 def test_no_answer_path_makes_zero_llm_calls(client, llm, best_score):
-    add_doc("tenant_a", ["We open at 8am."])
+    add_doc("tenant_a", ["Shipping is unavailable."])
     best_score(0.10)  # below no_answer_score
     body = ask(client).json()
     assert llm.calls == []
@@ -144,6 +155,81 @@ def test_no_answer_path_makes_zero_llm_calls(client, llm, best_score):
         0.10, abs=1e-4
     )  # the low probe score, not null
     assert body["usage"]["tokens_in"] == 0 and body["usage"]["cost_usd"] is None
+
+
+def test_low_semantic_score_does_not_reject_an_exact_keyword_match(client, llm, best_score):
+    add_doc("tenant_a", ["INT-027 closes September 3."])
+    best_score(0.10)
+    body = ask(client, query="INT-027 deadline").json()
+    assert body["answer"] == "Fake answer [1]"
+    assert len(llm.calls) == 1
+
+
+def test_low_semantic_keyword_rescue_cannot_read_another_tenant(client, llm, best_score):
+    add_doc("tenant_a", ["Shipping is unavailable."])
+    add_doc("tenant_b", ["INT-027 closes September 3."])
+    best_score(0.10)
+    body = ask(client, query="INT-027 deadline").json()
+    assert body["answer"] == MESSAGES["not_found"] and llm.calls == []
+
+
+def test_invalid_model_evidence_gets_one_repair_then_a_provider_error(client, llm, best_score):
+    add_doc("tenant_a", ["Housing is not guaranteed."])
+    best_score(0.6)
+    llm.extra = {
+        "cheap-model": {
+            "text": '{"claims":[{"text":"Guaranteed housing","evidence":[{"passage":1,"quote":"Housing is guaranteed"}]}]}'
+        }
+    }
+    response = ask(client)
+    assert response.status_code == 502
+    assert len(llm.calls) == 2
+    assert len(response.json()["attempts"]) == 2
+
+
+def test_model_generic_refusal_is_normalized_without_an_extra_call(client, llm, best_score):
+    add_doc("tenant_a", ["Housing is not guaranteed."])
+    best_score(0.6)
+    llm.extra = {"cheap-model": {"text": "I’m sorry, but I can’t help with that."}}
+    assert ask(client).json()["answer"] == MESSAGES["not_found"]
+    assert len(llm.calls) == 1
+
+
+def test_successful_answer_repair_counts_both_model_attempts(client, llm, best_score):
+    from app.api.deps import get_caller
+
+    add_doc("tenant_a", ["Housing is not guaranteed."])
+    best_score(0.6)
+
+    def answer(*args):
+        attempt = llm(*args)
+        if len(llm.calls) == 1:
+            attempt.text = "Malformed response"
+        return attempt
+
+    client.app.dependency_overrides[get_caller] = lambda: answer
+    body = ask(client).json()
+    assert body["answer"] == "Fake answer [1]"
+    assert len(body["attempts"]) == 2
+    assert (body["usage"]["tokens_in"], body["usage"]["tokens_out"]) == (200, 20)
+
+
+def test_reranker_selects_final_sources_from_a_larger_tenant_scoped_pool(
+    client, llm, best_score, monkeypatch
+):
+    doc = add_doc("tenant_a", [f"Own passage {i}" for i in range(12)])
+    add_doc("tenant_b", ["Other tenant secret"])
+    best_score(0.6)
+
+    def reverse(query, hits, k):
+        assert len(hits) > k
+        assert all(h[1] == doc for h in hits)
+        return list(reversed(hits))[:k]
+
+    monkeypatch.setattr("app.api.routes.rerank", reverse)
+    body = ask(client).json()
+    assert len(body["sources"]) == body["route"]["k"] == 5
+    assert "[1] Own passage 11" in llm.calls[0]["user"]
 
 
 def test_query_only_sees_the_callers_tenant(client, llm, best_score):
