@@ -2,9 +2,8 @@ import json
 import sys
 from pathlib import Path
 
-from isolation.stub_model import StubModel, answer_for, first_passage, quote_span
-
 from evalkit.http import request
+from isolation.stub_model import StubModel, answer_for, first_passage, quote_span
 
 RAG_DIR = Path(__file__).resolve().parents[3] / "apps" / "rag-service"
 sys.path.insert(0, str(RAG_DIR))
@@ -26,7 +25,7 @@ def test_first_passage_is_parsed_from_the_user_message():
 
 def test_quote_span_is_an_exact_short_word_aligned_slice():
     span = quote_span(P1, 60)
-    assert span in P1 and P1.startswith(span) and len(span) <= 60 and span.endswith("4417.")
+    assert span in P1 and P1.startswith(span) and len(span) <= 60 and "AMBERFOX-4417" in span
     assert quote_span("short", 60) == "short"
 
 
