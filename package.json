@@ -21,7 +21,8 @@
     "db:migrate": "node scripts/db.mjs migrate",
     "db:status": "node scripts/db.mjs status",
     "env:init": "node scripts/env.mjs init",
-    "env:check": "node scripts/env.mjs check"
+    "env:check": "node scripts/env.mjs check",
+    "eval:isolation": "node tools/eval/isolation/run.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.2",
