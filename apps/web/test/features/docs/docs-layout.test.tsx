@@ -12,14 +12,17 @@ import { Docs } from "../../../src/features/docs/Docs";
 import { Privacy } from "../../../src/features/docs/Privacy";
 
 type Entry = { target: Element; isIntersecting: boolean };
-let observers: { cb: (e: Entry[]) => void; els: Element[] }[] = [];
+let observers: { cb: (e: Entry[]) => void; els: Element[]; opts?: IntersectionObserverInit }[] = [];
 const original = window.IntersectionObserver;
 
 beforeEach(() => {
   observers = [];
   class FakeIO {
     els: Element[] = [];
-    constructor(public cb: (e: Entry[]) => void) {
+    constructor(
+      public cb: (e: Entry[]) => void,
+      public opts?: IntersectionObserverInit,
+    ) {
       observers.push(this);
     }
     observe(el: Element) {
@@ -216,5 +219,15 @@ describe("full-height layout: only the content region scrolls", () => {
     expect(css).toMatch(/\.public-fill\s*\{[^}]*height:\s*100dvh[^}]*overflow:\s*hidden/);
     expect(css).toMatch(/\.doc-scroll\s*\{[^}]*overflow-y:\s*auto/);
     expect(css).toMatch(/\.doc-scroll:focus-visible\s*\{[^}]*outline/);
+  });
+
+  it("the scroll-spy watches the inner scroller (not the window) and anchors sit 16px below its top", () => {
+    view(<Privacy />);
+    const scroller = document.querySelector(".doc-scroll");
+    expect(scroller).not.toBeNull();
+    expect(observers.length).toBeGreaterThan(0);
+    for (const o of observers) expect(o.opts?.root).toBe(scroller);
+    const css = readFileSync("src/shared/styles/styles.css", "utf8");
+    expect(css).toMatch(/\.doc-content section\s*\{[^}]*scroll-margin-top:\s*16px/);
   });
 });

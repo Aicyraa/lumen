@@ -68,8 +68,9 @@ describe("sticky nav offsets and dead CSS", () => {
   const css = readFileSync("src/shared/styles/styles.css", "utf8");
   it("anchors and scroll padding leave room for the sticky nav", () => {
     expect(css).not.toMatch(/scroll-padding-top:\s*16px/);
+    // window-scrolled pages (home) leave room for the sticky nav; the docs scroll inside .doc-scroll, below the nav (16px)
     for (const m of css.matchAll(/scroll-(?:padding|margin)-top:\s*([^;]+);/g))
-      expect(m[1]).toBe("calc(var(--nav-h) + 24px)");
+      expect(["calc(var(--nav-h) + 24px)", "16px"]).toContain(m[1]);
     expect(css).toMatch(
       /\.doc-content section\s*\{[^}]*scroll-margin-top:\s*calc\(var\(--nav-h\) \+ 24px\)/,
     );

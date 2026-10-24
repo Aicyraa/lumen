@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -8,6 +9,7 @@ vi.mock("../../../src/shared/lib/auth-client", () => ({
 }));
 
 import { Home } from "../../../src/features/home/Home";
+import { RF_TIMING, rfTotalSeconds } from "../../../src/features/home/RouteFlow";
 
 const view = () =>
   render(
@@ -226,5 +228,53 @@ describe("Routing diagram is interactive", () => {
     expect(desc).toHaveTextContent(/cheap tier/i);
     await userEvent.click(screen.getByRole("button", { name: "No match" }));
     expect(desc).toHaveTextContent(/no model is called/i);
+  });
+});
+
+describe("Routing diagram timing and labels", () => {
+  const css = readFileSync("src/shared/styles/styles.css", "utf8");
+  it("the whole staggered entrance (delays plus durations) takes at most 600 ms", () => {
+    expect(rfTotalSeconds()).toBeLessThanOrEqual(0.6);
+    expect(RF_TIMING.duration).toBeLessThanOrEqual(0.3);
+  });
+
+  it("the CSS entrance duration is the same constant", () => {
+    const m = /\.route-flow \.rf-node,[^{]*\{[^}]*animation-duration:\s*([\d.]+)s/.exec(css);
+    expect(Number(m![1])).toBe(RF_TIMING.duration);
+  });
+
+  it("clicking a scenario only changes the highlight: the same elements stay, with no new entrance delays", async () => {
+    view();
+    const edge = document.querySelector('[data-edge="r-c"]')!;
+    const node = document.querySelector('[data-node="cheap"]')!;
+    const delay = (edge as SVGElement).style.animationDelay;
+    await userEvent.click(screen.getByRole("button", { name: "Hard question" }));
+    expect(document.querySelector('[data-edge="r-c"]')).toBe(edge);
+    expect(document.querySelector('[data-node="cheap"]')).toBe(node);
+    expect((edge as SVGElement).style.animationDelay).toBe(delay);
+    expect(edge.getAttribute("data-active")).toBe("false");
+    expect(document.querySelector('[data-edge="r-e"]')!.getAttribute("data-active")).toBe("true");
+  });
+
+  it("highlight changes use a short transition of at most 250 ms", () => {
+    for (const sel of [".rf-edge", ".route-flow .rf-node rect", ".rf-node"]) {
+      const re = new RegExp(
+        `(?:^|\\n)${sel.replace(/\./g, "\\.")}\\s*\\{[^}]*transition:[^;]*?([\\d.]+)s`,
+      );
+      const m = re.exec(css);
+      expect(m, sel).not.toBeNull();
+      expect(Number(m![1]), sel).toBeLessThanOrEqual(0.25);
+    }
+  });
+
+  it("edge labels sit on a chip with the card colour so text never lies on a stroke", () => {
+    view();
+    const labels = document.querySelectorAll(".rf-chip");
+    expect(labels.length).toBe(4);
+    for (const g of labels) {
+      expect(g.querySelector("rect.rf-chip-bg")).not.toBeNull();
+      expect(g.querySelector("text.rf-label")).not.toBeNull();
+    }
+    expect(css).toMatch(/\.rf-chip-bg\s*\{[^}]*fill:\s*var\(--surface\)/);
   });
 });
