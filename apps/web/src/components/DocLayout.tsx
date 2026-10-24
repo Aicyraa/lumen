@@ -6,15 +6,20 @@ export interface TocItem { id: string; label: string }
 // Highlights the table-of-contents entry of the section that is currently near the top of the viewport.
 function useScrollSpy(ids: string[]) {
   const [active, setActive] = useState(ids[0]);
+  const key = ids.join("|"); // a stable dependency: the caller builds a new array every render
   useEffect(() => {
     if (typeof IntersectionObserver === "undefined") return;
+    const visible = new Set<string>();
     const io = new IntersectionObserver((entries) => {
-      const seen = entries.filter((e) => e.isIntersecting);
-      if (seen.length) setActive(seen[0].target.id);
+      for (const e of entries) (e.isIntersecting ? visible.add(e.target.id) : visible.delete(e.target.id));
+      // the section reading position is in: the last one in page order that is currently inside the band
+      const current = [...ids].reverse().find((id) => visible.has(id));
+      if (current) setActive(current);
     }, { rootMargin: "-15% 0px -70% 0px" });
     ids.forEach((id) => { const el = document.getElementById(id); if (el) io.observe(el); });
     return () => io.disconnect();
-  }, [ids]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
   return active;
 }
 
