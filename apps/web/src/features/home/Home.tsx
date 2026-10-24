@@ -64,7 +64,7 @@ const FEATURES = [
 ];
 const USE_CASES = [
   [
-    "Campus FAQ",
+    "Student help desk",
     "When does enrollment close?",
     "A short factual question. Answered by the cheap tier, with the calendar page cited.",
   ],
