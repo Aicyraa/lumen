@@ -57,6 +57,25 @@ def test_hybrid_search_never_uses_another_tenants_keyword_match():
     assert [h[2] for h in hits] == ["My own text"]
 
 
+def test_bm25_uses_term_frequency_length_and_tenant_local_document_frequency():
+    import math
+
+    add("tenant_a", "a.txt", ["alpha alpha beta", "beta gamma", "the"], [0, 1, 2])
+    hits = store.keyword_search("tenant_a", vec(0), "alpha", 10)
+    # Gold BM25 score: N=3, df=1, tf=2, length=3, average length=5/3.
+    expected = math.log(1 + 2.5 / 1.5) * (2 * 2.2) / (2 + 1.2 * (0.25 + 0.75 * 3 / (5 / 3)))
+    assert len(hits) == 1 and hits[0][2] == "alpha alpha beta"
+    assert hits[0][4] == pytest.approx(expected)
+    add("tenant_b", "b.txt", ["alpha " * 1000], [0])
+    assert store.keyword_search("tenant_a", vec(0), "alpha", 10) == hits
+
+
+@pytest.mark.parametrize("query", ["?!", "the and of", "nonexistentword"])
+def test_bm25_returns_no_keyword_candidates_without_matching_terms(query):
+    add("t", "f.txt", ["INT-027 closes tomorrow"], [0])
+    assert store.keyword_search("t", vec(0), query, 10) == []
+
+
 @pytest.mark.parametrize("query", ["?!", "the and of", "INT-027'); DROP TABLE chunks; --"])
 def test_hybrid_search_handles_empty_terms_and_query_punctuation(query):
     add("t", "f.txt", ["INT-027 details"], [0])

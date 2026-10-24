@@ -145,7 +145,7 @@ def test_no_documents_path_makes_zero_llm_calls(client, llm, best_score):
 
 
 def test_no_answer_path_makes_zero_llm_calls(client, llm, best_score):
-    add_doc("tenant_a", ["We open at 8am."])
+    add_doc("tenant_a", ["Shipping is unavailable."])
     best_score(0.10)  # below no_answer_score
     body = ask(client).json()
     assert llm.calls == []
@@ -155,6 +155,44 @@ def test_no_answer_path_makes_zero_llm_calls(client, llm, best_score):
         0.10, abs=1e-4
     )  # the low probe score, not null
     assert body["usage"]["tokens_in"] == 0 and body["usage"]["cost_usd"] is None
+
+
+def test_low_semantic_score_does_not_reject_an_exact_keyword_match(client, llm, best_score):
+    add_doc("tenant_a", ["INT-027 closes September 3."])
+    best_score(0.10)
+    body = ask(client, query="INT-027 deadline").json()
+    assert body["answer"] == "Fake answer [1]"
+    assert len(llm.calls) == 1
+
+
+def test_low_semantic_keyword_rescue_cannot_read_another_tenant(client, llm, best_score):
+    add_doc("tenant_a", ["Shipping is unavailable."])
+    add_doc("tenant_b", ["INT-027 closes September 3."])
+    best_score(0.10)
+    body = ask(client, query="INT-027 deadline").json()
+    assert body["answer"] == MESSAGES["not_found"] and llm.calls == []
+
+
+def test_invalid_model_evidence_gets_one_repair_then_a_provider_error(client, llm, best_score):
+    add_doc("tenant_a", ["Housing is not guaranteed."])
+    best_score(0.6)
+    llm.extra = {
+        "cheap-model": {
+            "text": '{"claims":[{"text":"Guaranteed housing","evidence":[{"passage":1,"quote":"Housing is guaranteed"}]}]}'
+        }
+    }
+    response = ask(client)
+    assert response.status_code == 502
+    assert len(llm.calls) == 2
+    assert len(response.json()["attempts"]) == 2
+
+
+def test_model_generic_refusal_is_normalized_without_an_extra_call(client, llm, best_score):
+    add_doc("tenant_a", ["Housing is not guaranteed."])
+    best_score(0.6)
+    llm.extra = {"cheap-model": {"text": "I’m sorry, but I can’t help with that."}}
+    assert ask(client).json()["answer"] == MESSAGES["not_found"]
+    assert len(llm.calls) == 1
 
 
 def test_query_only_sees_the_callers_tenant(client, llm, best_score):
