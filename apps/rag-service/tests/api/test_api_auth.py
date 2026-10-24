@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import main
+from app.api import routes
 from tests.conftest import AUTH, FAKE_ENV
 
 DOC_ID = "00000000-0000-0000-0000-000000000001"
@@ -79,4 +80,4 @@ def test_llm_env_is_optional_at_startup(monkeypatch, missing):
 @pytest.mark.parametrize("name", ["ingest", "query", "delete_document"])
 def test_endpoints_that_embed_or_use_the_database_are_plain_def(name):
     # async def would run the blocking embed on the event loop and stall /internal/health
-    assert not inspect.iscoroutinefunction(getattr(main, name))
+    assert not inspect.iscoroutinefunction(getattr(routes, name))

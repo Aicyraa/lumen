@@ -1,4 +1,3 @@
-import logging
 import math
 import time
 from dataclasses import dataclass
@@ -6,9 +5,9 @@ from dataclasses import dataclass
 import httpx2
 import openai
 
+from app.core.logging import log
 from app.llm.endpoint_guard import EndpointError, assert_endpoint
 
-log = logging.getLogger("lumen.rag")  # log outcomes only: never keys, prompts or provider text
 
 TRANSPORT = None  # tests set an httpx2 mock transport here; None means the real network
 

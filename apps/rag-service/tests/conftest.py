@@ -93,7 +93,8 @@ def llm():
 def client(llm):
     from fastapi.testclient import TestClient
 
-    from app.main import app, get_caller
+    from app.api.deps import get_caller
+    from app.main import app
 
     app.dependency_overrides[get_caller] = lambda: llm
     with TestClient(app) as c:  # the with-block runs startup, which checks the environment
