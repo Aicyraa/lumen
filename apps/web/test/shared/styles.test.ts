@@ -63,3 +63,22 @@ describe("public page layout", () => {
     expect(rule(".hero")).toMatch(/min-height/);
   });
 });
+
+describe("sticky nav offsets and dead CSS", () => {
+  const css = readFileSync("src/shared/styles/styles.css", "utf8");
+  it("anchors and scroll padding leave room for the sticky nav", () => {
+    expect(css).not.toMatch(/scroll-padding-top:\s*16px/);
+    for (const m of css.matchAll(/scroll-(?:padding|margin)-top:\s*([^;]+);/g))
+      expect(m[1]).toBe("calc(var(--nav-h) + 24px)");
+    expect(css).toMatch(
+      /\.doc-content section\s*\{[^}]*scroll-margin-top:\s*calc\(var\(--nav-h\) \+ 24px\)/,
+    );
+    expect(css).toMatch(
+      /html\.snap-home\s*\{[^}]*scroll-padding-top:\s*calc\(var\(--nav-h\) \+ 24px\)/,
+    );
+  });
+  it("has no rules left for the removed native select, use cases or old header buttons", () => {
+    for (const dead of [".switcher select", ".all-projects", ".usecase", ".nav-sub", ".image-slot"])
+      expect(css).not.toContain(dead);
+  });
+});
