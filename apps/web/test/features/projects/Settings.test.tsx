@@ -9,9 +9,25 @@ vi.mock("../../../src/features/auth/session", () => ({ useOrgId: () => "p2" }));
 
 import { Settings } from "../../../src/features/projects/Settings";
 
-const project = { id: "p2", name: "Shop support", slug: "shop-support", description: "Orders", role: "owner" as const, created_at: "2026-10-24T08:00:00Z", documents: 0, requests_this_month: 0 };
-const page = (role: "owner" | "admin" | "member" = "owner") => renderWithProviders(
-  <ProjectContext.Provider value={{ ...project, role }}><Routes><Route path="/" element={<Settings />} /><Route path="/projects" element={<div>projects list</div>} /></Routes></ProjectContext.Provider>);
+const project = {
+  id: "p2",
+  name: "Shop support",
+  slug: "shop-support",
+  description: "Orders",
+  role: "owner" as const,
+  created_at: "2026-10-24T08:00:00Z",
+  documents: 0,
+  requests_this_month: 0,
+};
+const page = (role: "owner" | "admin" | "member" = "owner") =>
+  renderWithProviders(
+    <ProjectContext.Provider value={{ ...project, role }}>
+      <Routes>
+        <Route path="/" element={<Settings />} />
+        <Route path="/projects" element={<div>projects list</div>} />
+      </Routes>
+    </ProjectContext.Provider>,
+  );
 
 describe("Settings", () => {
   it("renames and changes the description with PATCH, clearing an emptied description with null", async () => {
@@ -22,7 +38,11 @@ describe("Settings", () => {
     await user.type(screen.getByLabelText("Name"), "Shop help");
     await user.clear(screen.getByLabelText("Description"));
     await user.click(screen.getByRole("button", { name: "Save changes" }));
-    const patch = await waitFor(() => { const c = calls.find((x) => x.init?.method === "PATCH"); expect(c).toBeTruthy(); return c!; });
+    const patch = await waitFor(() => {
+      const c = calls.find((x) => x.init?.method === "PATCH");
+      expect(c).toBeTruthy();
+      return c!;
+    });
     expect(patch.url).toContain("/api/dashboard/workspaces/p2");
     expect(JSON.parse(String(patch.init!.body))).toEqual({ name: "Shop help", description: null });
   });
@@ -45,17 +65,32 @@ describe("Settings", () => {
     const del = calls.find((c) => c.init?.method === "DELETE")!;
     expect(del.url).toContain("/api/dashboard/workspaces/p2");
     expect(JSON.parse(String(del.init!.body))).toEqual({ name: "Shop support" });
-    expect(JSON.stringify(client.getQueryCache().getAll().map((q) => q.state.data))).not.toContain("secret.md");
+    expect(
+      JSON.stringify(
+        client
+          .getQueryCache()
+          .getAll()
+          .map((q) => q.state.data),
+      ),
+    ).not.toContain("secret.md");
   });
 
   it("shows the API error when delete is refused", async () => {
-    mockFetch((_u, init) => (init?.method === "DELETE" ? reply(403, { error: { code: "forbidden", message: "Only the owner can delete a project." } }) : {}));
+    mockFetch((_u, init) =>
+      init?.method === "DELETE"
+        ? reply(403, {
+            error: { code: "forbidden", message: "Only the owner can delete a project." },
+          })
+        : {},
+    );
     page();
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Delete project" }));
     await user.type(screen.getByLabelText(/Type .*Shop support/), "Shop support");
     await user.click(screen.getByRole("button", { name: "Delete forever" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Only the owner can delete a project.");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Only the owner can delete a project.",
+    );
   });
 
   it("members see the settings read-only and cannot delete", () => {

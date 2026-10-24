@@ -1,7 +1,7 @@
 import { Navigate, Outlet } from "react-router";
 import { authClient } from "../../shared/lib/auth-client";
-import { readSession } from "./sessionShape";
 import { Unreachable } from "../../shared/ui/Unreachable";
+import { readSession } from "./sessionShape";
 
 // Guards the dashboard: no session means sign-in. While the session loads render nothing, so neither the
 // dashboard nor a wrong redirect flashes. If the API cannot be reached, say so with a retry instead of redirecting.

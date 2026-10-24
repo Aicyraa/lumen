@@ -1,6 +1,14 @@
 // useSession can return null, {}, a body without user or session, or an error when the API is down.
 // This is the only place that reads its shape; anything without a user counts as "no session".
-interface Raw { data?: { user?: { id?: string; email?: string } | null; session?: { activeOrganizationId?: string | null } | null } | null; isPending?: boolean; error?: unknown; refetch?: (opts?: unknown) => unknown }
+interface Raw {
+  data?: {
+    user?: { id?: string; email?: string } | null;
+    session?: { activeOrganizationId?: string | null } | null;
+  } | null;
+  isPending?: boolean;
+  error?: unknown;
+  refetch?: (opts?: unknown) => unknown;
+}
 
 export function readSession(result: unknown) {
   const r = (result ?? {}) as Raw;

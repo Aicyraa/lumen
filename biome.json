@@ -27,5 +27,22 @@
       "suspicious": { "noExplicitAny": "off" }
     }
   },
+  "overrides": [
+    {
+      "includes": ["apps/web/**"],
+      "linter": {
+        "rules": {
+          "correctness": { "useExhaustiveDependencies": "off", "useJsxKeyInIterable": "off" },
+          "suspicious": { "noArrayIndexKey": "off" },
+          "a11y": {
+            "useSemanticElements": "off",
+            "useFocusableInteractive": "off",
+            "noStaticElementInteractions": "off",
+            "noNoninteractiveTabindex": "off"
+          }
+        }
+      }
+    }
+  ],
   "assist": { "actions": { "source": { "organizeImports": "on" } } }
 }

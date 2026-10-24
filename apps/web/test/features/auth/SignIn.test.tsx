@@ -1,8 +1,7 @@
-import { screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const social = vi.fn();
@@ -11,7 +10,12 @@ const signUpEmail = vi.fn();
 const useSession = vi.fn();
 const resend = vi.fn();
 vi.mock("../../../src/shared/lib/auth-client", () => ({
-  authClient: { useSession: () => useSession(), signIn: { social: (a: unknown) => social(a), email: (a: unknown) => signInEmail(a) }, signUp: { email: (a: unknown) => signUpEmail(a) }, sendVerificationEmail: (a: unknown) => resend(a) },
+  authClient: {
+    useSession: () => useSession(),
+    signIn: { social: (a: unknown) => social(a), email: (a: unknown) => signInEmail(a) },
+    signUp: { email: (a: unknown) => signUpEmail(a) },
+    sendVerificationEmail: (a: unknown) => resend(a),
+  },
 }));
 
 import { SignIn } from "../../../src/features/auth/SignIn";
@@ -30,15 +34,28 @@ const page = (route = "/signin") =>
   );
 
 describe("SignIn", () => {
-  beforeEach(() => { [social, signInEmail, signUpEmail, useSession, resend].forEach((f) => f.mockReset()); useSession.mockReturnValue({ data: null, isPending: false }); });
+  beforeEach(() => {
+    [social, signInEmail, signUpEmail, useSession, resend].forEach((f) => {
+      f.mockReset();
+    });
+    useSession.mockReturnValue({ data: null, isPending: false });
+  });
 
   it("starts Google and GitHub sign-in with a callback to Projects", async () => {
     page();
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Continue with Google" }));
-    expect(social).toHaveBeenCalledWith({ provider: "google", callbackURL: `${window.location.origin}/projects`, errorCallbackURL: `${window.location.origin}/signin` });
+    expect(social).toHaveBeenCalledWith({
+      provider: "google",
+      callbackURL: `${window.location.origin}/projects`,
+      errorCallbackURL: `${window.location.origin}/signin`,
+    });
     await user.click(screen.getByRole("button", { name: "Continue with GitHub" }));
-    expect(social).toHaveBeenLastCalledWith({ provider: "github", callbackURL: `${window.location.origin}/projects`, errorCallbackURL: `${window.location.origin}/signin` });
+    expect(social).toHaveBeenLastCalledWith({
+      provider: "github",
+      callbackURL: `${window.location.origin}/projects`,
+      errorCallbackURL: `${window.location.origin}/signin`,
+    });
   });
 
   it("signs in with email and password and lands on /projects", async () => {
@@ -53,7 +70,10 @@ describe("SignIn", () => {
   });
 
   it("shows the error and stays on the page when sign-in fails", async () => {
-    signInEmail.mockResolvedValue({ data: null, error: { status: 401, message: "Invalid email or password" } });
+    signInEmail.mockResolvedValue({
+      data: null,
+      error: { status: 401, message: "Invalid email or password" },
+    });
     page();
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Email"), "a@b.test");
@@ -72,7 +92,12 @@ describe("SignIn", () => {
     await user.type(screen.getByLabelText("Email"), "maya@campus.test");
     await user.type(screen.getByLabelText("Password"), "correct horse 123");
     await user.click(screen.getByRole("button", { name: "Sign up" }));
-    expect(signUpEmail).toHaveBeenCalledWith({ name: "Maya", email: "maya@campus.test", password: "correct horse 123", callbackURL: `${window.location.origin}/verify-email` });
+    expect(signUpEmail).toHaveBeenCalledWith({
+      name: "Maya",
+      email: "maya@campus.test",
+      password: "correct horse 123",
+      callbackURL: `${window.location.origin}/verify-email`,
+    });
   });
 
   it("sends a visitor who already has a session straight to the dashboard", () => {
@@ -117,7 +142,10 @@ describe("SignIn", () => {
     const user = userEvent.setup();
     await signUpAs(user);
     await user.click(await screen.findByRole("button", { name: "Resend email" }));
-    expect(resend).toHaveBeenCalledWith({ email: "maya@campus.test", callbackURL: `${window.location.origin}/verify-email` });
+    expect(resend).toHaveBeenCalledWith({
+      email: "maya@campus.test",
+      callbackURL: `${window.location.origin}/verify-email`,
+    });
     expect(await screen.findByRole("status")).toHaveTextContent(/sent/i);
   });
 
@@ -132,7 +160,10 @@ describe("SignIn", () => {
   });
 
   it("signing in with an unverified account shows the email_not_verified state with Resend", async () => {
-    signInEmail.mockResolvedValue({ data: null, error: { status: 403, code: "EMAIL_NOT_VERIFIED", message: "Email not verified" } });
+    signInEmail.mockResolvedValue({
+      data: null,
+      error: { status: 403, code: "EMAIL_NOT_VERIFIED", message: "Email not verified" },
+    });
     resend.mockResolvedValue({ data: {}, error: null });
     page();
     const user = userEvent.setup();
@@ -142,18 +173,27 @@ describe("SignIn", () => {
     expect(await screen.findByRole("heading", { name: "Verify your email" })).toBeInTheDocument();
     expect(screen.queryByText("dashboard home")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Resend email" }));
-    expect(resend).toHaveBeenCalledWith({ email: "maya@campus.test", callbackURL: `${window.location.origin}/verify-email` });
+    expect(resend).toHaveBeenCalledWith({
+      email: "maya@campus.test",
+      callbackURL: `${window.location.origin}/verify-email`,
+    });
   });
 
   it("explains account_not_linked", () => {
     page("/signin?error=account_not_linked");
-    expect(screen.getByRole("alert")).toHaveTextContent(/sign in with your original method, then link this one in Account settings/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /sign in with your original method, then link this one in Account settings/i,
+    );
   });
 
   it("has Google, GitHub and mail icons next to the sign-in options", () => {
     page();
-    expect(screen.getByRole("button", { name: "Continue with Google" }).querySelector("svg")).not.toBeNull();
-    expect(screen.getByRole("button", { name: "Continue with GitHub" }).querySelector("svg")).not.toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Continue with Google" }).querySelector("svg"),
+    ).not.toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Continue with GitHub" }).querySelector("svg"),
+    ).not.toBeNull();
     expect(screen.getByRole("button", { name: "Sign in" }).querySelector("svg")).not.toBeNull();
   });
 });

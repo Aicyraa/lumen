@@ -1,28 +1,46 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/shared/lib/auth-client", () => ({
-  authClient: { useSession: () => ({ data: null, isPending: false }), signIn: { social: vi.fn(), email: vi.fn() }, signUp: { email: vi.fn() } },
+  authClient: {
+    useSession: () => ({ data: null, isPending: false }),
+    signIn: { social: vi.fn(), email: vi.fn() },
+    signUp: { email: vi.fn() },
+  },
 }));
 
-import { Docs } from "../../src/features/docs/Docs";
-import { Home } from "../../src/features/home/Home";
-import { Privacy } from "../../src/features/docs/Privacy";
 import { SignIn } from "../../src/features/auth/SignIn";
+import { Docs } from "../../src/features/docs/Docs";
+import { Privacy } from "../../src/features/docs/Privacy";
+import { Home } from "../../src/features/home/Home";
 
-const view = (ui: React.ReactElement) => render(<QueryClientProvider client={new QueryClient()}><MemoryRouter>{ui}</MemoryRouter></QueryClientProvider>).container;
+const view = (ui: React.ReactElement) =>
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </QueryClientProvider>,
+  ).container;
 // Lumen has no pricing of its own and promises no retention period: none of this may appear on a public page.
 const FORBIDDEN = /retention|retain|saving|pricing|calculator|\$\s?\d/i;
 const NO_MONEY_AT_ALL = /cost|price|cheapest|\bfree\b/i;
 
 describe("public copy", () => {
-  it.each([["Home", <Home />], ["Docs", <Docs />], ["Privacy", <Privacy />], ["SignIn", <SignIn />]])("%s has no retention, savings or pricing copy", (_n, ui) => {
+  it.each([
+    ["Home", <Home />],
+    ["Docs", <Docs />],
+    ["Privacy", <Privacy />],
+    ["SignIn", <SignIn />],
+  ])("%s has no retention, savings or pricing copy", (_n, ui) => {
     expect(view(ui as React.ReactElement).textContent).not.toMatch(FORBIDDEN);
   });
-  it.each([["Home", <Home />], ["Privacy", <Privacy />], ["SignIn", <SignIn />]])("%s makes no cost claims", (_n, ui) => {
+  it.each([
+    ["Home", <Home />],
+    ["Privacy", <Privacy />],
+    ["SignIn", <SignIn />],
+  ])("%s makes no cost claims", (_n, ui) => {
     expect(view(ui as React.ReactElement).textContent).not.toMatch(NO_MONEY_AT_ALL);
   });
 });
@@ -30,7 +48,15 @@ describe("public copy", () => {
 describe("Home", () => {
   it("has the mockup's numbered sections with the Savings gap and no FAQ", () => {
     const text = view(<Home />).textContent!;
-    for (const l of ["RAG API FOR YOUR CHATBOT — 01", "HOW IT WORKS — 02", "DEMO — 03", "QUICKSTART — 04", "BUILT IN — 06", "SECURITY — 07"]) expect(text).toContain(l);
+    for (const l of [
+      "RAG API FOR YOUR CHATBOT — 01",
+      "HOW IT WORKS — 02",
+      "DEMO — 03",
+      "QUICKSTART — 04",
+      "BUILT IN — 06",
+      "SECURITY — 07",
+    ])
+      expect(text).toContain(l);
     expect(text).not.toContain("— 05");
     expect(text).not.toMatch(/FAQ/);
     expect(screen.queryByRole("link", { name: /pricing/i })).not.toBeInTheDocument();
@@ -82,7 +108,12 @@ describe("claims the product can back up", () => {
     expect(text).toMatch(/sent to the model as data, not instructions/);
     expect(text).toMatch(/told to ignore instructions inside them/);
   });
-  it.each([["Home", <Home />], ["Docs", <Docs />], ["Privacy", <Privacy />], ["SignIn", <SignIn />]])("%s hard-codes no megabyte figure (the server enforces the upload limit)", (_n, ui) => {
+  it.each([
+    ["Home", <Home />],
+    ["Docs", <Docs />],
+    ["Privacy", <Privacy />],
+    ["SignIn", <SignIn />],
+  ])("%s hard-codes no megabyte figure (the server enforces the upload limit)", (_n, ui) => {
     expect(view(ui as React.ReactElement).textContent).not.toMatch(/\d+\s*MB/i);
   });
   it("Docs does not promise a process for raising limits", () => {
@@ -93,8 +124,25 @@ describe("claims the product can back up", () => {
 describe("Docs", () => {
   it("documents auth, chat, documents, feedback and every error code", () => {
     const text = view(<Docs />).textContent!;
-    for (const s of ["x-api-key", "POST /v1/chat", "POST /v1/documents", "GET /v1/documents/:id", "DELETE /v1/documents/:id", "POST /v1/feedback",
-      "invalid_api_key", "not_found", "file_too_large", "unsupported_type", "invalid_request", "rate_limited", "monthly_limit", "document_limit", "provider_error", "no_models_configured"]) expect(text).toContain(s);
+    for (const s of [
+      "x-api-key",
+      "POST /v1/chat",
+      "POST /v1/documents",
+      "GET /v1/documents/:id",
+      "DELETE /v1/documents/:id",
+      "POST /v1/feedback",
+      "invalid_api_key",
+      "not_found",
+      "file_too_large",
+      "unsupported_type",
+      "invalid_request",
+      "rate_limited",
+      "monthly_limit",
+      "document_limit",
+      "provider_error",
+      "no_models_configured",
+    ])
+      expect(text).toContain(s);
     for (const c of ["401", "404", "413", "415", "422", "429", "502"]) expect(text).toContain(c);
   });
 });

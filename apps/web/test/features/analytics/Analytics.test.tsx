@@ -1,25 +1,82 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, vi, expect, it } from "vitest";
-import { mockFetch, renderWithProviders } from "../../helpers";
+import { describe, expect, it, vi } from "vitest";
 import { Analytics } from "../../../src/features/analytics/Analytics";
+import { mockFetch, renderWithProviders } from "../../helpers";
 
 const summary = (range: string) => ({
-  range, total_requests: 10,
+  range,
+  total_requests: 10,
   per_day: [
     { date: "2026-10-22", cheap: 4, expensive: 2, none: 1, failed: 0, cost_usd: 0.002 },
     { date: "2026-10-23", cheap: 1, expensive: 1, none: 0, failed: 1, cost_usd: null },
   ],
   route_mix: { cheap: 5, escalated: 1, expensive_hard: 1, none: 2, failed: 1 },
-  latency_ms: { median: 840, p95: 2100 }, total_cost_usd: 0.0031,
-  by_model: [{ id: "m1", tier: "cheap", position: 0, provider: "openai_compatible", model_id: "gpt-oss-20b", status: "connected", rate_limits: null, rate_limits_seen_at: null,
-    requests: 7, tokens_in: 900, tokens_out: 80, failures: { error: 1, timeout: 0, rate_limited: 0 }, backup_uses: 0, fallback_uses: 0, median_latency_ms: 300, cost_usd: 0.0031 },
-  { id: "m2", tier: "fallback", position: 0, provider: "openai", model_id: "gpt-fallback", status: "connected", rate_limits: null, rate_limits_seen_at: null,
-    requests: 2, tokens_in: 90, tokens_out: 8, failures: { error: 0, timeout: 0, rate_limited: 0 }, backup_uses: 0, fallback_uses: 2, median_latency_ms: 500, cost_usd: null }],
+  latency_ms: { median: 840, p95: 2100 },
+  total_cost_usd: 0.0031,
+  by_model: [
+    {
+      id: "m1",
+      tier: "cheap",
+      position: 0,
+      provider: "openai_compatible",
+      model_id: "gpt-oss-20b",
+      status: "connected",
+      rate_limits: null,
+      rate_limits_seen_at: null,
+      requests: 7,
+      tokens_in: 900,
+      tokens_out: 80,
+      failures: { error: 1, timeout: 0, rate_limited: 0 },
+      backup_uses: 0,
+      fallback_uses: 0,
+      median_latency_ms: 300,
+      cost_usd: 0.0031,
+    },
+    {
+      id: "m2",
+      tier: "fallback",
+      position: 0,
+      provider: "openai",
+      model_id: "gpt-fallback",
+      status: "connected",
+      rate_limits: null,
+      rate_limits_seen_at: null,
+      requests: 2,
+      tokens_in: 90,
+      tokens_out: 8,
+      failures: { error: 0, timeout: 0, rate_limited: 0 },
+      backup_uses: 0,
+      fallback_uses: 2,
+      median_latency_ms: 500,
+      cost_usd: null,
+    },
+  ],
 });
-const unanswered = { range: "7d", threshold: 0.3, total: 2, items: [{ id: "u1", query: "Is there visitor parking?", top_score: 0.09, tier: "none", time: "2026-10-23T10:00:00Z" }, { id: "u2", query: "Weak match question", top_score: null, tier: "none", time: "2026-10-23T11:00:00Z" }] };
+const unanswered = {
+  range: "7d",
+  threshold: 0.3,
+  total: 2,
+  items: [
+    {
+      id: "u1",
+      query: "Is there visitor parking?",
+      top_score: 0.09,
+      tier: "none",
+      time: "2026-10-23T10:00:00Z",
+    },
+    {
+      id: "u2",
+      query: "Weak match question",
+      top_score: null,
+      tier: "none",
+      time: "2026-10-23T11:00:00Z",
+    },
+  ],
+};
 
-const handler = (url: string) => (url.includes("/unanswered") ? unanswered : summary(url.includes("range=30d") ? "30d" : "7d"));
+const handler = (url: string) =>
+  url.includes("/unanswered") ? unanswered : summary(url.includes("range=30d") ? "30d" : "7d");
 
 vi.mock("../../../src/features/auth/session", () => ({ useOrgId: () => "org_1" }));
 

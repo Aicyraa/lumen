@@ -15,7 +15,11 @@ export function renderWithProviders(ui: ReactElement, { route = "/" } = {}) {
 }
 
 type Handler = (url: string, init?: RequestInit) => unknown;
-export interface Reply { __reply: true; status: number; body?: unknown }
+export interface Reply {
+  __reply: true;
+  status: number;
+  body?: unknown;
+}
 // Explicit non-200 reply (a plain body can have its own "status" field).
 export const reply = (status: number, body?: unknown): Reply => ({ __reply: true, status, body });
 
@@ -29,7 +33,10 @@ export function mockFetch(handler: Handler) {
     const isReply = !!out && typeof out === "object" && "__reply" in out;
     const status = isReply ? (out as Reply).status : 200;
     const body = isReply ? (out as Reply).body : out;
-    return new Response(status === 204 ? null : JSON.stringify(body ?? {}), { status, headers: { "content-type": "application/json" } });
+    return new Response(status === 204 ? null : JSON.stringify(body ?? {}), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
   });
   vi.stubGlobal("fetch", fn);
   return { fn, calls };

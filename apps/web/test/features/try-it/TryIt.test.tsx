@@ -1,14 +1,29 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, vi, expect, it } from "vitest";
-import { mockFetch, renderWithProviders, reply } from "../../helpers";
+import { describe, expect, it, vi } from "vitest";
 import { TryIt } from "../../../src/features/try-it/TryIt";
+import { mockFetch, renderWithProviders, reply } from "../../helpers";
 
 const RID = "3f0c1a7b-1111-4222-8333-444455556666";
 const result = (cost: number | null) => ({
-  request_id: RID, answer: "Enrollment closes on 15 March [1]. Late requests need approval [2].",
-  sources: [{ document_id: "d1", chunk_id: 1, score: 0.78, filename: "handbook.md", snippet: "Spring enrollment closes 15 March" },
-    { document_id: "d1", chunk_id: 2, score: 0.52, filename: "handbook.md", snippet: "Late enrollment must be approved" }],
+  request_id: RID,
+  answer: "Enrollment closes on 15 March [1]. Late requests need approval [2].",
+  sources: [
+    {
+      document_id: "d1",
+      chunk_id: 1,
+      score: 0.78,
+      filename: "handbook.md",
+      snippet: "Spring enrollment closes 15 March",
+    },
+    {
+      document_id: "d1",
+      chunk_id: 2,
+      score: 0.52,
+      filename: "handbook.md",
+      snippet: "Late enrollment must be approved",
+    },
+  ],
   route: { model_tier: "cheap", k: 3, escalated: false, difficulty: 0, top_score: 0.78 },
   usage: { tokens_in: 812, tokens_out: 64, latency_ms: 620, cost_usd: cost },
 });
@@ -49,15 +64,26 @@ describe("TryIt", () => {
     await user.click(await screen.findByRole("button", { name: "No" }));
     const fb = calls.find((c) => c.url.includes("/feedback"))!;
     expect(JSON.parse(String(fb.init!.body))).toEqual({ request_id: RID, rating: -1 });
-    await waitFor(() => expect(screen.getByRole("button", { name: "No" })).toHaveAttribute("aria-pressed", "true"));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "No" })).toHaveAttribute("aria-pressed", "true"),
+    );
   });
 
   it("shows API errors such as no models configured and rate limits", async () => {
-    mockFetch(() => reply(422, { error: { code: "no_models_configured", message: "No models are configured. Add a model in the Models tab." } }));
+    mockFetch(() =>
+      reply(422, {
+        error: {
+          code: "no_models_configured",
+          message: "No models are configured. Add a model in the Models tab.",
+        },
+      }),
+    );
     renderWithProviders(<TryIt />);
     await userEvent.type(screen.getByLabelText("Question"), "hi{enter}");
     expect(await screen.findByRole("alert")).toHaveTextContent("Add a model in the Models tab");
-    expect(within(screen.getByRole("alert")).getByRole("link", { name: "Models tab" })).toHaveAttribute("href", "/dashboard/models");
+    expect(
+      within(screen.getByRole("alert")).getByRole("link", { name: "Models tab" }),
+    ).toHaveAttribute("href", "/dashboard/models");
   });
 
   it("clamps the score bar to 0-100% even for an out-of-range score", async () => {
@@ -68,7 +94,9 @@ describe("TryIt", () => {
     const { container } = renderWithProviders(<TryIt />);
     await userEvent.type(screen.getByLabelText("Question"), "hi{enter}");
     await screen.findByText(/Enrollment closes/);
-    const widths = Array.from(container.querySelectorAll<HTMLElement>(".score-fill")).map((e) => e.style.width);
+    const widths = Array.from(container.querySelectorAll<HTMLElement>(".score-fill")).map(
+      (e) => e.style.width,
+    );
     expect(widths).toEqual(["100%", "0%"]);
   });
 });

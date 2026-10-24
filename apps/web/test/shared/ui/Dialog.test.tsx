@@ -10,9 +10,16 @@ function Host() {
   const [n, setN] = useState(0);
   return (
     <Dialog title="Name this key" onClose={() => setText("")}>
-      <input aria-label="Name" data-autofocus value={text} onChange={(e) => setText(e.target.value)} />
+      <input
+        aria-label="Name"
+        data-autofocus
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+      />
       <button type="button">Other</button>
-      <button type="button" onClick={() => setN(n + 1)}>Bump {n}</button>
+      <button type="button" onClick={() => setN(n + 1)}>
+        Bump {n}
+      </button>
     </Dialog>
   );
 }

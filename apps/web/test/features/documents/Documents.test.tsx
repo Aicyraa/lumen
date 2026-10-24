@@ -1,11 +1,23 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, vi, expect, it } from "vitest";
-import { mockFetch, renderWithProviders, reply } from "../../helpers";
+import { describe, expect, it, vi } from "vitest";
 import { Documents } from "../../../src/features/documents/Documents";
+import { mockFetch, renderWithProviders, reply } from "../../helpers";
 
-const doc = (over: object) => ({ document_id: "d1", filename: "handbook.md", status: "processing", error: null, chunk_count: 0, created_at: "2026-10-23T10:00:00Z", ...over });
-const usage = { documents: { used: 1, max: 9 }, requests_per_minute: { used: 0, max: 5 }, requests_this_month: { used: 0, max: 5 } };
+const doc = (over: object) => ({
+  document_id: "d1",
+  filename: "handbook.md",
+  status: "processing",
+  error: null,
+  chunk_count: 0,
+  created_at: "2026-10-23T10:00:00Z",
+  ...over,
+});
+const usage = {
+  documents: { used: 1, max: 9 },
+  requests_per_minute: { used: 0, max: 5 },
+  requests_this_month: { used: 0, max: 5 },
+};
 
 vi.mock("../../../src/features/auth/session", () => ({ useOrgId: () => "org_1" }));
 
@@ -29,7 +41,18 @@ describe("Documents", () => {
 
   it("shows the failure reason and stops polling on failed", async () => {
     const { calls } = mockFetch((url) =>
-      url.endsWith("/usage") ? usage : { documents: [doc({ filename: "scan.pdf", status: "failed", error: "no_text_extracted: This looks like a scanned image." })] });
+      url.endsWith("/usage")
+        ? usage
+        : {
+            documents: [
+              doc({
+                filename: "scan.pdf",
+                status: "failed",
+                error: "no_text_extracted: This looks like a scanned image.",
+              }),
+            ],
+          },
+    );
     renderWithProviders(<Documents pollMs={40} />);
     expect(await screen.findByText("failed")).toBeInTheDocument();
     expect(screen.getByText(/scanned image/)).toBeInTheDocument();
@@ -39,7 +62,9 @@ describe("Documents", () => {
   });
 
   it("shows the counter with the limit from the API", async () => {
-    mockFetch((url) => (url.endsWith("/usage") ? usage : { documents: [doc({ status: "ready", chunk_count: 14 })] }));
+    mockFetch((url) =>
+      url.endsWith("/usage") ? usage : { documents: [doc({ status: "ready", chunk_count: 14 })] },
+    );
     renderWithProviders(<Documents pollMs={40} />);
     expect(await screen.findByText("1 OF 9 · 14 CHUNKS")).toBeInTheDocument();
   });
@@ -47,22 +72,36 @@ describe("Documents", () => {
   it("lets the server decide: a rejected upload shows the API message", async () => {
     mockFetch((url, init) => {
       if (url.endsWith("/usage")) return usage;
-      if (init?.method === "POST") return reply(415, { error: { code: "unsupported_type", message: "Only PDF, .txt and .md files are supported." } });
+      if (init?.method === "POST")
+        return reply(415, {
+          error: {
+            code: "unsupported_type",
+            message: "Only PDF, .txt and .md files are supported.",
+          },
+        });
       return { documents: [] };
     });
     renderWithProviders(<Documents pollMs={40} />);
     await screen.findByText(/No documents yet/);
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    await userEvent.setup({ applyAccept: false }).upload(input, new File(["x"], "notes.md", { type: "text/markdown" }));
-    expect(await screen.findByText("Only PDF, .txt and .md files are supported.")).toBeInTheDocument();
+    await userEvent
+      .setup({ applyAccept: false })
+      .upload(input, new File(["x"], "notes.md", { type: "text/markdown" }));
+    expect(
+      await screen.findByText("Only PDF, .txt and .md files are supported."),
+    ).toBeInTheDocument();
   });
 
   it("sends any file to the server and shows its 415 or 413 message: no type or size decision in the front end", async () => {
     let status = 415;
-    const msgs: Record<number, string> = { 415: "Only PDF, .txt and .md files are supported.", 413: "The file is larger than the upload limit." };
+    const msgs: Record<number, string> = {
+      415: "Only PDF, .txt and .md files are supported.",
+      413: "The file is larger than the upload limit.",
+    };
     const { calls } = mockFetch((url, init) => {
       if (url.endsWith("/usage")) return usage;
-      if (init?.method === "POST") return reply(status, { error: { code: "x", message: msgs[status] } });
+      if (init?.method === "POST")
+        return reply(status, { error: { code: "x", message: msgs[status] } });
       return { documents: [] };
     });
     renderWithProviders(<Documents pollMs={40} />);
@@ -72,7 +111,10 @@ describe("Documents", () => {
     await user.upload(input, new File(["x"], "pic.png", { type: "image/png" }));
     expect(await screen.findByText(msgs[415])).toBeInTheDocument();
     status = 413;
-    await user.upload(input, new File([new Uint8Array(11 * 1024 * 1024)], "big.pdf", { type: "application/pdf" }));
+    await user.upload(
+      input,
+      new File([new Uint8Array(11 * 1024 * 1024)], "big.pdf", { type: "application/pdf" }),
+    );
     expect(await screen.findByText(msgs[413])).toBeInTheDocument();
     expect(calls.filter((c) => c.init?.method === "POST")).toHaveLength(2); // both reached the server
   });
@@ -88,12 +130,19 @@ describe("Documents", () => {
     let docs = [doc({ status: "ready", chunk_count: 3 })];
     const { calls } = mockFetch((url, init) => {
       if (url.endsWith("/usage")) return usage;
-      if (init?.method === "DELETE") { docs = []; return reply(204); }
+      if (init?.method === "DELETE") {
+        docs = [];
+        return reply(204);
+      }
       return { documents: docs };
     });
     renderWithProviders(<Documents pollMs={40} />);
     await userEvent.click(await screen.findByRole("button", { name: "Delete handbook.md" }));
     await waitFor(() => expect(screen.getByText(/No documents yet/)).toBeInTheDocument());
-    expect(calls.some((c) => c.init?.method === "DELETE" && c.url.endsWith("/api/dashboard/documents/d1"))).toBe(true);
+    expect(
+      calls.some(
+        (c) => c.init?.method === "DELETE" && c.url.endsWith("/api/dashboard/documents/d1"),
+      ),
+    ).toBe(true);
   });
 });

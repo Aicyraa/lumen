@@ -3,7 +3,9 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const useSession = vi.fn();
-vi.mock("../../../src/shared/lib/auth-client", () => ({ authClient: { useSession: () => useSession() } }));
+vi.mock("../../../src/shared/lib/auth-client", () => ({
+  authClient: { useSession: () => useSession() },
+}));
 
 import { RequireSession } from "../../../src/features/auth/RequireSession";
 
@@ -38,7 +40,10 @@ describe("RequireSession", () => {
   });
 
   it("renders the dashboard when a session exists", () => {
-    useSession.mockReturnValue({ data: { user: { email: "a@b.test" }, session: { activeOrganizationId: "org1" } }, isPending: false });
+    useSession.mockReturnValue({
+      data: { user: { email: "a@b.test" }, session: { activeOrganizationId: "org1" } },
+      isPending: false,
+    });
     app();
     expect(screen.getByText("dashboard secret")).toBeInTheDocument();
   });

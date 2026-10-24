@@ -6,8 +6,14 @@ import { readSession } from "../auth/sessionShape";
 
 // A project is a Better Auth organization and is the tenant.
 export interface Workspace {
-  id: string; name: string; slug: string; description: string | null; role: "owner" | "admin" | "member";
-  created_at: string; documents: number; requests_this_month: number;
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  role: "owner" | "admin" | "member";
+  created_at: string;
+  documents: number;
+  requests_this_month: number;
 }
 
 export const ProjectContext = createContext<Workspace | null>(null);
@@ -22,6 +28,9 @@ export function useWorkspaces() {
   return useQuery({
     queryKey: ["workspaces", userId],
     enabled: !!userId,
-    queryFn: () => api<{ workspaces?: Workspace[] }>("/api/dashboard/workspaces").then((r) => r.workspaces ?? []),
+    queryFn: () =>
+      api<{ workspaces?: Workspace[] }>("/api/dashboard/workspaces").then(
+        (r) => r.workspaces ?? [],
+      ),
   });
 }

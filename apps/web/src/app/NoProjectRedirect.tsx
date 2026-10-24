@@ -9,13 +9,21 @@ export function NoProjectRedirect() {
   const navigate = useNavigate();
   useEffect(() => {
     const check = (e: unknown) => {
-      const ev = e as { type?: string; action?: { type?: string; error?: { code?: string } }; mutation?: { state?: { error?: { code?: string } } } };
-      const code = ev.action?.type === "error" ? ev.action.error?.code : ev.mutation?.state?.error?.code;
+      const ev = e as {
+        type?: string;
+        action?: { type?: string; error?: { code?: string } };
+        mutation?: { state?: { error?: { code?: string } } };
+      };
+      const code =
+        ev.action?.type === "error" ? ev.action.error?.code : ev.mutation?.state?.error?.code;
       if (code === "no_active_project") navigate("/projects", { replace: true });
     };
     const a = qc.getQueryCache().subscribe(check);
     const b = qc.getMutationCache().subscribe(check);
-    return () => { a(); b(); };
+    return () => {
+      a();
+      b();
+    };
   }, [qc, navigate]);
   return null;
 }

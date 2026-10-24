@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
-import { describe, vi, expect, it } from "vitest";
-import { mockFetch, renderWithProviders } from "../../helpers";
+import { describe, expect, it, vi } from "vitest";
 import { UsageMeters } from "../../../src/features/projects/UsageMeters";
+import { mockFetch, renderWithProviders } from "../../helpers";
 
 const usage = (d: [number, number], r: [number, number], m: [number, number]) => ({
   documents: { used: d[0], max: d[1] },
@@ -26,7 +26,10 @@ describe("UsageMeters", () => {
     renderWithProviders(<UsageMeters />);
     await screen.findByText("81 / 100");
     expect(screen.getByRole("meter", { name: "Documents" })).toHaveAttribute("data-level", "warn");
-    expect(screen.getByRole("meter", { name: "Requests / min" })).toHaveAttribute("data-level", "ok");
+    expect(screen.getByRole("meter", { name: "Requests / min" })).toHaveAttribute(
+      "data-level",
+      "ok",
+    );
     expect(screen.getByRole("meter", { name: "This month" })).toHaveAttribute("data-level", "ok");
   });
 });
