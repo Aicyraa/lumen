@@ -31,6 +31,7 @@ describe("text contrast (small text must reach 4.5:1)", () => {
       );
     });
   });
+});
 
 describe("Try it layout", () => {
   const css = readFileSync("src/shared/styles/styles.css", "utf8");
