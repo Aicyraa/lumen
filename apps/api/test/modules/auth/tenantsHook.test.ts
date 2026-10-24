@@ -48,7 +48,7 @@ describe("tenants row for every organization", () => {
     await ctx.pool.query(
       "CREATE TRIGGER test_block_tenants BEFORE INSERT ON tenants FOR EACH ROW EXECUTE FUNCTION test_block_tenants()",
     );
-    let failed;
+    let failed: request.Response | undefined;
     try {
       failed = await request(ctx.app)
         .post("/api/dashboard/workspaces")
@@ -57,7 +57,7 @@ describe("tenants row for every organization", () => {
     } finally {
       await ctx.pool.query("DROP TRIGGER test_block_tenants ON tenants");
     }
-    expect(failed.status).toBeGreaterThanOrEqual(500); // known: the organization row already exists, without a tenants row
+    expect(failed?.status).toBeGreaterThanOrEqual(500); // known: the organization row already exists, without a tenants row
     const ok = await request(ctx.app)
       .post("/api/dashboard/workspaces")
       .set("cookie", t.cookie)

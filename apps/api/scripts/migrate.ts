@@ -14,7 +14,10 @@ export async function migrateAuth(config: Config) {
   await runMigrations();
   // RLS and no Data API access on Better Auth's tables; Supabase gets the same file after its Better Auth tables.
   await pool.query(
-    readFileSync(new URL("../../../infra/sql/auth/001_auth_tables_rls.sql", import.meta.url), "utf8"),
+    readFileSync(
+      new URL("../../../infra/sql/auth/001_auth_tables_rls.sql", import.meta.url),
+      "utf8",
+    ),
   );
   await pool.end();
 }
