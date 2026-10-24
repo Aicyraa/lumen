@@ -18,7 +18,7 @@ Express checks the file and answers right away. Python does the slow work (extra
 
 &#91;embedded content: chat journey · 7 steps\]
 
-The router first checks how well the best chunk matches the question, then decides the model tier and how many chunks (`k`) to fetch. Python fetches those chunks, sends them to the chosen model, and the answer travels back with its route and cost.
+The router first checks how well the best chunk matches the question (a strong keyword match can rescue a weak one), then decides the model tier and how many chunks (`k`) to fetch. Python finds candidates with keyword (BM25) and vector search fused by rank, reranks them with a local cross-encoder, sends the best passages to the chosen model, checks that every claim in the model's answer is backed by an exact quote from a passage, and writes the `[1]` citations itself. The answer travels back with its route and the tenant's estimated provider cost.
 
 ### How a document is stored in the vector database
 
