@@ -23,7 +23,7 @@ export interface ModelsPayload {
   expensive: ModelItem[];
   fallback: ModelItem[];
 }
-// Internal only (stripped before replying); parsed and validated in services/modelCalls.ts.
+// Internal only (stripped before replying); parsed and validated in shared/services/modelCalls.ts.
 export type RawAttempt = Record<string, unknown>;
 export interface ChatResponse {
   request_id: string;

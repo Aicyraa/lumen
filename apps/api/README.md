@@ -1,16 +1,23 @@
 # apps/api
 
-Express + Better Auth (ES modules). Reads configuration from the repo-root `.env` (real environment variables win).
+Express + Better Auth (ES modules). Reads configuration only from `apps/api/.env` (copy `.env.example`; real environment variables win). There is no repo-root `.env` lookup.
 
 ## Run
 
 ```sh
-pnpm db:up                          # from the repo root: start Postgres
+pnpm db:up                              # from the repo root: start Postgres
 pnpm --filter @lumen/api auth:migrate   # create/update Better Auth's tables (re-run after adding a plugin)
-pnpm --filter @lumen/api dev            # http://localhost:3000 (runs src/server.ts with tsx; no build step)
-pnpm --filter @lumen/api typecheck
-pnpm test                               # tsc --noEmit, then Vitest + supertest, uses the lumen_test database only
+pnpm --filter @lumen/api dev            # http://localhost:3000 (tsx watch src/server.ts; no build step)
 ```
+
+| Script | What it does |
+| --- | --- |
+| `dev` / `start` | `tsx watch src/server.ts` / `tsx src/server.ts` (there is no `build`: tsx runs the TypeScript directly) |
+| `test` | `tsc -b` (all three projects), then `vitest run`; uses the `lumen_test` database only |
+| `typecheck` | `tsc -b`: `tsconfig.app.json` (src), `tsconfig.test.json` (test), `tsconfig.scripts.json` (scripts, vitest.config.ts) |
+| `lint` / `format` | `biome check .` / `biome format --write .` (root `biome.json`) |
+| `clean` | removes `node_modules/.cache` (tsc build info) |
+| `auth:migrate` | `tsx scripts/migrate.ts` |
 
 The server refuses to start while `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `DASHBOARD_ORIGIN`,
 `INTERNAL_SECRET`, `RAG_SERVICE_URL`, `MODEL_KEY_ENCRYPTION_SECRET` (exactly 64 hex characters; changing it makes stored model keys unreadable), `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE`, `MAX_REQUESTS_PER_MONTH` or `MAX_PROJECTS_PER_USER`
@@ -28,7 +35,7 @@ minute and 8K tokens per minute for `openai/gpt-oss-20b` and `openai/gpt-oss-120
 `/api/dashboard/models` (session) manages a tenant's own provider models: list, add (Test & save makes one tiny
 completion first and saves nothing on failure), move up/down within a tier, remove, optional per-1M-token prices,
 and `/models/usage?range=7d|30d`. Keys are AES-256-GCM encrypted (bound to the tenant id), only a masked hint is
-ever returned, and endpoint URLs go through `lib/endpointGuard.ts` (https only, `http://localhost` outside
+ever returned, and endpoint URLs go through `shared/lib/endpointGuard.ts` (https only, `http://localhost` outside
 production, private/loopback/link-local/metadata addresses refused, checked again at connect time, no redirects).
 `/v1/chat` and `/api/dashboard/try` send the decrypted models to `/internal/query`, write one `model_calls` row per
 attempt, and return `usage.cost_usd` as the tenant's estimated provider cost (null when the model has no price).
@@ -263,19 +270,24 @@ Real keys are made in the dashboard with the API key plugin.
 
 ## Layout
 
-```
+```text
+.env.example         every variable, empty; copy to .env
 config.json          tunable defaults (overridable by env vars)
+tsconfig.json        references only; tsconfig.app / test / scripts extend ../../tsconfig.base.json
 scripts/migrate.ts   `auth:migrate`, creates/updates Better Auth's tables
 src/
-  server.ts          entry: load config, start listening, run the startup ingest sweep
+  server.ts          entry: load .env and config, start listening, run the startup ingest sweep
   app.ts             builds the Express app, mounts middleware and routes
-  config/            config.ts (env + config.json -> Config), env.ts (loads the repo-root .env)
-  db/                pool.ts, the pg pool
-  auth/              auth.ts, Better Auth setup (organizations, API keys)
-  middleware/        rateLimit, requireApiKey, requireSession, tenantModels
-  routes/            HTTP handlers: chat, documents, feedback, models, usage, requests, analytics, workspaces, dev
-  services/          non-HTTP logic: rag.ts (rag-service client), provider.ts (Test & save call), modelCalls.ts (attempts, cost), modelUsage.ts (per-model figures), mailer.ts (nodemailer / dev log), projects.ts, sweep.ts
-  lib/               errors.ts (error shape), range.ts (7d/30d, UTC month), crypto.ts (AES-256-GCM), endpointGuard.ts (SSRF guard), logger.ts (key redaction)
-  types/             types.ts, shared types (Deps)
-test/                mirrors src: auth, config, middleware, routes, services; helpers/ and global-setup.ts
+  modules/<feature>/ code used by one feature
+    auth/            auth.ts (Better Auth setup), mailer.ts, windowCounter.ts, keyedLock.ts
+    chat/ documents/ feedback/ models/ projects/ analytics/ requests/ usage/ dev/
+                     <feature>.routes.ts, plus documents/sweep.ts and models/provider.ts
+  shared/            code used by two or more features
+    config/          config.ts (env + config.json -> Config), env.ts (loads apps/api/.env)
+    db/              pool.ts
+    middleware/      rateLimit, requireApiKey, requireSession, tenantModels
+    lib/             errors (error shape), range (7d/30d, UTC month), crypto (AES-256-GCM), endpointGuard (SSRF guard), logger (key redaction), uploads
+    services/        rag.ts (rag-service client), modelCalls.ts (attempts, cost), modelUsage.ts, projects.ts
+    types/           types.ts (Deps, Express request fields)
+test/                mirrors src: modules/<feature>/, shared/, dashboardCors.test.ts (app level); helpers/ and global-setup.ts
 ```
