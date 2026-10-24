@@ -1538,12 +1538,31 @@ html.snap-home {
     color 0.15s,
     border-color 0.15s;
 }
-.doc-toc a:hover {
+.doc-toc a:hover,
+.doc-toc [role="tab"]:hover {
   color: var(--text);
 }
-.doc-toc a[aria-current="true"] {
+.doc-toc a[aria-current="true"],
+.doc-toc [role="tab"][aria-selected="true"] {
   color: var(--text);
   border-left-color: var(--lime);
+}
+.doc-toc [role="tab"] {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-left: 1px solid transparent;
+  margin-left: -1px;
+  padding: 6px 0 6px 14px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-3);
+  cursor: pointer;
+}
+.doc-panel[hidden] {
+  display: none;
 }
 .doc-content {
   display: flex;
@@ -1750,7 +1769,9 @@ html.snap-home {
     border-left: 0;
     gap: 4px;
   }
-  .doc-toc a {
+  .doc-toc a,
+  .doc-toc [role="tab"] {
+    width: auto;
     white-space: nowrap;
     padding: 6px 12px;
     border-left: 0;

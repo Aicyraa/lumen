@@ -1,5 +1,5 @@
 import { CodeBlock } from "../../shared/ui/PublicLayout";
-import { DocLayout } from "./DocLayout";
+import { DocTabs } from "./DocLayout";
 
 const ERRORS = [
   ["401", "invalid_api_key", "The x-api-key header is missing, wrong or revoked."],
@@ -58,7 +58,7 @@ const TOC = [
 
 export function Docs() {
   return (
-    <DocLayout
+    <DocTabs
       label="DOCS"
       title="API reference"
       toc={TOC}
@@ -222,6 +222,6 @@ export function Docs() {
           file.
         </p>
       </section>
-    </DocLayout>
+    </DocTabs>
   );
 }

@@ -1,4 +1,12 @@
-import { type ReactNode, useEffect, useState } from "react";
+import {
+  Children,
+  isValidElement,
+  type KeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useState,
+} from "react";
+import { useLocation, useNavigate } from "react-router";
 import { PublicLayout, SectionLabel } from "../../shared/ui/PublicLayout";
 
 export interface TocItem {
@@ -68,6 +76,94 @@ export function DocLayout({
           <h1 className="doc-h1">{title}</h1>
           <div className="lead">{lead}</div>
           {children}
+        </main>
+      </div>
+    </PublicLayout>
+  );
+}
+
+// Docs: every section is its own tab. The selected tab lives in the URL hash (#errors), so links work and Back
+// moves between tabs. Children are <section id> elements; only the one named by the hash is visible.
+export function DocTabs({
+  label,
+  title,
+  lead,
+  toc,
+  children,
+}: {
+  label: string;
+  title: string;
+  lead: ReactNode;
+  toc: TocItem[];
+  children: ReactNode;
+}) {
+  const hash = useLocation().hash.slice(1);
+  const navigate = useNavigate();
+  const active = toc.some((t) => t.id === hash) ? hash : toc[0].id;
+  const select = (id: string) => navigate({ hash: `#${id}` });
+
+  function onKeyDown(e: KeyboardEvent, i: number) {
+    const last = toc.length - 1;
+    const to =
+      e.key === "ArrowRight" || e.key === "ArrowDown"
+        ? (i + 1) % toc.length
+        : e.key === "ArrowLeft" || e.key === "ArrowUp"
+          ? (i - 1 + toc.length) % toc.length
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? last
+              : -1;
+    if (to < 0) return;
+    e.preventDefault();
+    document.getElementById(`tab-${toc[to].id}`)?.focus();
+    select(toc[to].id);
+  }
+
+  return (
+    <PublicLayout>
+      <div className="doc-page">
+        <div className="doc-toc">
+          <div className="label-sm">SECTIONS</div>
+          <ul role="tablist" aria-label="Docs sections" aria-orientation="vertical">
+            {toc.map((t, i) => (
+              <li key={t.id} role="presentation">
+                <button
+                  type="button"
+                  role="tab"
+                  id={`tab-${t.id}`}
+                  aria-selected={active === t.id}
+                  aria-controls={`panel-${t.id}`}
+                  tabIndex={active === t.id ? 0 : -1}
+                  onClick={() => select(t.id)}
+                  onKeyDown={(e) => onKeyDown(e, i)}
+                >
+                  {t.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <main className="doc-content">
+          <SectionLabel>{label}</SectionLabel>
+          <h1 className="doc-h1">{title}</h1>
+          <div className="lead">{lead}</div>
+          {Children.toArray(children).map((child) => {
+            const id = isValidElement<{ id?: string }>(child) ? child.props.id : undefined;
+            if (!id) return child;
+            return (
+              <div
+                key={id}
+                role="tabpanel"
+                id={`panel-${id}`}
+                aria-labelledby={`tab-${id}`}
+                hidden={id !== active}
+                className="doc-panel"
+              >
+                {child}
+              </div>
+            );
+          })}
         </main>
       </div>
     </PublicLayout>
