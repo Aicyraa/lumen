@@ -42,7 +42,7 @@ async function migrate(statusOnly = false) {
     const done = new Set((await c.query("SELECT name FROM schema_migrations")).rows.map((r) => r.name));
     // Databases created before this tracker: record a file as applied only when what it creates already exists
     // (add an entry here for every migration that creates a new table). Anything else is run normally.
-    const MARKERS = { "001_app_tables.sql": "documents", "002_tenant_models.sql": "tenant_models" };
+    const MARKERS = { "001_app_tables.sql": "documents", "002_tenant_models.sql": "tenant_models", "003_tenants.sql": "tenants", "004_request_sources.sql": "request_sources" };
     if (!done.size) {
       for (const f of files()) {
         const table = MARKERS[f];

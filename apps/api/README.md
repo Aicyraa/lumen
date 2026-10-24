@@ -49,7 +49,7 @@ Limits for this feature (attempt cap, stored rate-limit header cap, field length
 size cap, price ceiling) live in `config.json` and can be overridden by upper-snake env vars such as `MODEL_ATTEMPTS_MAX`.
 With no models: production answers `422 no_models_configured`, other environments let the Python service use its
 `LLM_*` default. The global LLM cap applies only to that shared default key.
-Apply `infra/sql/002_tenant_models.sql` to the dev database (`psql "$DATABASE_URL" -f infra/sql/002_tenant_models.sql`); tests apply it to `lumen_test` themselves.
+The schema is the numbered SQL in `infra/sql/` (`pnpm db:migrate` from the repo root applies the pending files to the dev database; tests apply every file to `lumen_test` themselves). Design and reasons: `docs/DATABASE.md`. In short: every tenant table points at `tenants(id)` with `ON DELETE CASCADE`; a request's sources are `request_sources` rows; chunk counts and a request's tokens and cost are the views `document_stats` and `request_usage`, not stored columns.
 
 ## Dashboard endpoints (Phase 4)
 
@@ -91,7 +91,7 @@ provider failed, so `cheap + expensive + none + failed` is the day's total):
 
 `escalated` is tier `expensive` with `escalated: true` (the router was cautious); `expensive_hard` is tier `expensive`
 without it. Latency covers answered requests only (`status = ok`). `per_day[].cost_usd` and `total_cost_usd` sum
-`request_logs.cost_usd` (null when nothing in the period was priced). `by_model` is exactly the `models` array of
+`request_usage.cost_usd` (the sum of the request's `model_calls.cost_usd`; null when nothing in the period was priced). `by_model` is exactly the `models` array of
 `GET /models/usage` for the same range (fallback models and unused models included, `cost_usd` per model).
 
 `GET /requests/:id`. The passage is read from `chunks` when the request is opened (tenant-scoped join, cut to
@@ -112,8 +112,9 @@ without it. Latency covers answered requests only (`status = ok`). `per_day[].co
 ```
 
 `api_key` is `null` for Try it requests, a deleted key, or a key that is not this tenant's. A source whose chunk is gone
-(re-ingested) has its `filename` and `passage: null`; a source whose document is gone has `document_deleted: true`
-(show "deleted document"). Failed requests have `route.tier: null` and `status: "provider_error"`.
+(re-ingested) has `chunk_id: null`, its `filename` and `passage: null`; a source whose document is gone has `document_id: null`,
+`chunk_id: null` and `document_deleted: true` (show "deleted document"). Source ids that were not this tenant's documents or chunks
+when the request was logged are stored as unknown (`null`) the same way. Tokens and cost are the sum over the request's `model_calls`. Failed requests have `route.tier: null` and `status: "provider_error"`.
 
 Config keys added to `config.json` (each can be overridden by an upper-snake env var, e.g. `UNANSWERED_SCORE_BELOW`):
 `passageMaxChars` (300), `unansweredScoreBelow` (0.3, the same value as the Python router's `weak_score`),
@@ -208,9 +209,9 @@ which runs the same linking rules).
 Creating a project is serialised per user inside Better Auth's create hook (an in-process lock, no database connection held while waiting), so
 `POST /workspaces` and the client's own `organization.create` share one exact cap even under concurrent calls. The lock is per API process; with several
 instances a database-level guard would be needed. Upload files are stored as `<tenantId>__<uuid>` and removed after a project is deleted; a chat or
-ingest still running for a deleted project writes nothing.
+ingest still running for a deleted project writes nothing (the `tenants` row is locked by the delete, so the late write waits, then finds no tenant: a chat or attempt insert writes no row, any other insert fails the foreign key).
 
-A project is a Better Auth organization and is the tenant. No new table: the description is `organization.metadata.description`.
+A project is a Better Auth organization and is the tenant. Better Auth's `afterCreateOrganization` hook inserts the `tenants` row (`ON CONFLICT DO NOTHING`), for the default project too. The description is `organization.metadata.description`.
 The routes below need a session but **not** an active project. Every other `/api/dashboard/*` route needs one and answers
 `403 no_active_project` ("Choose a project first.") when the session has none or the user is no longer a member of it
 (for example after deleting it); the web app then sends the user to `/projects`.
@@ -220,7 +221,7 @@ The routes below need a session but **not** an active project. Every other `/api
 | `GET /workspaces` | every project the user belongs to, oldest first |
 | `POST /workspaces` `{ name, description? }` | `201 { workspace }`. Name 1 to `projectNameMaxChars`, description up to `projectDescriptionMaxChars`; the slug is generated (`shop-support-3fa9c1`); the creator is owner; the active project is **not** changed. `422 project_limit` at `MAX_PROJECTS_PER_USER` owned projects |
 | `PATCH /workspaces/:id` `{ name?, description? }` | owner or admin (`403 forbidden` for a member); `description: null` clears it. `200 { workspace }` |
-| `DELETE /workspaces/:id` `{ name }` | owner only (`403 forbidden`); the body must repeat the project's exact name (`422 name_mismatch`). One transaction removes `model_calls`, `request_logs`, `tenant_models`, `chunks`, `documents`, the project's API keys, invitations, members, clears it as any session's active project, then deletes the organization. `204`. All or nothing; the project's leftover upload files are removed after the commit |
+| `DELETE /workspaces/:id` `{ name }` | owner only (`403 forbidden`); the body must repeat the project's exact name (`422 name_mismatch`). One transaction deletes the `tenants` row (the cascade removes `documents`, `chunks`, `request_logs`, `request_sources`, `tenant_models`, `model_calls`), the project's API keys, invitations, members, clears it as any session's active project, then deletes the organization. `204`. All or nothing; the project's leftover upload files are removed after the commit |
 
 Another user's project id, an unknown id and a malformed id are all `404 not_found`. Validation errors are `422 invalid_request`.
 
