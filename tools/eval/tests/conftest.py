@@ -1,5 +1,4 @@
 import pytest
-
 from fakes import FakeServer
 
 
