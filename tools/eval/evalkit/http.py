@@ -26,7 +26,11 @@ def request(method, url, *, headers=None, json_body=None, data=None, timeout=60.
     """JSON by default; `data` sends raw bytes (set your own content-type, for example multipart)."""
     if json_body is not None:
         data = json.dumps(json_body).encode()
-    h = {"content-type": "application/json", **{k.lower(): v for k, v in (headers or {}).items()}}
+    h = {
+        "content-type": "application/json",
+        "user-agent": "lumen-eval/0.1",
+        **{k.lower(): v for k, v in (headers or {}).items()},
+    }
     req = urllib.request.Request(url, data=data, headers=h, method=method)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
