@@ -110,7 +110,7 @@ export function Models() {
 
   return (
     <div className="stack">
-      <PageHead num="06" title="Models">
+      <PageHead title="Models">
         <div className="row-gap">
           <Segmented label="Usage range" options={RANGES} value={range} onChange={setRange} />
           <button

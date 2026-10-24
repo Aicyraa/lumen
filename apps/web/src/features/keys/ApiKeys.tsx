@@ -3,6 +3,7 @@ import { type FormEvent, useState } from "react";
 import { authClient } from "../../shared/lib/auth-client";
 import { fmtDate } from "../../shared/lib/format";
 import { Dialog } from "../../shared/ui/Dialog";
+import { StatusMessage } from "../../shared/ui/StatusMessage";
 import { ErrorText, PageHead } from "../../shared/ui/ui";
 import { readSession } from "../auth/sessionShape";
 
@@ -79,7 +80,7 @@ export function ApiKeys() {
 
   return (
     <div className="stack">
-      <PageHead num="02" title="API keys">
+      <PageHead title="API keys">
         <button
           type="button"
           className="btn btn-primary"
@@ -96,43 +97,52 @@ export function ApiKeys() {
         backend. Keys are stored as hashes and belong to this workspace.
       </p>
       {step === "closed" && <ErrorText>{error}</ErrorText>}
-      <div className="table" role="table" aria-label="API keys">
-        <div className="tr th keys-cols" role="row">
-          <span role="columnheader">NAME</span>
-          <span role="columnheader">KEY</span>
-          <span role="columnheader">CREATED</span>
-          <span role="columnheader">LAST USED</span>
-          <span role="columnheader" />
-        </div>
-        {list.map((k) => (
-          <div className="tr keys-cols" role="row" key={k.id}>
-            <div role="cell">{k.name ?? "Untitled key"}</div>
-            <div role="cell" className="mono muted-2">
-              {(k.prefix ?? "") + (k.start ?? "")}••••
-            </div>
-            <div role="cell" className="small muted-3">
-              {fmtDate(String(k.createdAt))}
-            </div>
-            <div role="cell" className="small muted-3">
-              {k.lastRequest ? fmtDate(String(k.lastRequest)) : "Never"}
-            </div>
-            <div role="cell" className="right">
-              <button
-                type="button"
-                className="link-btn red"
-                aria-label={`Revoke ${k.name ?? "key"}`}
-                onClick={() => revoke.mutate(k.id)}
-              >
-                Revoke
-              </button>
-            </div>
+      {keys.isPending && <StatusMessage state="loading">Loading API keys…</StatusMessage>}
+      {keys.isError && (
+        <StatusMessage state="error" onRetry={() => keys.refetch()}>
+          Could not load API keys. {(keys.error as Error).message}
+        </StatusMessage>
+      )}
+      {keys.isSuccess && !list.length && (
+        <StatusMessage state="empty">
+          No keys yet. Create one to connect your chatbot.
+        </StatusMessage>
+      )}
+      {list.length > 0 && (
+        <div className="table" role="table" aria-label="API keys">
+          <div className="tr th keys-cols" role="row">
+            <span role="columnheader">NAME</span>
+            <span role="columnheader">KEY</span>
+            <span role="columnheader">CREATED</span>
+            <span role="columnheader">LAST USED</span>
+            <span role="columnheader" />
           </div>
-        ))}
-        {keys.isSuccess && !list.length && (
-          <div className="empty">No keys. Create one to connect your chatbot.</div>
-        )}
-        {keys.isError && <ErrorText>{(keys.error as Error).message}</ErrorText>}
-      </div>
+          {list.map((k) => (
+            <div className="tr keys-cols" role="row" key={k.id}>
+              <div role="cell">{k.name ?? "Untitled key"}</div>
+              <div role="cell" className="mono muted-2">
+                {(k.prefix ?? "") + (k.start ?? "")}••••
+              </div>
+              <div role="cell" className="small muted-3">
+                {fmtDate(String(k.createdAt))}
+              </div>
+              <div role="cell" className="small muted-3">
+                {k.lastRequest ? fmtDate(String(k.lastRequest)) : "Never"}
+              </div>
+              <div role="cell" className="right">
+                <button
+                  type="button"
+                  className="link-btn red"
+                  aria-label={`Revoke ${k.name ?? "key"}`}
+                  onClick={() => revoke.mutate(k.id)}
+                >
+                  Revoke
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {step === "name" && (
         <Dialog title="Name this key" label="NEW KEY" onClose={close}>

@@ -1798,3 +1798,36 @@ html.snap-home {
 .doc-content .endpoint {
   color: var(--text-2);
 }
+
+/* status message: centred in the free content area */
+.content {
+  display: flex;
+  flex-direction: column;
+}
+.content > * {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.content > * > .stack {
+  flex: 1;
+}
+.status-msg {
+  flex: 1;
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 14px;
+}
+.status-msg-error .status-msg-text {
+  color: var(--red);
+}
+.status-msg-loading .status-msg-text {
+  animation: pulse 1.4s infinite;
+}

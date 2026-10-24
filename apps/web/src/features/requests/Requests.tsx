@@ -5,6 +5,7 @@ import { fmtCost, fmtMs, fmtScore, fmtTime, tierTone } from "../../shared/lib/fo
 import type { Range, RequestDetail, RequestRow, RequestsPage } from "../../shared/lib/types";
 import { Dialog } from "../../shared/ui/Dialog";
 import { RouteCard } from "../../shared/ui/RouteCard";
+import { StatusMessage } from "../../shared/ui/StatusMessage";
 import { UsageCard } from "../../shared/ui/UsageCard";
 import { ErrorText, PageHead, Segmented, StatusDot } from "../../shared/ui/ui";
 import { useOrgId } from "../auth/session";
@@ -41,7 +42,7 @@ export function Requests() {
 
   return (
     <div className="stack">
-      <PageHead num="05" title="Requests">
+      <PageHead title="Requests">
         <div className="row-gap">
           <Segmented label="Range" options={RANGES} value={range} onChange={setRange} />
           <Segmented
@@ -59,25 +60,32 @@ export function Requests() {
         Cost is your estimated provider cost, from the prices you set on each model. Logs hold the
         question, route and metadata, never document text.
       </p>
-      <div className="scroll-x">
-        <div className="table" role="table" aria-label="Request log" style={{ minWidth: 760 }}>
-          <div className="tr th req-cols" role="row">
-            <span role="columnheader">TIME</span>
-            <span role="columnheader">QUERY</span>
-            <span role="columnheader">ROUTE</span>
-            <span role="columnheader">K</span>
-            <span role="columnheader">EST. COST</span>
-            <span role="columnheader">LATENCY</span>
+      {q.isPending && <StatusMessage state="loading">Loading requests…</StatusMessage>}
+      {q.isError && (
+        <StatusMessage state="error" onRetry={() => q.refetch()}>
+          Could not load requests. {(q.error as Error).message}
+        </StatusMessage>
+      )}
+      {q.isSuccess && !rows.length && (
+        <StatusMessage state="empty">No requests match this filter.</StatusMessage>
+      )}
+      {rows.length > 0 && (
+        <div className="scroll-x">
+          <div className="table" role="table" aria-label="Request log" style={{ minWidth: 760 }}>
+            <div className="tr th req-cols" role="row">
+              <span role="columnheader">TIME</span>
+              <span role="columnheader">QUERY</span>
+              <span role="columnheader">ROUTE</span>
+              <span role="columnheader">K</span>
+              <span role="columnheader">EST. COST</span>
+              <span role="columnheader">LATENCY</span>
+            </div>
+            {rows.map((r) => (
+              <Row key={r.id} r={r} onOpen={() => setOpenId(r.id)} />
+            ))}
           </div>
-          {rows.map((r) => (
-            <Row key={r.id} r={r} onOpen={() => setOpenId(r.id)} />
-          ))}
-          {q.isSuccess && !rows.length && (
-            <div className="empty">No requests match this filter.</div>
-          )}
         </div>
-      </div>
-      {q.isError && <ErrorText>{(q.error as Error).message}</ErrorText>}
+      )}
       {q.hasNextPage && (
         <div>
           <button

@@ -58,7 +58,7 @@ export function TryIt() {
   return (
     <div className="try-grid">
       <div className="stack">
-        <PageHead num="03" title="Try it" />
+        <PageHead title="Try it" />
         <form onSubmit={submit} className="askbar">
           <input
             aria-label="Question"

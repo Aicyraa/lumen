@@ -60,7 +60,7 @@ export function Settings() {
 
   return (
     <div className="stack">
-      <PageHead num="07" title="Settings" />
+      <PageHead title="Settings" />
       <form onSubmit={submit} className="card form-card maxw" aria-label="Project details">
         <div className="label">PROJECT</div>
         <label className="field">

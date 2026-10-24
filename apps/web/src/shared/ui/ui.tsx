@@ -1,21 +1,10 @@
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
 
-export function PageHead({
-  num,
-  title,
-  children,
-}: {
-  num: string;
-  title: string;
-  children?: ReactNode;
-}) {
+export function PageHead({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <div className="page-head">
       <div>
-        <div className="label">
-          {num} — {title.toUpperCase()}
-        </div>
         <h1 className="page-title">{title}</h1>
       </div>
       {children}

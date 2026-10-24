@@ -43,7 +43,7 @@ export function Analytics() {
 
   return (
     <div className="stack">
-      <PageHead num="04" title="Analytics">
+      <PageHead title="Analytics">
         <Segmented label="Range" options={RANGES} value={range} onChange={setRange} />
       </PageHead>
       {summary.isError && <ErrorText>{(summary.error as Error).message}</ErrorText>}
