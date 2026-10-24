@@ -82,3 +82,15 @@ describe("sticky nav offsets and dead CSS", () => {
       expect(css).not.toContain(dead);
   });
 });
+
+describe("Home section 02 proportions", () => {
+  const css = readFileSync("src/shared/styles/styles.css", "utf8");
+  it("the stat cards are scaled down and the left column gets the wider track and larger text", () => {
+    const num = /\.fact-num\s*\{[^}]*font-size:\s*clamp\((\d+)px,\s*[^,]+,\s*(\d+)px\)/.exec(css)!;
+    expect(Number(num[2])).toBeLessThanOrEqual(68);
+    expect(css).toMatch(
+      /\.what-grid\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1\.[5-9]fr\)\s*minmax\(0,\s*1fr\)/,
+    );
+    expect(css).toMatch(/\.audience li\s*\{[^}]*font-size:\s*(?:1[89]|2\d)px/);
+  });
+});
