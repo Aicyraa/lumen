@@ -1,5 +1,6 @@
 """Small standard-library HTTP client with backoff on 429 (Retry-After and x-ratelimit-* headers)."""
 
+import http.client
 import json
 import re
 import urllib.error
@@ -12,6 +13,10 @@ BASE_WAIT, MAX_WAIT = 1.0, 300.0  # exponential fallback and the longest single 
 
 class HttpError(Exception):
     """The server could not be reached (not an HTTP status)."""
+
+    def __init__(self, message, cause_name="HttpError"):
+        super().__init__(message)
+        self.cause_name = cause_name  # short class name of the cause: no URL, no headers
 
 
 class HttpResult(NamedTuple):
@@ -37,8 +42,10 @@ def request(method, url, *, headers=None, json_body=None, data=None, timeout=60.
             status, hdrs, raw = resp.status, resp.headers, resp.read()
     except urllib.error.HTTPError as e:
         status, hdrs, raw = e.code, e.headers, e.read()
-    except (urllib.error.URLError, TimeoutError, OSError) as e:
-        raise HttpError(f"{method} {url.split('?')[0]} failed: {type(e).__name__}") from None
+    except (urllib.error.URLError, http.client.HTTPException, TimeoutError, OSError) as e:
+        cause = getattr(e, "reason", e)  # URLError wraps the real error
+        name = type(cause).__name__
+        raise HttpError(f"{method} {url.split('?')[0]} failed: {name}", name) from None
     text = raw.decode("utf-8", "replace")
     try:
         body = json.loads(text)

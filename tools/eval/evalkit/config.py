@@ -46,6 +46,7 @@ class Config:
     not_found_message: str = "I could not find that in the documents."
     timeout_seconds: float = 120.0
     backoff_retries: int = 6
+    max_consecutive_failures: int = 5  # abort after this many unreachable-service failures in a row
 
     def models_payload(self) -> dict:
         def one(model):
@@ -94,6 +95,9 @@ def load_config(path=DEFAULT_ENV, *, require: bool = True) -> Config:
             not_found_message=env.get("EVAL_NOT_FOUND_MESSAGE") or Config.not_found_message,
             timeout_seconds=float(env.get("EVAL_TIMEOUT_SECONDS") or Config.timeout_seconds),
             backoff_retries=int(env.get("EVAL_BACKOFF_RETRIES") or Config.backoff_retries),
+            max_consecutive_failures=int(
+                env.get("EVAL_MAX_CONSECUTIVE_FAILURES") or Config.max_consecutive_failures
+            ),
         )
     except ValueError as e:
         raise ConfigError(

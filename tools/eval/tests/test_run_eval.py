@@ -251,27 +251,35 @@ def test_resume_retries_pairs_that_failed(env, server):
 # ---- robustness: a dead service, resume keys, a corrupt state file ----
 
 
-def dropping_server():
-    """Accepts a connection and closes it without answering."""
-    import socket
-    import threading
+class Dropper:
+    """Accepts connections and closes them without answering."""
 
-    srv = socket.socket()
-    srv.bind(("127.0.0.1", 0))
-    srv.listen(16)
-    srv.accepted = 0
+    def __init__(self):
+        import socket
+        import threading
 
-    def loop():
+        self.sock = socket.socket()
+        self.sock.bind(("127.0.0.1", 0))
+        self.sock.listen(16)
+        self.accepted = 0
+        threading.Thread(target=self._loop, daemon=True).start()
+
+    def _loop(self):
         while True:
             try:
-                c, _ = srv.accept()
+                c, _ = self.sock.accept()
             except OSError:
                 return
-            srv.accepted += 1
+            self.accepted += 1
             c.close()
 
-    threading.Thread(target=loop, daemon=True).start()
-    return srv, f"http://127.0.0.1:{srv.getsockname()[1]}"
+    def close(self):
+        self.sock.close()
+
+
+def dropping_server():
+    srv = Dropper()
+    return srv, f"http://127.0.0.1:{srv.sock.getsockname()[1]}"
 
 
 def point_rag_at(envp, old, new):

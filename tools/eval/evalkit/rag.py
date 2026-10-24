@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 
 from evalkit.config import Config
-from evalkit.http import request_with_backoff
+from evalkit.http import HttpError, request_with_backoff
 
 
 @dataclass
@@ -16,16 +16,20 @@ class RagAnswer:
     latency_ms: int | None = None
     attempts: list = field(default_factory=list)
     error: str = ""  # error code when the service did not answer
+    connection_failed: bool = False  # the service could not be reached at all
 
 
 def query_rag(cfg: Config, tenant_id: str, query: str, force_tier: str | None) -> RagAnswer:
     body = {"tenant_id": tenant_id, "query": query, "models": cfg.models_payload()}
     if force_tier:  # absent means the rule router decides
         body["force_tier"] = force_tier
-    r = request_with_backoff(
-        "POST", f"{cfg.rag_url}/internal/query", json_body=body, timeout=cfg.timeout_seconds,
-        headers={"X-Internal-Secret": cfg.internal_secret}, retries=cfg.backoff_retries,
-    )  # fmt: skip
+    try:
+        r = request_with_backoff(
+            "POST", f"{cfg.rag_url}/internal/query", json_body=body, timeout=cfg.timeout_seconds,
+            headers={"X-Internal-Secret": cfg.internal_secret}, retries=cfg.backoff_retries,
+        )  # fmt: skip
+    except HttpError as e:  # unreachable, dropped or timed out: a system error, not a crash
+        return RagAnswer(error=e.cause_name, connection_failed=True)
     data = r.body if isinstance(r.body, dict) else {}
     if r.status != 200:
         err = data.get("error")

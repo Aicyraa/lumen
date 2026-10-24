@@ -2,6 +2,7 @@
 
 import argparse
 import csv
+import hashlib
 import json
 import math
 import os
@@ -21,8 +22,10 @@ VERDICT_COLUMNS = ["setup", "query", "answer_excerpt", "verdict", "reason", "fla
 EXCERPT = 300
 
 
-def _key(setup, query):
-    return f"{setup}\t{query}"
+def pair_key(cfg, q, setup):
+    """Identity of a run: edited answers, a changed split or a changed judge give a new key and so re-run."""
+    parts = [setup, q.tenant, q.query, q.expected_answer, str(q.held_out), cfg.judge_model]
+    return hashlib.sha256("\x1f".join(parts).encode()).hexdigest()[:24]
 
 
 def _save(path: Path, state: dict):
@@ -36,7 +39,8 @@ def run_pair(cfg, q, setup):
     a = query_rag(cfg, cfg.tenant_ids[q.tenant], q.query, FORCE[setup])
     rec = {"setup": setup, "query": q.query, "qtype": q.type, "split": split_of(q),
            "answer": a.answer, "tier": a.tier, "top_score": a.top_score,
-           "latency_ms": a.latency_ms, "error": a.error}  # fmt: skip
+           "latency_ms": a.latency_ms, "error": a.error,
+           "connection_failed": a.connection_failed}  # fmt: skip
     rec["cost"] = None if a.error else cost_of(a.attempts, cfg.prices)
     if a.error:
         v = ("incorrect", f"system error: {a.error}")
@@ -72,7 +76,7 @@ def write_outputs(out_dir: Path, records: list[dict], fraction: float, seed: int
         w.writerow(VERDICT_COLUMNS)
         for i, r in enumerate(records):
             excerpt = " ".join(r["answer"].split())[:EXCERPT]
-            flag = "yes" if i in flagged or r["verdict"] == "error" else ""
+            flag = "yes" if i in flagged or r["verdict"] == "error" or r["error"] else ""
             w.writerow([r["setup"], r["query"], excerpt, r["verdict"], r["reason"], flag])
     return results
 
@@ -111,9 +115,9 @@ def main(argv=None) -> int:
     out_dir = Path(a.out_dir)
     state_path = Path(a.state) if a.state else out_dir / ".eval_state.json"
 
-    def fail(msg):
+    def fail(msg, code=2):
         print(msg, file=sys.stderr)
-        return 2
+        return code
 
     try:
         questions = load_questions(a.questions)
@@ -141,19 +145,37 @@ def main(argv=None) -> int:
         return 0
     state = {}
     if a.resume and state_path.exists():
-        state = json.loads(state_path.read_text())
+        try:
+            state = json.loads(state_path.read_text())
+            if not isinstance(state, dict):
+                raise ValueError("not an object")
+        except ValueError:
+            return fail(
+                f"error: state file {state_path} is corrupt; delete it, or run without --resume."
+            )
     out_dir.mkdir(parents=True, exist_ok=True)
+    in_a_row, aborted = 0, False
     for n, (setup, q) in enumerate(pairs, 1):
-        k = _key(setup, q.query)
+        k = pair_key(cfg, q, setup)
         if k in state and not (state[k]["error"] or state[k]["verdict"] == "error"):
             continue  # done; pairs that failed are run again
         state[k] = run_pair(cfg, q, setup)
         _save(state_path, state)
         print(f"[{n}/{len(pairs)}] {setup}: {state[k]['verdict']}")
-    records = [state[_key(s, q.query)] for s, q in pairs]
+        in_a_row = in_a_row + 1 if state[k]["connection_failed"] else 0
+        if in_a_row >= cfg.max_consecutive_failures:
+            aborted = True
+            break
+    records = [state[k] for s, q in pairs if (k := pair_key(cfg, q, s)) in state]
     results = write_outputs(out_dir, records, a.review_fraction, a.seed)
     report(results, records, cfg.confident_top_score)
     print(
         f"\nwrote {out_dir / 'results.csv'} and {out_dir / 'verdicts.csv'}; spot-check the flagged verdicts."
     )
+    if aborted:
+        return fail(
+            f"error: stopped after {in_a_row} consecutive connection failures; is the rag-service "
+            "running? Fix it and run again with --resume.",
+            3,
+        )
     return 0
