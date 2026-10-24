@@ -78,11 +78,18 @@ describe("InfoTip", () => {
       rectAt(window.innerWidth - 100, 260); // right edge 160px past the viewport
       setup();
       await userEvent.tab();
-      expect(screen.getByRole("tooltip")).toHaveStyle({ transform: "translateX(-276px)" });
+      expect(screen.getByRole("tooltip")).toHaveStyle({ transform: "translateX(-176px)" });
     });
 
-    it("never shifts past the left edge (stays 16px inside it)", async () => {
-      rectAt(30, 600); // wider than the room: shifting right-aligned would leave the left edge
+    it("is nudged right when it starts outside the left edge", async () => {
+      rectAt(-30, 200);
+      setup();
+      await userEvent.tab();
+      expect(screen.getByRole("tooltip")).toHaveStyle({ transform: "translateX(46px)" });
+    });
+
+    it("when it is wider than the room, the left edge wins (16px inside)", async () => {
+      rectAt(30, 1200);
       setup();
       await userEvent.tab();
       expect(screen.getByRole("tooltip")).toHaveStyle({ transform: "translateX(-14px)" });

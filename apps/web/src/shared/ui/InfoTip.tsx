@@ -4,13 +4,16 @@ import { type ReactNode, useId, useLayoutEffect, useRef, useState } from "react"
 export function InfoTip({ label, children }: { label: string; children: ReactNode }) {
   const id = useId();
   const [open, setOpen] = useState(false);
-  const [alignRight, setAlignRight] = useState(false);
+  const [shift, setShift] = useState(0);
   const tip = useRef<HTMLSpanElement>(null);
-  // Measure on open: when the tooltip would run past the right edge of the viewport, anchor it to the button's right edge.
+  // Measure on open and slide the tooltip so it stays 16px inside the viewport (the left edge wins when it is too wide).
   useLayoutEffect(() => {
-    if (!open) return setAlignRight(false);
+    if (!open) return setShift(0);
     const r = tip.current?.getBoundingClientRect();
-    if (r && r.right > window.innerWidth - 16) setAlignRight(true);
+    if (!r) return;
+    let dx = Math.min(0, window.innerWidth - 16 - r.right);
+    if (r.left + dx < 16) dx = 16 - r.left;
+    setShift(dx);
   }, [open]);
   return (
     <span className="infotip" onMouseLeave={() => setOpen(false)}>
@@ -39,7 +42,8 @@ export function InfoTip({ label, children }: { label: string; children: ReactNod
         ref={tip}
         id={id}
         role="tooltip"
-        className={`infotip-tip${alignRight ? " align-right" : ""}`}
+        className="infotip-tip"
+        style={shift ? { transform: `translateX(${shift}px)` } : undefined}
         hidden={!open}
       >
         {children}

@@ -2339,10 +2339,6 @@ table.data.compact td {
   color: var(--text-2);
   white-space: normal;
 }
-.infotip-tip.align-right {
-  left: auto;
-  right: 0;
-}
 .infotip-tip[hidden] {
   display: none;
 }
