@@ -1,6 +1,8 @@
 import { existsSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 import request from "supertest";
+import { recordAttempts } from "../../../src/shared/services/modelCalls.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type Ctx, makeCtx, type Tenant } from "../../helpers/ctx.js";
 
@@ -152,5 +154,85 @@ describe("deleting a project and the uploads it left behind", () => {
     const res = await chat;
     expect(res.status).toBe(200); // the caller still gets its answer
     expect(await countsFor(project)).toEqual({ logs: 0, calls: 0, docs: 0, chunks: 0, orgs: 0 });
+  });
+});
+
+describe("tenants row, the cascade and the late-write guards", () => {
+  const n = async (sql: string) => (await ctx.pool.query(sql, [project])).rows[0].n as number;
+  const tenantRows = () => n("SELECT count(*)::int AS n FROM tenants WHERE id = $1");
+  const sourceRows = () => n("SELECT count(*)::int AS n FROM request_sources WHERE tenant_id = $1");
+  const seed = async () => {
+    const {
+      rows: [d],
+    } = await ctx.pool.query(
+      "INSERT INTO documents (tenant_id, filename, status) VALUES ($1, 'f.md', 'ready') RETURNING id",
+      [project],
+    );
+    const {
+      rows: [r],
+    } = await ctx.pool.query(
+      "INSERT INTO request_logs (tenant_id, query) VALUES ($1, 'q') RETURNING id",
+      [project],
+    );
+    await ctx.pool.query(
+      "INSERT INTO request_sources (request_id, tenant_id, position, document_id, score) VALUES ($1, $2, 0, $3, 0.5)",
+      [r.id, project, d.id],
+    );
+  };
+
+  it("deleting a project removes its tenants row and, through the cascade, every dependent row", async () => {
+    await seed();
+    expect([await tenantRows(), await sourceRows()]).toEqual([1, 1]);
+    expect((await remove()).status).toBe(204);
+    expect([await tenantRows(), await sourceRows()]).toEqual([0, 0]);
+    expect(await countsFor(project)).toEqual({ logs: 0, calls: 0, docs: 0, chunks: 0, orgs: 0 });
+  });
+
+  it("an interrupted delete leaves the tenants row and all its data in place", async () => {
+    await seed();
+    await ctx.pool.query(
+      `CREATE OR REPLACE FUNCTION test_block_org_delete3() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'blocked for test'; END $$ LANGUAGE plpgsql`,
+    );
+    await ctx.pool.query(
+      `CREATE TRIGGER test_block3 BEFORE DELETE ON organization FOR EACH ROW WHEN (OLD.id = '${project}') EXECUTE FUNCTION test_block_org_delete3()`,
+    );
+    try {
+      expect((await remove()).status).toBe(500);
+      expect([await tenantRows(), await sourceRows()]).toEqual([1, 1]);
+      expect((await countsFor(project)).docs).toBe(1);
+    } finally {
+      await ctx.pool.query("DROP TRIGGER test_block3 ON organization");
+    }
+  });
+
+  it("a document insert for a deleted project fails on the foreign key and writes nothing", async () => {
+    expect((await remove()).status).toBe(204);
+    await expect(
+      ctx.pool.query("INSERT INTO documents (tenant_id, filename) VALUES ($1, 'late.md')", [
+        project,
+      ]),
+    ).rejects.toMatchObject({ code: "23503" });
+    expect((await countsFor(project)).docs).toBe(0);
+  });
+
+  it("recordAttempts for a deleted project writes no model_calls row", async () => {
+    expect((await remove()).status).toBe(204);
+    await recordAttempts(
+      ctx.pool,
+      project,
+      randomUUID(),
+      [
+        {
+          provider: "p",
+          model_id: "m",
+          tier: "default",
+          outcome: "ok",
+          cost_usd: null,
+          cost_source: null,
+        },
+      ],
+      { rateLimitHeadersMax: 10 },
+    );
+    expect((await countsFor(project)).calls).toBe(0);
   });
 });
