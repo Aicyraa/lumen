@@ -83,7 +83,7 @@ describe("Shell", () => {
     expect(await screen.findByRole("meter", { name: "Documents" })).toBeInTheDocument();
   });
 
-  it("has no logo, no Docs link and no numbers, and 'All projects' is a button-styled link to /projects", () => {
+  it("has no logo at the top, no Docs link, no numbers and no big All projects button", () => {
     mockFetch(handler);
     renderWithProviders(tree(), { route: "/projects/mayas/documents" });
     const side = screen.getByRole("complementary");
@@ -92,7 +92,21 @@ describe("Shell", () => {
     expect(side.querySelector(".nav-num")).toBeNull();
     const all = within(side).getByRole("link", { name: "All projects" });
     expect(all).toHaveAttribute("href", "/projects");
-    expect(all).toHaveClass("btn");
+    expect(all).not.toHaveClass("btn");
+    expect(all.textContent).toBe(""); // icon only, named by aria-label
+  });
+
+  it("ends with a small brand footer below Sign out that links to /projects", () => {
+    mockFetch(handler);
+    renderWithProviders(tree(), { route: "/projects/mayas/documents" });
+    const side = screen.getByRole("complementary");
+    const brand = within(side).getByRole("link", { name: "Lumen, all projects" });
+    expect(brand).toHaveAttribute("href", "/projects");
+    expect(brand).toHaveTextContent("lumen");
+    expect(brand.querySelector("svg")).not.toBeNull();
+    const signOut = within(side).getByRole("button", { name: "Sign out" });
+    expect(signOut.compareDocumentPosition(brand) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(side.lastElementChild).toBe(brand);
   });
 
   it("shows the provider display name with the email below it", () => {
