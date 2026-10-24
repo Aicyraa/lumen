@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
@@ -11,14 +12,17 @@ import { Docs } from "../../../src/features/docs/Docs";
 import { Privacy } from "../../../src/features/docs/Privacy";
 
 type Entry = { target: Element; isIntersecting: boolean };
-let observers: { cb: (e: Entry[]) => void; els: Element[] }[] = [];
+let observers: { cb: (e: Entry[]) => void; els: Element[]; opts?: IntersectionObserverInit }[] = [];
 const original = window.IntersectionObserver;
 
 beforeEach(() => {
   observers = [];
   class FakeIO {
     els: Element[] = [];
-    constructor(public cb: (e: Entry[]) => void) {
+    constructor(
+      public cb: (e: Entry[]) => void,
+      public opts?: IntersectionObserverInit,
+    ) {
       observers.push(this);
     }
     observe(el: Element) {
@@ -180,5 +184,50 @@ describe("Privacy layout", () => {
     const toc = screen.getByRole("navigation", { name: "On this page" });
     expect(within(toc).getAllByRole("link").length).toBeGreaterThanOrEqual(5);
     expect(document.querySelector(".doc-content")).not.toBeNull();
+  });
+
+  it("never mentions a fallback model", () => {
+    view(<Docs />);
+    expect(document.body.textContent).not.toMatch(/fallback/i);
+  });
+});
+
+describe("full-height layout: only the content region scrolls", () => {
+  it("Docs: the public shell fills the screen and the labelled, focusable content region scrolls", () => {
+    const { container } = view(<Docs />);
+    expect(container.querySelector(".public")).toHaveClass("public-fill");
+    const region = screen.getByRole("region", { name: "API reference content" });
+    expect(region).toHaveAttribute("tabindex", "0");
+    expect(region).toHaveClass("doc-scroll");
+    expect(region.querySelector('[role="tabpanel"]')).not.toBeNull();
+    const pub = container.querySelector(".public")!;
+    expect(pub.querySelector("header.pub-nav")).not.toBeNull();
+    expect(pub.lastElementChild!.tagName).toBe("FOOTER"); // footer last: stays at the bottom of the screen
+  });
+
+  it("Privacy has the same layout", () => {
+    const { container } = view(<Privacy />);
+    expect(container.querySelector(".public")).toHaveClass("public-fill");
+    const region = screen.getByRole("region", { name: /content$/ });
+    expect(region).toHaveAttribute("tabindex", "0");
+    expect(region).toHaveClass("doc-scroll");
+    expect(container.querySelector(".public")!.lastElementChild!.tagName).toBe("FOOTER");
+  });
+
+  it("the CSS makes the shell non-scrolling and the region the only scroller, with a visible focus style", () => {
+    const css = readFileSync("src/shared/styles/styles.css", "utf8");
+    expect(css).toMatch(/\.public-fill\s*\{[^}]*height:\s*100dvh[^}]*overflow:\s*hidden/);
+    expect(css).toMatch(/\.doc-scroll\s*\{[^}]*overflow-y:\s*auto/);
+    expect(css).toMatch(/\.doc-scroll:focus-visible\s*\{[^}]*outline/);
+  });
+
+  it("the scroll-spy watches the inner scroller (not the window) and anchors sit 16px below its top", () => {
+    view(<Privacy />);
+    const scroller = document.querySelector(".doc-scroll");
+    expect(scroller).not.toBeNull();
+    expect(observers.length).toBeGreaterThan(0);
+    for (const o of observers) expect(o.opts?.root).toBe(scroller);
+    const css = readFileSync("src/shared/styles/styles.css", "utf8");
+    expect(css).toMatch(/\.doc-content section\s*\{[^}]*scroll-margin-top:\s*16px/);
   });
 });

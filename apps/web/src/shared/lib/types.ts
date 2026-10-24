@@ -1,7 +1,7 @@
 // Response shapes of the dashboard endpoints (apps/api/README.md).
 export type Range = "7d" | "30d";
 export type Tier = "cheap" | "expensive" | "none";
-export type ModelTier = "cheap" | "expensive" | "fallback";
+export type ModelTier = "cheap" | "expensive";
 export type Provider = "openai" | "anthropic" | "google" | "openai_compatible";
 
 export interface Meter {
@@ -59,7 +59,6 @@ export interface ModelUsage {
   tokens_out: number;
   failures: { error: number; timeout: number; rate_limited: number };
   backup_uses: number;
-  fallback_uses: number;
   median_latency_ms: number | null;
   cost_usd: number | null;
 }

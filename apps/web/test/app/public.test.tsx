@@ -52,12 +52,12 @@ describe("Home", () => {
       "RAG API FOR YOUR CHATBOT — 01",
       "WHAT LUMEN IS — 02",
       "HOW ROUTING WORKS — 03",
-      "DEMO — 04",
       "BUILT IN — 05",
-      "SECURITY — 06",
-      "QUICKSTART — 07",
+      "QUICKSTART — 06",
+      "SECURITY — 07",
     ];
-    expect(text).not.toMatch(/USE CASES/);
+    expect(text).not.toMatch(/USE CASES|DEMO/);
+    expect(text).not.toMatch(/fallback/i);
     let at = -1;
     for (const l of labels) {
       const i = text.indexOf(l);
@@ -74,20 +74,6 @@ describe("Home", () => {
     expect(screen.getByRole("link", { name: "Read the docs" })).toHaveAttribute("href", "/docs");
     expect(screen.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
     expect(screen.getAllByRole("link", { name: "Docs" }).length).toBeGreaterThan(0);
-  });
-
-  it("demo toggles Easy / Hard / No answer using the real /v1/chat response shape, with top_score and without a cost", async () => {
-    view(<Home />);
-    const demo = screen.getByRole("region", { name: "Demo" });
-    const res = () => within(demo).getByTestId("demo-response").textContent!;
-    expect(res()).toContain('"model_tier": "cheap"');
-    expect(res()).toContain('"top_score"');
-    await userEvent.click(within(demo).getByRole("button", { name: "HARD" }));
-    expect(res()).toContain('"model_tier": "expensive"');
-    await userEvent.click(within(demo).getByRole("button", { name: "NO ANSWER" }));
-    expect(res()).toContain('"model_tier": "none"');
-    expect(res()).toContain("I could not find that in the documents.");
-    expect(demo.textContent).not.toContain("cost_usd");
   });
 
   it("quickstart switches cURL / Node / Python, copies the snippet and says to keep the key on the server", async () => {

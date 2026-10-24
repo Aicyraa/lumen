@@ -74,7 +74,6 @@ describe("what Express sends to /internal/query", () => {
     const c0 = await ctx.seedModel(a, "cheap", "c0", KEY_A);
     await ctx.seedModel(a, "cheap", "c1", "sk-second-key-BBBB2222");
     await ctx.seedModel(a, "expensive", "e0", KEY_A);
-    await ctx.seedModel(a, "fallback", "f0", KEY_A);
     await ctx.seedModel(b, "cheap", "b-secret-model", "sk-tenant-b-key-ZZZZ9999");
     expect((await chat(a)).status).toBe(200);
     const body = queryCall().body as {
@@ -86,7 +85,7 @@ describe("what Express sends to /internal/query", () => {
     expect(body.include_snippets).toBeUndefined();
     expect(body.models.cheap.map((m) => m.model_id)).toEqual(["c0", "c1"]);
     expect(body.models.expensive.map((m) => m.model_id)).toEqual(["e0"]);
-    expect(body.models.fallback.map((m) => m.model_id)).toEqual(["f0"]);
+    expect(Object.keys(body.models)).toEqual(["cheap", "expensive"]); // no fallback key
     expect(body.models.cheap[0]).toEqual({
       provider: "openai_compatible",
       model_id: "c0",
@@ -269,11 +268,11 @@ describe("model_calls and tenant_models bookkeeping", () => {
     expect(await calls(b.tenantId)).toHaveLength(0);
   });
 
-  it("writes one row per attempt when a request falls back, in order, and marks failing and connected models", async () => {
+  it("writes one row per attempt when a request tries several models, in order, and marks failing and connected models", async () => {
     const [p, bk, fb] = [
       await ctx.seedModel(a, "cheap", "primary"),
       await ctx.seedModel(a, "cheap", "backup"),
-      await ctx.seedModel(a, "fallback", "fb"),
+      await ctx.seedModel(a, "expensive", "fb"),
     ];
     ctx.stub.handlers.query = () =>
       answerWith([
@@ -293,7 +292,7 @@ describe("model_calls and tenant_models bookkeeping", () => {
           tokens_out: null,
           latency_ms: 9000,
         }),
-        attempt({ model_id: "fb", tenant_model_id: fb, tier: "fallback" }),
+        attempt({ model_id: "fb", tenant_model_id: fb, tier: "expensive" }),
       ]);
     const res = await chat(a);
     expect(res.status).toBe(200);
@@ -301,11 +300,20 @@ describe("model_calls and tenant_models bookkeeping", () => {
     expect(rows.map((r) => [r.model_id, r.tier, r.outcome, r.tenant_model_id])).toEqual([
       ["primary", "cheap", "rate_limited", p],
       ["backup", "cheap", "timeout", bk],
-      ["fb", "fallback", "ok", fb],
+      ["fb", "expensive", "ok", fb],
     ]);
     expect(new Set(rows.map((r) => r.request_id))).toEqual(new Set([res.body.request_id]));
     expect((await model(a.tenantId, p)).status).toBe("failing");
     expect((await model(a.tenantId, fb)).status).toBe("connected");
+  });
+
+  it("a stray 'fallback' attempt tier from an old rag-service is stored as 'default' and does not fail the request", async () => {
+    ctx.stub.handlers.query = () =>
+      answerWith([attempt({ model_id: "old", tenant_model_id: null, tier: "fallback" })]);
+    const res = await chat(a);
+    expect(res.status).toBe(200);
+    const rows = await calls(a.tenantId);
+    expect(rows.map((r) => [r.model_id, r.tier])).toEqual([["old", "default"]]);
   });
 
   it("records every attempt when all models fail (502 provider_error), against the logged failed request", async () => {
@@ -536,7 +544,7 @@ describe("global LLM cap applies only to the shared default key", () => {
 });
 
 describe("keys never reach logs", () => {
-  it("no log line holds a tenant key across success, fallback and failure flows", async () => {
+  it("no log line holds a tenant key across success and failure flows", async () => {
     await ctx.seedModel(a, "cheap", "c0", KEY_A);
     ctx.logLines.length = 0;
     await chat(a);

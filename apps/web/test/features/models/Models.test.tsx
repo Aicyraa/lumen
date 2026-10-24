@@ -32,7 +32,6 @@ const u = (id: string, tier: string, position: number, over: object = {}) => ({
   tokens_out: 0,
   failures: { error: 0, timeout: 0, rate_limited: 0 },
   backup_uses: 0,
-  fallback_uses: 0,
   median_latency_ms: null,
   cost_usd: null,
   ...over,
@@ -44,7 +43,6 @@ const base = {
       m("b", "cheap", 1),
     ],
     expensive: [m("c", "expensive", 0)],
-    fallback: [],
   },
 };
 const usageBody = {
@@ -76,13 +74,14 @@ const router =
 vi.mock("../../../src/features/auth/session", () => ({ useOrgId: () => "org_1" }));
 
 describe("Models", () => {
-  it("shows Cheap, Expensive and Fallback groups in order with rank, masked key, usage, limits and estimated cost", async () => {
+  it("shows Cheap and Expensive groups only, in order with rank, masked key, usage, limits and estimated cost", async () => {
     mockFetch(router());
     renderWithProviders(<Models />);
     await screen.findByText("model-a");
-    expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual(
-      expect.arrayContaining(["Cheap", "Expensive", "Fallback"]),
-    );
+    expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual([
+      "Cheap",
+      "Expensive",
+    ]);
     const a = screen.getByTestId("model-a");
     expect(within(a).getByText("PRIMARY")).toBeInTheDocument();
     expect(within(screen.getByTestId("model-b")).getByText("BACKUP 1")).toBeInTheDocument();
@@ -96,7 +95,7 @@ describe("Models", () => {
     expect(within(b).getByText(/3 as backup/)).toBeInTheDocument();
     expect(within(b).getByText(/not reported/)).toBeInTheDocument();
     expect(within(b).getByText(/no price set/)).toBeInTheDocument();
-    expect(screen.getByText(/No fallback/)).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/fallback/i);
     expect(screen.getAllByText(/estimated provider cost/i).length).toBeGreaterThan(0);
   });
 
@@ -283,8 +282,8 @@ describe("Models", () => {
     expect(
       within(screen.getByTestId("model-a")).getByText("OpenAI-compatible"),
     ).toBeInTheDocument();
-    for (const name of ["Expensive", "Fallback"])
-      expect(screen.getByRole("region", { name })).toHaveClass("card");
+    expect(screen.getByRole("region", { name: "Expensive" })).toHaveClass("card");
+    expect(screen.queryByRole("region", { name: "Fallback" })).toBeNull();
   });
 
   it("shows centred loading and error (with Retry) states", async () => {
@@ -433,7 +432,6 @@ describe("Models", () => {
       const tips = {
         Cheap: /easy questions/i,
         Expensive: /hard questions and escalations/i,
-        Fallback: /every model in a tier fails or times out/i,
       };
       for (const [tier, re] of Object.entries(tips)) {
         const region = screen.getByRole("region", { name: tier });
@@ -478,7 +476,7 @@ describe("Models", () => {
         router((url) =>
           url.includes("/models/usage")
             ? { ...usageBody, total_cost_usd: null, models: [] }
-            : { models: { cheap: [m("b", "cheap", 0)], expensive: [], fallback: [] } },
+            : { models: { cheap: [m("b", "cheap", 0)], expensive: [] } },
         ),
       );
       renderWithProviders(<Models />);
@@ -487,5 +485,19 @@ describe("Models", () => {
         await screen.findByText(/ESTIMATED PROVIDER COST, 7D: no price set/),
       ).toBeInTheDocument();
     });
+  });
+
+  it("offers only cheap and expensive in the Add model modal and never mentions a fallback", async () => {
+    mockFetch(router());
+    renderWithProviders(<Models />);
+    await userEvent.click(await screen.findByRole("button", { name: "Add model" }));
+    const dlg = screen.getByRole("dialog");
+    const group = within(dlg).getByRole("group", { name: "Use as" });
+    expect(
+      within(group)
+        .getAllByRole("button")
+        .map((b) => b.textContent),
+    ).toEqual(["CHEAP", "EXPENSIVE"]);
+    expect(dlg.textContent).not.toMatch(/fallback/i);
   });
 });

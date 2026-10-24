@@ -33,7 +33,6 @@ const ENDPOINTS: Record<Provider, string> = {
 const TIERS: readonly (readonly [ModelTier, string])[] = [
   ["cheap", "CHEAP"],
   ["expensive", "EXPENSIVE"],
-  ["fallback", "FALLBACK"],
 ];
 const RANGES = [
   ["7d", "7D"],
@@ -45,7 +44,7 @@ const GROUPS: {
   note: string;
   tip: string;
   empty: string;
-  tone: "ready" | "cheap" | "processing";
+  tone: "ready" | "cheap";
 }[] = [
   {
     tier: "cheap",
@@ -62,14 +61,6 @@ const GROUPS: {
     note: "Hard questions and escalations. Tried top to bottom.",
     tip: "Hard questions and escalations from the cheap tier go here. The models are tried top to bottom.",
     empty: "No expensive model. Hard questions will use the cheap tier.",
-  },
-  {
-    tier: "fallback",
-    title: "Fallback",
-    tone: "processing",
-    note: "Used when every model in a tier fails or times out.",
-    tip: "Answers when every model in a tier fails or times out.",
-    empty: "No fallback. If every model in a tier fails, the request returns an error.",
   },
 ];
 
@@ -268,10 +259,7 @@ function ModelRow({
             {fails
               ? ` (${u.failures.error} error, ${u.failures.timeout} timeout, ${u.failures.rate_limited} rate limited)`
               : ""}
-            {m.tier === "fallback"
-              ? ` · ${u.fallback_uses} as fallback`
-              : ` · ${u.backup_uses} as backup`}{" "}
-            · median {fmtMs(u.median_latency_ms)}
+            · {u.backup_uses} as backup · median {fmtMs(u.median_latency_ms)}
           </>
         ) : usageFailed ? (
           "usage unavailable"

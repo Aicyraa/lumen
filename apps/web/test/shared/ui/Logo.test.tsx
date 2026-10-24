@@ -15,9 +15,9 @@ describe("Logo", () => {
       const link = screen.getByRole("link", { name: "Lumen home" });
       expect(link).toHaveAttribute("href", "/");
       expect(link).toHaveTextContent("lumen");
-      // leaf body + folded corner, and two text lines cut out
+      // leaf body + folded corner, and three text lines cut out
       expect(container.querySelectorAll("svg path")).toHaveLength(2);
-      expect(container.querySelectorAll("svg rect")).toHaveLength(2);
+      expect(container.querySelectorAll("svg rect")).toHaveLength(3);
       unmount();
     }
   });
@@ -39,9 +39,11 @@ describe("public/favicon.svg", () => {
     expect(file).not.toMatch(/<script|\son\w+=|href=|url\(|<image|<foreignObject/i);
     expect(file.replace('xmlns="http://www.w3.org/2000/svg"', "")).not.toMatch(/https?:/i);
   });
-  it("is the leaf mark: a folded corner and two text lines", () => {
+  it("is the leaf mark: a folded corner and three text lines of different lengths", () => {
     expect(file.match(/<path/g)).toHaveLength(2);
-    expect(file.match(/<rect/g)).toHaveLength(2);
+    expect(file.match(/<rect/g)).toHaveLength(3);
+    const widths = [...file.matchAll(/<rect[^>]* width="([\d.]+)"/g)].map((m) => Number(m[1]));
+    expect(new Set(widths).size).toBe(3);
     expect(file).toMatch(/data-part="fold"/);
   });
   it("has a plain hex fill before the oklch token so older Safari renders it", () => {
@@ -60,7 +62,7 @@ describe.each(["light", "dark"])("public/logo-mark-%s.svg", (variant) => {
     const fav = readFileSync("public/favicon.svg", "utf8");
     const ds = (f: string) => [...f.matchAll(/ d="([^"]+)"/g)].map((m) => m[1]);
     expect(ds(read())).toEqual(ds(fav));
-    expect(read().match(/<rect/g)).toHaveLength(2);
+    expect(read().match(/<rect/g)).toHaveLength(3);
   });
 });
 

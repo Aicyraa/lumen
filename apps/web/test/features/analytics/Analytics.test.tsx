@@ -29,16 +29,15 @@ const summary = (range: string) => ({
       tokens_out: 80,
       failures: { error: 1, timeout: 0, rate_limited: 0 },
       backup_uses: 0,
-      fallback_uses: 0,
       median_latency_ms: 300,
       cost_usd: 0.0031,
     },
     {
       id: "m2",
-      tier: "fallback",
+      tier: "expensive",
       position: 0,
       provider: "openai",
-      model_id: "gpt-fallback",
+      model_id: "gpt-backup",
       status: "connected",
       rate_limits: null,
       rate_limits_seen_at: null,
@@ -46,8 +45,7 @@ const summary = (range: string) => ({
       tokens_in: 90,
       tokens_out: 8,
       failures: { error: 0, timeout: 0, rate_limited: 0 },
-      backup_uses: 0,
-      fallback_uses: 2,
+      backup_uses: 2,
       median_latency_ms: 500,
       cost_usd: null,
     },
@@ -94,7 +92,7 @@ describe("Analytics", () => {
     expect(screen.getByText("Is there visitor parking?")).toBeInTheDocument();
     expect(screen.getByText("0.09")).toBeInTheDocument();
     const table = screen.getByRole("table", { name: "By model" });
-    expect(within(table).getByText("gpt-fallback")).toBeInTheDocument(); // fallback models included
+    expect(within(table).getByText("gpt-backup")).toBeInTheDocument(); // backup models included
     expect(within(table).getByText("no price set")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /Oct 22.*4 cheap.*2 expensive/ })).toBeInTheDocument();
   });
@@ -187,5 +185,13 @@ describe("Analytics", () => {
     const table = await screen.findByRole("table", { name: "By model" });
     expect(within(table).getByText("no usage yet")).toBeInTheDocument();
     expect(within(table).getAllByText("no price set")).toHaveLength(1);
+  });
+
+  it("by-model has a BACKUP USES column and no fallback anywhere", async () => {
+    mockFetch(handler);
+    const { container } = renderWithProviders(<Analytics />);
+    const table = await screen.findByRole("table", { name: "By model" });
+    expect(within(table).getByText("BACKUP USES")).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/fallback/i);
   });
 });

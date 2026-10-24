@@ -31,11 +31,7 @@ const ERRORS = [
     "document_limit",
     "Your workspace has reached its document limit. Delete a document before uploading another.",
   ],
-  [
-    "502",
-    "provider_error",
-    "Every model for the chosen tier, and the fallback, failed. Retry shortly.",
-  ],
+  ["502", "provider_error", "Every model of the chosen tier failed. Retry shortly."],
 ];
 
 const CHAT_RES = `{

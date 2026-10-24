@@ -163,6 +163,7 @@ describe("POST /api/dashboard/models (Test & save)", () => {
   it.each([
     [{ provider: "mystery" }],
     [{ tier: "huge" }],
+    [{ tier: "fallback" }], // the fallback tier was removed
     [{ model_id: "" }],
     [{ api_key: "short" }],
     [{ endpoint_url: "" }],
@@ -179,10 +180,10 @@ describe("GET /api/dashboard/models", () => {
   it("groups the tenant's models by tier in position order, with masked keys only", async () => {
     await as(a).post("/models", newModel({ model_id: "c0" }));
     await as(a).post("/models", newModel({ model_id: "c1" }));
-    await as(a).post("/models", newModel({ model_id: "f0", tier: "fallback" }));
+    await as(a).post("/models", newModel({ model_id: "e0", tier: "expensive" }));
     const res = await as(a).get("/models");
     expect(res.status).toBe(200);
-    expect(Object.keys(res.body.models)).toEqual(["cheap", "expensive", "fallback"]);
+    expect(Object.keys(res.body.models)).toEqual(["cheap", "expensive"]);
     expect(
       res.body.models.cheap.map((m: { model_id: string; position: number }) => [
         m.model_id,
@@ -192,9 +193,8 @@ describe("GET /api/dashboard/models", () => {
       ["c0", 0],
       ["c1", 1],
     ]);
-    expect(res.body.models.expensive).toEqual([]);
-    expect(res.body.models.fallback[0]).toMatchObject({
-      model_id: "f0",
+    expect(res.body.models.expensive[0]).toMatchObject({
+      model_id: "e0",
       key_hint: "sk-...1234",
       status: "connected",
       provider: "openai_compatible",

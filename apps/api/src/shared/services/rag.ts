@@ -21,7 +21,6 @@ export interface ModelItem {
 export interface ModelsPayload {
   cheap: ModelItem[];
   expensive: ModelItem[];
-  fallback: ModelItem[];
 }
 // Internal only (stripped before replying); parsed and validated in shared/services/modelCalls.ts.
 export type RawAttempt = Record<string, unknown>;

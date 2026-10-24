@@ -16,7 +16,7 @@ class Attempt:
     provider: str
     model_id: str
     tenant_model_id: str | None
-    tier: str  # cheap | expensive | fallback | default
+    tier: str  # cheap | expensive | default
     outcome: str = "error"  # ok | error | timeout | rate_limited
     tokens_in: int | None = None  # provider-reported; None for a failed attempt
     tokens_out: int | None = None

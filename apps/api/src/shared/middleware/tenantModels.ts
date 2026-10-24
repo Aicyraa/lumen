@@ -61,7 +61,7 @@ export const loadTenantModels = ({
         );
       return next();
     }
-    const payload: ModelsPayload = { cheap: [], expensive: [], fallback: [] };
+    const payload: ModelsPayload = { cheap: [], expensive: [] };
     const known = new Map<string, KnownModel>();
     for (const r of rows.filter((m) => usable.includes(m.id))) {
       let api_key: string;

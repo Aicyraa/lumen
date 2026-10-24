@@ -5,7 +5,7 @@ import { LogoMark } from "../../shared/ui/Logo";
 import { CodeBlock, PublicLayout, SectionLabel } from "../../shared/ui/PublicLayout";
 import { Segmented } from "../../shared/ui/ui";
 import { DotGrid, LineIcon } from "./art";
-import { RouteFlow } from "./RouteFlow";
+import { RouteExplorer } from "./RouteFlow";
 
 const STEPS = [
   ["01", "Upload documents"],
@@ -15,7 +15,7 @@ const STEPS = [
 const FACTS = [
   ["1", "endpoint to call", "POST /v1/chat answers from your documents."],
   ["3", "file types", "PDF, plain text and Markdown."],
-  ["3", "model tiers", "Cheap, expensive and a fallback, each with your own models."],
+  ["2", "model tiers", "Cheap and expensive, each with your own models and backups."],
   ["3", "steps to a first answer", "Upload, create a key, call the endpoint."],
 ] as const;
 const AUDIENCE = [
@@ -23,21 +23,6 @@ const AUDIENCE = [
   "Developers who prefer one HTTP call to building retrieval, routing and logging themselves.",
   "Anyone who brings their own model provider keys and wants control over which model answers what.",
 ];
-const ROUTING = [
-  [
-    "Cheap first",
-    "Easy questions go to the first model of the cheap tier. Models in a tier are tried top to bottom.",
-  ],
-  [
-    "Escalate when unsure",
-    "Long, comparative or weakly matched questions go to the expensive tier instead.",
-  ],
-  [
-    "Fallback when a tier fails",
-    "If every model in a tier fails or times out, the fallback model answers.",
-  ],
-  ["No match, no model", "If nothing in your documents matches, Lumen says so and calls no model."],
-] as const;
 const FEATURE_ICONS = ["route", "shield", "models", "honest", "cited", "chart"] as const;
 const SECURITY_ICONS = ["boxes", "key", "nolog", "data"] as const;
 const FEATURES = [
@@ -51,7 +36,7 @@ const FEATURES = [
   ],
   [
     "Your own models",
-    "Connect your own provider keys, order the models inside each tier and set a fallback for when a whole tier fails.",
+    "Connect your own provider keys, order the models inside each tier, and the next one is tried when a model fails.",
   ],
   [
     "Honest when it can\u2019t answer",
@@ -85,52 +70,6 @@ const SECURITY = [
   ],
 ];
 
-// Real POST /v1/chat response shape (sample values).
-const sample = (
-  answer: string,
-  sources: string,
-  route: [string, number, boolean, number, number],
-  tokens: [number, number],
-  ms: number,
-) =>
-  `{\n  "request_id": "3f0c1a7b-5d2e-4c8a-9b61-0e7f4a2d9c13",\n  "answer": ${JSON.stringify(answer)},\n  "sources": ${sources},\n  "route": {\n    "model_tier": "${route[0]}",\n    "k": ${route[1]}, "escalated": ${route[2]},\n    "difficulty": ${route[3].toFixed(2)}, "top_score": ${route[4].toFixed(2)}\n  },\n  "usage": { "tokens_in": ${tokens[0]}, "tokens_out": ${tokens[1]}, "latency_ms": ${ms} }\n}`;
-const DEMOS = {
-  easy: {
-    query: "When does enrollment close?",
-    ms: 620,
-    res: sample(
-      "Enrollment closes on 15 March. [1]",
-      '[{ "document_id": "c1a2…", "chunk_id": 12, "score": 0.78 }]',
-      ["cheap", 3, false, 0, 0.78],
-      [812, 64],
-      620,
-    ),
-  },
-  hard: {
-    query: "What is the difference between fall and spring refunds?",
-    ms: 1240,
-    res: sample(
-      "Fall: full refund until 12 September [1]. Spring: until 6 February [2].",
-      '[{ "document_id": "c1a2…", "chunk_id": 31, "score": 0.71 }, …]',
-      ["expensive", 8, true, 0.25, 0.71],
-      [1946, 88],
-      1240,
-    ),
-  },
-  none: {
-    query: "Who won the football match?",
-    ms: 140,
-    res: sample(
-      "I could not find that in the documents.",
-      "[]",
-      ["none", 0, false, 0.25, 0.09],
-      [0, 0],
-      140,
-    ),
-  },
-} as const;
-type DemoId = keyof typeof DEMOS;
-
 const CODE = {
   curl: `curl -X POST $LUMEN_URL/v1/chat \\\n  -H "x-api-key: $LUMEN_API_KEY" \\\n  -H "content-type: application/json" \\\n  -d '{"query": "When does enrollment close?"}'`,
   node: `const res = await fetch(process.env.LUMEN_URL + "/v1/chat", {\n  method: "POST",\n  headers: {\n    "x-api-key": process.env.LUMEN_API_KEY,\n    "content-type": "application/json",\n  },\n  body: JSON.stringify({ query, session_id }),\n});\n\nconst { answer, sources, route } = await res.json();`,
@@ -139,10 +78,8 @@ const CODE = {
 type CodeId = keyof typeof CODE;
 
 export function Home() {
-  const [demo, setDemo] = useState<DemoId>("easy");
   const [tab, setTab] = useState<CodeId>("curl");
   const [copied, setCopied] = useState(false);
-  const d = DEMOS[demo];
   const copy = () => {
     void navigator.clipboard?.writeText(CODE[tab]).catch(() => {});
     setCopied(true);
@@ -223,51 +160,10 @@ export function Home() {
           <div className="sec-head">
             <SectionLabel>HOW ROUTING WORKS — 03</SectionLabel>
             <h2 className="h2">
-              Cheap first, expensive when needed, a fallback when a tier fails.
+              Cheap first, expensive when needed, an error rather than a guess.
             </h2>
           </div>
-          <div className="routing-grid">
-            <div className="route-wrap">
-              <RouteFlow />
-            </div>
-            <ul className="route-steps">
-              {ROUTING.map(([t, b], i) => (
-                <Reveal as="li" key={t} delay={i * 0.08} className="step">
-                  <div className="num">0{i + 1}</div>
-                  <h3 className="card-title-sm">{t}</h3>
-                  <div className="small muted-2">{b}</div>
-                </Reveal>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        <section className="snap-section" aria-label="Demo">
-          <div className="row-between">
-            <SectionLabel>DEMO — 04</SectionLabel>
-            <Segmented
-              label="Demo case"
-              options={
-                [
-                  ["easy", "EASY"],
-                  ["hard", "HARD"],
-                  ["none", "NO ANSWER"],
-                ] as const
-              }
-              value={demo}
-              onChange={setDemo}
-            />
-          </div>
-          <div className="two-col">
-            <div className="card">
-              <div className="mono small muted-3">REQUEST</div>
-              <CodeBlock>{`POST /v1/chat\nx-api-key: lum_••••••••\n\n{ "query": ${JSON.stringify(d.query)} }`}</CodeBlock>
-            </div>
-            <div className="card">
-              <div className="mono small muted-3">RESPONSE · {d.ms.toLocaleString("en-US")} MS</div>
-              <CodeBlock testId="demo-response">{d.res}</CodeBlock>
-            </div>
-          </div>
+          <RouteExplorer />
         </section>
 
         <section className="snap-section" aria-label="Built in">
@@ -288,29 +184,10 @@ export function Home() {
           </div>
         </section>
 
-        <section className="snap-section deco-host" aria-label="Security">
-          <DotGrid id="dg-sec" />
-          <div className="sec-head">
-            <SectionLabel>SECURITY — 06</SectionLabel>
-            <h2 className="h2">Your documents stay yours.</h2>
-          </div>
-          <ul className="cols-4">
-            {SECURITY.map(([t, b], i) => (
-              <Reveal as="li" key={t} delay={i * 0.08} className="sec-card">
-                <span className="icon-tile">
-                  <LineIcon name={SECURITY_ICONS[i]} />
-                </span>
-                <h3 className="card-title-sm">{t}</h3>
-                <div className="small muted-2">{b}</div>
-              </Reveal>
-            ))}
-          </ul>
-        </section>
-
         <section className="snap-section head-grid top deco-host" aria-label="Quickstart">
           <DotGrid id="dg-qs" />
           <div className="stack">
-            <SectionLabel>QUICKSTART — 07</SectionLabel>
+            <SectionLabel>QUICKSTART — 06</SectionLabel>
             <h2 className="h2">Call it from your backend in a few lines.</h2>
             <p className="body muted-2 maxw-sm">
               Keep the key on your server. Your chatbot's frontend talks to your backend, and your
@@ -341,6 +218,25 @@ export function Home() {
             </div>
             <CodeBlock testId="code">{CODE[tab]}</CodeBlock>
           </div>
+        </section>
+
+        <section className="snap-section deco-host" aria-label="Security">
+          <DotGrid id="dg-sec" />
+          <div className="sec-head">
+            <SectionLabel>SECURITY — 07</SectionLabel>
+            <h2 className="h2">Your documents stay yours.</h2>
+          </div>
+          <ul className="cols-4">
+            {SECURITY.map(([t, b], i) => (
+              <Reveal as="li" key={t} delay={i * 0.08} className="sec-card">
+                <span className="icon-tile">
+                  <LineIcon name={SECURITY_ICONS[i]} />
+                </span>
+                <h3 className="card-title-sm">{t}</h3>
+                <div className="small muted-2">{b}</div>
+              </Reveal>
+            ))}
+          </ul>
         </section>
 
         <section className="snap-section cta deco-host" aria-label="Closing">

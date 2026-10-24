@@ -29,7 +29,8 @@ function useScrollSpy(ids: string[]) {
         const current = [...ids].reverse().find((id) => visible.has(id));
         if (current) setActive(current);
       },
-      { rootMargin: "-15% 0px -70% 0px" },
+      // the page scrolls inside .doc-scroll, so that element is the observer root and the margins are relative to it
+      { root: document.querySelector(".doc-scroll"), rootMargin: "-15% 0px -70% 0px" },
     );
     ids.forEach((id) => {
       const el = document.getElementById(id);
@@ -57,7 +58,7 @@ export function DocLayout({
 }) {
   const active = useScrollSpy(toc.map((t) => t.id));
   return (
-    <PublicLayout>
+    <PublicLayout fill>
       <div className="doc-page">
         <nav aria-label="On this page" className="doc-toc">
           <div className="label-sm">ON THIS PAGE</div>
@@ -71,11 +72,18 @@ export function DocLayout({
             ))}
           </ul>
         </nav>
-        <main className="doc-content">
-          <SectionLabel>{label}</SectionLabel>
-          <h1 className="doc-h1">{title}</h1>
-          <div className="lead">{lead}</div>
-          {children}
+        <main className="doc-main">
+          <div
+            className="doc-scroll doc-content"
+            role="region"
+            aria-label={`${title} content`}
+            tabIndex={0}
+          >
+            <SectionLabel>{label}</SectionLabel>
+            <h1 className="doc-h1">{title}</h1>
+            <div className="lead">{lead}</div>
+            {children}
+          </div>
         </main>
       </div>
     </PublicLayout>
@@ -120,7 +128,7 @@ export function DocTabs({
   }
 
   return (
-    <PublicLayout>
+    <PublicLayout fill>
       <div className="doc-page">
         <div className="doc-toc">
           <div className="label-sm">SECTIONS</div>
@@ -142,24 +150,31 @@ export function DocTabs({
             ))}
           </div>
         </div>
-        <main className="doc-content">
-          <h1 className="visually-hidden">{title}</h1>
-          {Children.toArray(children).map((child) => {
-            const id = isValidElement<{ id?: string }>(child) ? child.props.id : undefined;
-            if (!id) return child;
-            return (
-              <div
-                key={id}
-                role="tabpanel"
-                id={`panel-${id}`}
-                aria-labelledby={`tab-${id}`}
-                hidden={id !== active}
-                className="doc-panel"
-              >
-                {child}
-              </div>
-            );
-          })}
+        <main className="doc-main">
+          <div
+            className="doc-scroll doc-content"
+            role="region"
+            aria-label={`${title} content`}
+            tabIndex={0}
+          >
+            <h1 className="visually-hidden">{title}</h1>
+            {Children.toArray(children).map((child) => {
+              const id = isValidElement<{ id?: string }>(child) ? child.props.id : undefined;
+              if (!id) return child;
+              return (
+                <div
+                  key={id}
+                  role="tabpanel"
+                  id={`panel-${id}`}
+                  aria-labelledby={`tab-${id}`}
+                  hidden={id !== active}
+                  className="doc-panel"
+                >
+                  {child}
+                </div>
+              );
+            })}
+          </div>
         </main>
       </div>
     </PublicLayout>

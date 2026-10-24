@@ -9,7 +9,7 @@ import type { Deps } from "../../shared/types/types.js";
 import { testCompletion } from "./provider.js";
 import "../../shared/types/types.js";
 
-const TIERS = ["cheap", "expensive", "fallback"] as const;
+const TIERS = ["cheap", "expensive"] as const;
 // Never select api_key_encrypted here: the list and every response are built from these columns only.
 const PUBLIC =
   "id, tier, position, provider, model_id, endpoint_url, key_hint, status, input_price_per_1m::float8 AS input_price_per_1m, output_price_per_1m::float8 AS output_price_per_1m";

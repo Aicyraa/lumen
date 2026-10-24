@@ -1,10 +1,10 @@
 import { animate, motion, useReducedMotion } from "motion/react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { useInViewOnce } from "./useInViewOnce";
+import { prefersReducedMotion, useInView, useInViewOnce } from "./useInViewOnce";
 
-// All motion here is opacity and transform only (no layout shift), stays under 600 ms, and is switched off by
-// prefers-reduced-motion (MotionConfig reducedMotion="user" in App plus the checks below). The hidden starting
-// state is applied by this script only, and a timer shows everything after 4 s, so content is never stuck hidden.
+// All motion here is opacity and transform only (no layout shift) and stays under 600 ms. Reveal animates in when the
+// element enters the viewport and out again when it has left it (replayable). Before the first measurement the content is
+// fully visible, and under prefers-reduced-motion nothing is ever hidden.
 export function Reveal({
   children,
   delay = 0,
@@ -16,22 +16,15 @@ export function Reveal({
   className?: string;
   as?: "div" | "li" | "section";
 }) {
-  const reduce = useReducedMotion();
-  const [late, setLate] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setLate(true), 4000);
-    return () => clearTimeout(t);
-  }, []);
-  const Tag = motion[as];
-  if (reduce) return <Tag className={className}>{children}</Tag>;
+  const [ref, state] = useInView<HTMLElement>();
+  const Tag = as as "div";
+  if (prefersReducedMotion()) return <Tag className={className}>{children}</Tag>;
   return (
     <Tag
-      className={className}
-      initial={{ opacity: 0, y: 16 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      animate={late ? { opacity: 1, y: 0 } : undefined}
-      viewport={{ once: true, margin: "0px 0px -8% 0px" }}
-      transition={{ duration: 0.45, delay: Math.min(delay, 0.3), ease: [0.2, 0.7, 0.1, 1] }}
+      ref={ref as React.Ref<HTMLDivElement>}
+      className={`reveal${className ? ` ${className}` : ""}`}
+      data-state={state}
+      style={state === "in" && delay ? { transitionDelay: `${Math.min(delay, 0.3)}s` } : undefined}
     >
       {children}
     </Tag>

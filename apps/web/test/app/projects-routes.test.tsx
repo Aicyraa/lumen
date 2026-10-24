@@ -166,36 +166,30 @@ describe("project routes", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Projects" })).toBeInTheDocument();
   });
 
-  it("the sidebar has a project dropdown (last entry All projects), a small link to Projects and no Docs link; switching goes to the same tab of the other project", async () => {
+  it("the sidebar shows the current project as a plain label and the way to switch is the Projects page", async () => {
     mockFetch(api());
     mount("/projects/my-project/requests");
     const side = await screen.findByRole("complementary");
-    const trigger = within(side).getByRole("button", { name: /^Project: My project/ });
-    expect(trigger).toHaveAttribute("aria-haspopup", "listbox");
-    await userEvent.click(trigger);
-    const list = within(side).getByRole("listbox");
-    expect(
-      within(list)
-        .getAllByRole("option")
-        .map((o) => o.textContent),
-    ).toEqual(["My project", "Shop support", "All projects"]);
-    await userEvent.keyboard("{Escape}");
-    expect(within(side).getByRole("link", { name: "All projects" })).toHaveAttribute(
-      "href",
-      "/projects",
-    );
+    expect(within(side).getByText("My project")).toHaveClass("project-label");
+    expect(within(side).queryByRole("combobox")).toBeNull();
+    expect(within(side).queryByRole("listbox")).toBeNull();
     expect(within(side).queryByRole("link", { name: "Docs" })).toBeNull();
     expect(within(side).getByRole("link", { name: /^Requests/ })).toHaveAttribute(
       "href",
       "/projects/my-project/requests",
     );
-    await userEvent.click(trigger);
-    await userEvent.click(within(side).getByRole("option", { name: "Shop support" }));
+    await userEvent.click(within(side).getByRole("link", { name: "Projects" }));
+    await userEvent.click(await screen.findByRole("link", { name: /Shop support/ }));
     await waitFor(() => expect(setActive).toHaveBeenCalledWith({ organizationId: "p2" }));
     await waitFor(() =>
       expect(
-        within(screen.getByRole("complementary")).getByRole("link", { name: /^Requests/ }),
-      ).toHaveAttribute("href", "/projects/shop-support-3fa9c1/requests"),
+        within(screen.getByRole("complementary")).getByRole("link", {
+          name: /^Documents/,
+        }),
+      ).toHaveAttribute("href", expect.stringContaining("/projects/shop-support-3fa9c1/")),
+    );
+    expect(within(screen.getByRole("complementary")).getByText("Shop support")).toHaveClass(
+      "project-label",
     );
   });
 });
