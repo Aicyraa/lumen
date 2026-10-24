@@ -16,7 +16,15 @@ from isolation import suite
 from isolation.data import TENANT_A, TENANT_B
 from isolation.report import Outcome, exit_code, summary_lines
 from isolation.sqlstrip import make_leaky_copy
-from isolation.stack import Procs, StackError, derive_urls, free_port, scratch_name, wait_http
+from isolation.stack import (
+    Procs,
+    StackError,
+    derive_urls,
+    drop_statement,
+    free_port,
+    scratch_name,
+    wait_http,
+)
 from isolation.stub_model import StubModel
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -112,8 +120,8 @@ def main() -> int:
     if not dev_url:
         say("apps/api/.env has no DATABASE_URL")
         return 2
-    name = scratch_name()
-    admin_url, scratch_url = derive_urls(dev_url, name)
+    db_name = scratch_name()
+    admin_url, scratch_url = derive_urls(dev_url, db_name)
     db_created = False
     stub = StubModel()
 
@@ -124,12 +132,12 @@ def main() -> int:
         if db_created:
             try:
                 with psycopg.connect(admin_url, autocommit=True) as c:
-                    c.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
-                say(f"dropped scratch database {name}")
+                    c.execute(drop_statement(db_name))
+                say(f"dropped scratch database {db_name}")
             except (
                 Exception
             ) as e:  # report, never hide: a leftover database must be removed by hand
-                say(f"WARNING: could not drop {name}: {type(e).__name__}")
+                say(f"WARNING: could not drop {db_name}: {type(e).__name__}")
             db_created = False
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -142,9 +150,9 @@ def main() -> int:
             "internal": secrets.token_hex(16),
             "model": secrets.token_hex(32),
         }
-        say(f"scratch database {name}; logs in {tmp}")
+        say(f"scratch database {db_name}; logs in {tmp}")
         with psycopg.connect(admin_url, autocommit=True) as c:
-            c.execute(f'CREATE DATABASE "{name}"')
+            c.execute(f'CREATE DATABASE "{db_name}"')
         db_created = True
         node_env = base_env({"DATABASE_URL": scratch_url})
         run_cmd(procs, "migrate", ["node", "scripts/db.mjs", "migrate"], ROOT, node_env)
@@ -196,15 +204,15 @@ def main() -> int:
             ("vector", ("search",)),  # the dense query; the probe is the same SQL
             ("keyword", ("keyword_search",)),
         ]
-        for name, which in variants:
-            say(f"\nnegative control '{name}': building the leaky copy ...")
-            leaky_dir = tmp / f"leaky-{name}"
+        for variant, which in variants:
+            say(f"\nnegative control '{variant}': building the leaky copy ...")
+            leaky_dir = tmp / f"leaky-{variant}"
             removed = make_leaky_copy(ROOT / "apps/rag-service/app", leaky_dir, which)
             say(f"  removed {removed} tenant_id predicate(s) in the copy of store.py")
             leaky_port, api2_port = free_port(), free_port()
-            start_rag(procs, f"rag-{name}", leaky_dir, env_rag, leaky_port)
+            start_rag(procs, f"rag-{variant}", leaky_dir, env_rag, leaky_port)
             env_api2 = api_env(scratch_url, api2_port, leaky_port, sec, tmp / "uploads")
-            start_api(procs, f"api-{name}", env_api2, api2_port)
+            start_api(procs, f"api-{variant}", env_api2, api2_port)
             api2 = suite.Api(
                 f"http://127.0.0.1:{api2_port}", "http://localhost:5173", sec["internal"]
             )
@@ -224,7 +232,7 @@ def main() -> int:
             if which is None:
                 out.control_ran, out.control_leaks = True, per
             else:
-                out.single_controls[name] = per
+                out.single_controls[variant] = per
             procs.stop_all()  # free the ports and memory before the next copy
     except StackError as e:
         say(f"\nSTACK ERROR: {e}")

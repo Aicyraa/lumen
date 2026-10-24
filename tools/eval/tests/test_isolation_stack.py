@@ -1,4 +1,5 @@
 import pytest
+
 from isolation.stack import StackError, derive_urls, scratch_name
 
 DEV = "postgresql://postgres:s3cret@localhost:5433/lumen"
@@ -28,7 +29,10 @@ def test_refuses_names_outside_the_prefix():
 def test_drop_statement_only_for_scratch_names():
     from isolation.stack import drop_statement
 
-    assert drop_statement("lumen_isolation_1") == 'DROP DATABASE IF EXISTS "lumen_isolation_1" WITH (FORCE)'
+    assert (
+        drop_statement("lumen_isolation_1")
+        == 'DROP DATABASE IF EXISTS "lumen_isolation_1" WITH (FORCE)'
+    )
     for bad in ("keyword", "lumen", 'lumen_isolation_1"; DROP DATABASE lumen; --'):
         with pytest.raises(StackError):
             drop_statement(bad)

@@ -1,6 +1,7 @@
 """Scratch database and own processes for the isolation suite. Never touches the dev database."""
 
 import os
+import re
 import signal
 import socket
 import subprocess
@@ -30,6 +31,12 @@ def derive_urls(dev_url: str, name: str) -> tuple[str, str]:
             "refusing to create a scratch database: DATABASE_URL is not a local server"
         )
     return urlunparse(p._replace(path="/postgres")), urlunparse(p._replace(path=f"/{name}"))
+
+
+def drop_statement(name: str) -> str:
+    if not re.fullmatch(PREFIX + r"\d+", name):
+        raise StackError(f"refusing to drop {name!r}: not a scratch database name")
+    return f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'
 
 
 def free_port() -> int:
