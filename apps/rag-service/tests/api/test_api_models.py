@@ -1,4 +1,4 @@
-"""POST /internal/query with tenant models: tiers, backups, fallback, errors, attempts, snippets."""
+"""POST /internal/query with tenant models: tiers, backups, errors, attempts, snippets."""
 
 import logging
 
@@ -20,11 +20,10 @@ def M(model_id, provider="openai_compatible", tmid=None):
     }
 
 
-def models(cheap=(), expensive=(), fallback=()):
+def models(cheap=(), expensive=()):
     return {
         "cheap": [M(x) for x in cheap],
         "expensive": [M(x) for x in expensive],
-        "fallback": [M(x) for x in fallback],
     }
 
 
@@ -60,37 +59,43 @@ def test_the_requests_own_endpoint_and_key_reach_the_caller(client, llm, docs):
     assert sent["api_key"] == KEY and sent["endpoint_url"] == "https://c1.example.com/v1"
 
 
-def test_whole_tier_failing_falls_back_in_order(client, llm, docs):
-    llm.outcomes = {"c1": "error", "c2": "timeout", "f1": "rate_limited"}
-    body = ask(
-        client, models=models(cheap=["c1", "c2"], expensive=["e1"], fallback=["f1", "f2"])
-    ).json()
-    assert tried(llm) == [
-        "c1",
-        "c2",
-        "f1",
-        "f2",
-    ]  # the expensive tier is not touched on a cheap route
-    assert [(a["tier"], a["outcome"]) for a in body["attempts"]] == [
+def test_whole_tier_failing_is_502_and_the_other_tier_is_never_tried(client, llm, docs):
+    llm.outcomes = {"c1": "error", "c2": "timeout"}
+    resp = ask(client, models=models(cheap=["c1", "c2"], expensive=["e1"]))
+    assert resp.status_code == 502 and resp.json()["error"]["code"] == "provider_error"
+    assert tried(llm) == ["c1", "c2"]  # no cross-tier retry on a cheap route
+    assert [(a["tier"], a["outcome"]) for a in resp.json()["attempts"]] == [
         ("cheap", "error"),
         ("cheap", "timeout"),
-        ("fallback", "rate_limited"),
-        ("fallback", "ok"),
     ]
-    assert body["route"]["model_tier"] == "cheap"  # route still reports the router's tier only
-    assert "api_key" not in str(body)
+
+
+def test_a_stray_fallback_key_is_ignored_and_never_called(client, llm, docs):
+    llm.outcomes = {"c1": "error"}
+    stray = {**models(cheap=["c1"]), "fallback": [M("f1")]}
+    resp = ask(client, models=stray)
+    assert resp.status_code == 502 and tried(llm) == ["c1"]  # f1 is not a backup
+    ok = ask(client, models={**models(cheap=["c2"]), "fallback": [M("f1")]})
+    assert ok.status_code == 200 and "f1" not in tried(llm)
+
+
+def test_attempt_tiers_never_contain_fallback(client, llm, docs):
+    llm.outcomes = {"c1": "error", "c2": "error"}
+    stray = {**models(cheap=["c1", "c2"], expensive=["e1"]), "fallback": [M("f1")]}
+    tiers = {a["tier"] for a in ask(client, models=stray).json()["attempts"]}
+    assert tiers <= {"cheap", "expensive", "default"} and "fallback" not in tiers
 
 
 def test_everything_failing_is_502_provider_error_with_every_attempt(client, llm, docs, caplog):
     caplog.set_level(logging.DEBUG)
-    llm.outcomes = {"c1": "error", "f1": "timeout"}
-    resp = ask(client, models=models(cheap=["c1"], fallback=["f1"]))
+    llm.outcomes = {"c1": "error", "c2": "timeout"}
+    resp = ask(client, models=models(cheap=["c1", "c2"]))
     assert resp.status_code == 502
     body = resp.json()
     assert body["error"]["code"] == "provider_error" and body["error"]["message"]
     assert [(a["model_id"], a["outcome"], a["tokens_in"]) for a in body["attempts"]] == [
         ("c1", "error", None),
-        ("f1", "timeout", None),
+        ("c2", "timeout", None),
     ]
     assert (
         KEY not in resp.text
@@ -111,11 +116,6 @@ def test_a_tier_without_models_uses_the_other_tier(client, llm, docs):
     body = ask(client, models=models(expensive=["e1"])).json()  # cheap route, no cheap models
     assert tried(llm) == ["e1"] and body["attempts"][0]["tier"] == "expensive"
     assert body["route"]["model_tier"] == "cheap"
-
-
-def test_a_tenant_with_only_fallback_models_uses_them(client, llm, docs):
-    body = ask(client, models=models(fallback=["f1"])).json()
-    assert tried(llm) == ["f1"] and body["attempts"][0]["tier"] == "fallback"
 
 
 def test_no_models_at_all_is_422_with_zero_calls(client, llm, docs):
