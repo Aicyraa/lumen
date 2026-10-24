@@ -236,7 +236,11 @@ export function Analytics() {
                             {m.backup_uses} / {m.fallback_uses}
                           </td>
                           <td className="mono">{fmtMs(m.median_latency_ms)}</td>
-                          <td className="mono">{fmtCost(m.cost_usd)}</td>
+                          <td className="mono">
+                            {m.requests === 0 && m.cost_usd == null
+                              ? "no usage yet"
+                              : fmtCost(m.cost_usd)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

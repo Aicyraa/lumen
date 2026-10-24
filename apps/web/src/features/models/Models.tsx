@@ -267,7 +267,13 @@ function ModelRow({
       </div>
       <div className="model-cell small muted-3" role="cell">
         <span>
-          estimated provider cost <span className="mono text">{fmtCost(u?.cost_usd)}</span>
+          estimated provider cost{" "}
+          <span className="mono text">
+            {fmtCost(
+              u?.cost_usd ??
+                (m.input_price_per_1m != null || m.output_price_per_1m != null ? 0 : null),
+            )}
+          </span>
         </span>
         <span>
           price per 1M tokens:{" "}
