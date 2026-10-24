@@ -139,12 +139,6 @@ button:disabled {
   flex: 1;
   min-width: 0;
 }
-.minw0 {
-  min-width: 0;
-}
-.self-end {
-  align-self: end;
-}
 .label {
   font: 500 11px var(--mono);
   letter-spacing: 0.14em;
@@ -174,11 +168,6 @@ button:disabled {
   flex-direction: column;
   gap: 16px;
   min-width: 0;
-}
-.stack-lg {
-  display: flex;
-  flex-direction: column;
-  gap: 40px;
 }
 .row-gap {
   display: flex;
@@ -220,9 +209,6 @@ button:disabled {
   padding: 32px 0;
   color: var(--text-3);
   font-size: 14px;
-}
-.pulse {
-  animation: pulse 1s infinite;
 }
 .fade-in {
   animation: fade 0.3s ease both;
@@ -485,11 +471,6 @@ button:disabled {
 }
 .field input.mono {
   font: 14px var(--mono);
-}
-.grid-3 {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
 }
 .form-card {
   display: flex;
@@ -947,13 +928,6 @@ label.btn:focus-within {
   border-bottom: 1px solid var(--line-soft);
   font-size: 14px;
 }
-.list-head {
-  display: flex;
-  justify-content: space-between;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--line);
-  gap: 16px;
-}
 .group-head {
   display: flex;
   flex-wrap: wrap;
@@ -980,13 +954,6 @@ label.btn:focus-within {
 .rank {
   flex: 0 0 80px;
   letter-spacing: 0.1em;
-}
-.model-main {
-  flex: 1 1 260px;
-  min-width: 200px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 
 /* dialog, drawer */
@@ -1133,11 +1100,6 @@ label.btn:focus-within {
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-.step-title {
-  font-size: 28px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
 }
 .num {
   font: 500 13px var(--mono);
@@ -1449,7 +1411,7 @@ label.btn:focus-within {
 
 /* ---- home: full-screen sections with proximity scroll-snap ---- */
 html {
-  scroll-padding-top: 16px;
+  scroll-padding-top: calc(var(--nav-h) + 24px);
 }
 @media (prefers-reduced-motion: no-preference) {
   html {
@@ -1458,7 +1420,7 @@ html {
 }
 html.snap-home {
   scroll-snap-type: y proximity;
-  scroll-padding-top: var(--nav-h);
+  scroll-padding-top: calc(var(--nav-h) + 24px);
 }
 .snap-section {
   padding: clamp(72px, 12vh, 128px) var(--pad);
@@ -1486,20 +1448,6 @@ html.snap-home {
   max-width: 1100px;
   text-wrap: balance;
   animation: fade 0.5s both;
-}
-.image-slot {
-  width: 100%;
-  height: min(70dvh, 560px);
-  border-radius: 14px;
-  border: 1px solid var(--line);
-  background: repeating-linear-gradient(135deg, #141413 0 14px, #111110 14px 28px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font: 12px var(--mono);
-  color: var(--text-4);
-  text-align: center;
-  padding: 16px;
 }
 .snap-section.cta {
   margin: 0;
@@ -1592,7 +1540,7 @@ html.snap-home {
   gap: 16px;
   padding-top: 32px;
   border-top: 1px solid var(--line);
-  scroll-margin-top: 24px;
+  scroll-margin-top: calc(var(--nav-h) + 24px);
 }
 .doc {
   padding: clamp(48px, 7vw, 88px) var(--pad) 80px;
@@ -1762,23 +1710,6 @@ html.snap-home {
   gap: 6px;
   padding: 0 12px;
   margin-bottom: 4px;
-}
-.switcher select {
-  background: var(--surface);
-  color: var(--text);
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 14px;
-  width: 100%;
-}
-.nav-sub {
-  padding: 6px 12px;
-  font-size: 13px;
-  color: var(--text-3);
-}
-.nav-sub:hover {
-  color: var(--text);
 }
 .chip-user {
   color: var(--text);
@@ -2348,12 +2279,6 @@ table.data.compact td {
   }
   .switcher {
     margin-bottom: 0;
-  }
-  .switcher select {
-    padding: 5px 8px;
-  }
-  .all-projects {
-    margin: 2px 12px 4px;
   }
   .usage {
     padding: 6px 12px;
