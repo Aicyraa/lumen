@@ -195,6 +195,25 @@ def test_model_generic_refusal_is_normalized_without_an_extra_call(client, llm, 
     assert len(llm.calls) == 1
 
 
+def test_successful_answer_repair_counts_both_model_attempts(client, llm, best_score):
+    from app.api.deps import get_caller
+
+    add_doc("tenant_a", ["Housing is not guaranteed."])
+    best_score(0.6)
+
+    def answer(*args):
+        attempt = llm(*args)
+        if len(llm.calls) == 1:
+            attempt.text = "Malformed response"
+        return attempt
+
+    client.app.dependency_overrides[get_caller] = lambda: answer
+    body = ask(client).json()
+    assert body["answer"] == "Fake answer [1]"
+    assert len(body["attempts"]) == 2
+    assert (body["usage"]["tokens_in"], body["usage"]["tokens_out"]) == (200, 20)
+
+
 def test_reranker_selects_final_sources_from_a_larger_tenant_scoped_pool(
     client, llm, best_score, monkeypatch
 ):

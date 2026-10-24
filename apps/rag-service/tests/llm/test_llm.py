@@ -79,3 +79,64 @@ def test_quote_validation_allows_pdf_whitespace_but_not_invented_text():
         {"claims": [{"text": "A fact", "evidence": [{"passage": 1, "quote": "written approval"}]}]}
     )
     assert render_answer(raw, ["Requires written\n  approval."], "Not found") == "A fact [1]"
+
+
+def test_quote_validation_allows_equivalent_pdf_hyphens_and_quotes():
+    from app.llm.prompt import render_answer
+
+    raw = json.dumps(
+        {
+            "claims": [
+                {
+                    "text": "INT-027 lasts 12 weeks",
+                    "evidence": [{"passage": 1, "quote": "INT‑027: ‘12 weeks’"}],
+                }
+            ]
+        }
+    )
+    assert render_answer(raw, ["INT-027: '12 weeks'"], "Not found") == "INT-027 lasts 12 weeks [1]"
+
+
+@pytest.mark.parametrize("text", ["A fact 【1】", "A fact [1]", "A fact ［1］"])
+def test_model_cannot_embed_its_own_citation_markers_in_claim_text(text):
+    from app.llm.prompt import render_answer
+
+    raw = json.dumps({"claims": [{"text": text, "evidence": [{"passage": 1, "quote": "A fact"}]}]})
+    with pytest.raises(ValueError):
+        render_answer(raw, ["A fact"], "Not found")
+
+
+def test_non_text_model_output_is_a_validation_error():
+    from app.llm.prompt import render_answer
+
+    with pytest.raises(ValueError):
+        render_answer(None, ["A fact"], "Not found")
+
+
+def test_misnumbered_quote_is_reassigned_only_when_one_passage_contains_it():
+    from app.llm.prompt import render_answer
+
+    raw = json.dumps(
+        {
+            "claims": [
+                {
+                    "text": "No guarantee",
+                    "evidence": [{"passage": 1, "quote": "Admission does not guarantee housing"}],
+                }
+            ]
+        }
+    )
+    assert (
+        render_answer(raw, ["Room price", "Admission does not guarantee housing"], "Not found")
+        == "No guarantee [2]"
+    )
+    with pytest.raises(ValueError):
+        render_answer(
+            raw,
+            [
+                "Room price",
+                "Admission does not guarantee housing",
+                "Admission does not guarantee housing",
+            ],
+            "Not found",
+        )
