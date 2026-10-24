@@ -64,7 +64,7 @@ def test_answered_response_matches_the_contract_shape(client, llm, best_score):
         assert s["score"] == pytest.approx(0.6, abs=1e-4)
     route = dict(body["route"])
     assert route.pop("top_score") == pytest.approx(0.6, abs=1e-4)  # the probe's best score
-    assert route == {"model_tier": "cheap", "k": 3, "escalated": False, "difficulty": 0.0}
+    assert route == {"model_tier": "cheap", "k": 5, "escalated": False, "difficulty": 0.0}
     usage = body["usage"]
     assert set(usage) == {"tokens_in", "tokens_out", "cost_usd", "latency_ms"}
     assert (usage["tokens_in"], usage["tokens_out"]) == (
@@ -79,8 +79,19 @@ def test_cheap_route_retrieves_k_cheap_chunks_and_calls_the_model_once(client, l
     add_doc("tenant_a", [f"passage number {i}" for i in range(10)])
     best_score(0.6)
     body = ask(client).json()
-    assert len(body["sources"]) == 3
+    assert len(body["sources"]) == 5
     assert [c["model_id"] for c in llm.calls] == ["cheap-model"]
+
+
+def test_query_includes_keyword_evidence_outside_the_semantic_top_k(client, llm, best_score):
+    add_doc("tenant_a", [f"Career events number {i}" for i in range(10)])
+    doc = add_document("tenant_a", "internship.txt")
+    store.add_chunks("tenant_a", doc, ["INT-027 closes September 3"], np.array([axis0(0.0)]))
+    best_score(1.0)
+    body = ask(client, query="When does INT-027 close?").json()
+    assert body["route"]["top_score"] == pytest.approx(1.0)  # semantic probe stays unchanged
+    assert any(s["document_id"] == doc for s in body["sources"])
+    assert "INT-027 closes September 3" in llm.calls[0]["user"]
 
 
 def test_weak_match_goes_to_the_expensive_tier_with_more_chunks(client, llm, best_score):

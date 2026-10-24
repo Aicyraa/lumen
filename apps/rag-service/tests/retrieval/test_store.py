@@ -37,6 +37,33 @@ def test_search_orders_by_score_and_returns_tuple_shape():
     assert isinstance(chunk_id, int)
 
 
+def test_hybrid_search_finds_an_exact_code_missed_by_vectors():
+    add("t", "f.txt", ["Career events", "Opportunity INT-027 closes September 3"], [0, 1])
+    hits = store.search("t", vec(0), k=1, query_text="INT-027 deadline")
+    assert hits[0][2] == "Opportunity INT-027 closes September 3"
+    assert hits[0][3] == pytest.approx(0.0)  # score still means cosine similarity
+
+
+def test_hybrid_search_keeps_semantic_matches_without_keyword_overlap():
+    add("t", "f.txt", ["We accept returns", "Unrelated delivery details"], [0, 1])
+    hits = store.search("t", vec(0), k=1, query_text="refund policy")
+    assert hits[0][2] == "We accept returns"
+
+
+def test_hybrid_search_never_uses_another_tenants_keyword_match():
+    add("tenant_a", "a.txt", ["My own text"], [0])
+    add("tenant_b", "b.txt", ["INT-027 private deadline"], [0])
+    hits = store.search("tenant_a", vec(0), k=5, query_text="INT-027 deadline")
+    assert [h[2] for h in hits] == ["My own text"]
+
+
+@pytest.mark.parametrize("query", ["?!", "the and of", "INT-027'); DROP TABLE chunks; --"])
+def test_hybrid_search_handles_empty_terms_and_query_punctuation(query):
+    add("t", "f.txt", ["INT-027 details"], [0])
+    hits = store.search("t", vec(0), k=3, query_text=query)
+    assert [h[2] for h in hits] == ["INT-027 details"]
+
+
 def test_delete_document_removes_its_chunks():
     doc = add("t", "f.txt", ["x", "y"], [0, 1])
     keep = add("t", "g.txt", ["z"], [2])
