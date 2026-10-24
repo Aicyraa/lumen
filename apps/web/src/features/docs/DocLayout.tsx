@@ -85,21 +85,20 @@ export function DocLayout({
 // Docs: every section is its own tab. The selected tab lives in the URL hash (#errors), so links work and Back
 // moves between tabs. Children are <section id> elements; only the one named by the hash is visible.
 export function DocTabs({
-  label,
   title,
-  lead,
   toc,
   children,
 }: {
-  label: string;
   title: string;
-  lead: ReactNode;
   toc: TocItem[];
   children: ReactNode;
 }) {
   const hash = useLocation().hash.slice(1);
   const navigate = useNavigate();
   const active = toc.some((t) => t.id === hash) ? hash : toc[0].id;
+  useEffect(() => {
+    document.title = `${title} · Lumen`;
+  }, [title]);
   const select = (id: string) => navigate({ hash: `#${id}` });
 
   function onKeyDown(e: KeyboardEvent, i: number) {
@@ -144,9 +143,7 @@ export function DocTabs({
           </div>
         </div>
         <main className="doc-content">
-          <SectionLabel>{label}</SectionLabel>
-          <h1 className="doc-h1">{title}</h1>
-          <div className="lead">{lead}</div>
+          <h1 className="visually-hidden">{title}</h1>
           {Children.toArray(children).map((child) => {
             const id = isValidElement<{ id?: string }>(child) ? child.props.id : undefined;
             if (!id) return child;

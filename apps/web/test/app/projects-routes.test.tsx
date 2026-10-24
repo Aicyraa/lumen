@@ -166,16 +166,20 @@ describe("project routes", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Projects" })).toBeInTheDocument();
   });
 
-  it("the sidebar has a project switcher, a link back to Projects and no Docs link; switching goes to the same tab of the other project", async () => {
+  it("the sidebar has a project dropdown (last entry All projects), a small link to Projects and no Docs link; switching goes to the same tab of the other project", async () => {
     mockFetch(api());
     mount("/projects/my-project/requests");
     const side = await screen.findByRole("complementary");
-    const switcher = within(side).getByRole("combobox", { name: "Project" });
+    const trigger = within(side).getByRole("button", { name: /^Project: My project/ });
+    expect(trigger).toHaveAttribute("aria-haspopup", "listbox");
+    await userEvent.click(trigger);
+    const list = within(side).getByRole("listbox");
     expect(
-      within(switcher)
+      within(list)
         .getAllByRole("option")
         .map((o) => o.textContent),
-    ).toEqual(["My project", "Shop support"]);
+    ).toEqual(["My project", "Shop support", "All projects"]);
+    await userEvent.keyboard("{Escape}");
     expect(within(side).getByRole("link", { name: "All projects" })).toHaveAttribute(
       "href",
       "/projects",
@@ -185,7 +189,8 @@ describe("project routes", () => {
       "href",
       "/projects/my-project/requests",
     );
-    await userEvent.selectOptions(switcher, "Shop support");
+    await userEvent.click(trigger);
+    await userEvent.click(within(side).getByRole("option", { name: "Shop support" }));
     await waitFor(() => expect(setActive).toHaveBeenCalledWith({ organizationId: "p2" }));
     await waitFor(() =>
       expect(

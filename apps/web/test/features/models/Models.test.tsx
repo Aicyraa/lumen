@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Models } from "../../../src/features/models/Models";
@@ -421,6 +421,71 @@ describe("Models", () => {
       expect(container.textContent).not.toMatch(/none set/i);
       await userEvent.click(screen.getByRole("button", { name: "Add model" }));
       expect(screen.getByRole("dialog")).toHaveTextContent(/Leave empty to show "no price set"/);
+    });
+  });
+
+  describe("tier tooltips", () => {
+    it("has no explanatory paragraph under the heading; each tier has an info tooltip", async () => {
+      mockFetch(router());
+      const { container } = renderWithProviders(<Models />);
+      await screen.findByText("model-a");
+      expect(container.textContent).not.toMatch(/Connect your own provider keys/);
+      const tips = {
+        Cheap: /easy questions/i,
+        Expensive: /hard questions and escalations/i,
+        Fallback: /every model in a tier fails or times out/i,
+      };
+      for (const [tier, re] of Object.entries(tips)) {
+        const region = screen.getByRole("region", { name: tier });
+        const btn = within(region).getByRole("button", {
+          name: `About the ${tier.toLowerCase()} tier`,
+        });
+        await userEvent.hover(btn);
+        expect(within(region).getByRole("tooltip")).toHaveTextContent(re);
+        await userEvent.unhover(btn);
+      }
+    });
+
+    it("explains the cost line in a tooltip reachable by keyboard", async () => {
+      mockFetch(router());
+      renderWithProviders(<Models />);
+      await screen.findByText("model-a");
+      const btn = within(screen.getByTestId("model-a")).getByRole("button", {
+        name: "About estimated provider cost",
+      });
+      act(() => btn.focus());
+      expect(within(screen.getByTestId("model-a")).getByRole("tooltip")).toHaveTextContent(
+        /prices you enter for each model/i,
+      );
+    });
+  });
+
+  describe("total cost line", () => {
+    it("shows $0 (not 'no price set') in the header when a model has prices but nothing has been billed yet", async () => {
+      mockFetch(
+        router((url) =>
+          url.includes("/models/usage")
+            ? { ...usageBody, total_cost_usd: null, models: [] }
+            : undefined,
+        ),
+      );
+      renderWithProviders(<Models />);
+      await screen.findByText("model-a");
+      expect(await screen.findByText(/ESTIMATED PROVIDER COST, 7D: \$0$/)).toBeInTheDocument();
+    });
+    it("shows 'no price set' in the header when no model has a price", async () => {
+      mockFetch(
+        router((url) =>
+          url.includes("/models/usage")
+            ? { ...usageBody, total_cost_usd: null, models: [] }
+            : { models: { cheap: [m("b", "cheap", 0)], expensive: [], fallback: [] } },
+        ),
+      );
+      renderWithProviders(<Models />);
+      await screen.findByText("model-b");
+      expect(
+        await screen.findByText(/ESTIMATED PROVIDER COST, 7D: no price set/),
+      ).toBeInTheDocument();
     });
   });
 });

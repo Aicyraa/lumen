@@ -119,6 +119,17 @@ describe("Docs tabs", () => {
     expect(screen.getByTestId("hash")).toHaveTextContent("#getting-started");
   });
 
+  it("opens directly on the tabs: no visible DOCS / API reference / description block", () => {
+    const { container } = view(<Docs />);
+    const h1 = screen.getByRole("heading", { level: 1, name: "API reference" });
+    expect(h1).toHaveClass("visually-hidden");
+    expect(container.querySelector(".doc-h1")).toBeNull();
+    expect(container.querySelector(".doc-content > .lead")).toBeNull();
+    expect(screen.queryByText(/Everything your chatbot's backend needs/)).toBeNull();
+    expect(screen.queryByText("DOCS", { selector: ".label" })).toBeNull();
+    expect(document.title).toBe("API reference · Lumen");
+  });
+
   it("has no scroll-spy table of contents any more", () => {
     view(<Docs />);
     expect(screen.queryByRole("navigation", { name: "On this page" })).toBeNull();

@@ -136,4 +136,17 @@ describe("TryIt", () => {
       expect(screen.queryByText(/Ask a question to see the answer/)).toBeNull();
     });
   });
+
+  describe("centred layout", () => {
+    it("is a single centred column until there is an answer, then adds the side column", async () => {
+      mockFetch(() => result(0.0004));
+      const { container } = renderWithProviders(<TryIt />);
+      const grid = container.querySelector(".try-grid")!;
+      expect(grid).not.toHaveClass("with-side");
+      await userEvent.type(screen.getByLabelText("Question"), "When does enrollment close?");
+      await userEvent.click(screen.getByRole("button", { name: "Ask" }));
+      await screen.findByText(/Enrollment closes on 15 March/);
+      expect(container.querySelector(".try-grid")).toHaveClass("with-side");
+    });
+  });
 });

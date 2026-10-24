@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 
-// Hand-written mark (public/favicon.svg is the same shape). "dark" = lime mark for dark surfaces, "light" = ink mark for light ones.
+// Hand-written leaf mark with a folded corner and two text lines (public/favicon.svg is the same shape). "dark" = lime mark for dark surfaces, "light" = ink mark for light ones.
 export function LogoMark({
   variant = "dark",
   className,
@@ -9,14 +9,17 @@ export function LogoMark({
   className?: string;
 }) {
   const body = variant === "dark" ? "var(--lime)" : "var(--bg)";
-  const bars = variant === "dark" ? "var(--bg)" : "var(--text)";
+  const lines = variant === "dark" ? "var(--bg)" : "var(--text)";
   return (
     <svg className={className} viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-      <path fill={body} d="M3 0H58a6 6 0 0 1 6 6V64H26A26 26 0 0 1 0 38V3A3 3 0 0 1 3 0Z" />
-      <g fill={bars}>
-        <rect x="8.5" y="14.5" width="37.5" height="5.5" rx="2.75" />
-        <rect x="8.5" y="29.5" width="43.8" height="5.5" rx="2.75" />
-        <rect x="8.5" y="44" width="27.8" height="5.5" rx="2.75" />
+      <path
+        fill={body}
+        d="M0 21 21 0H38A26 26 0 0 1 64 26V61A3 3 0 0 1 61 64H18A18 18 0 0 1 0 46Z"
+      />
+      <path fill="var(--text)" d="M0 21 21 0V18A3 3 0 0 1 18 21Z" />
+      <g fill={lines}>
+        <rect x="36" y="25" width="18" height="4.2" rx="2.1" />
+        <rect x="21" y="37" width="36" height="4.2" rx="2.1" />
       </g>
     </svg>
   );

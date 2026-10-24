@@ -15,7 +15,9 @@ describe("Logo", () => {
       const link = screen.getByRole("link", { name: "Lumen home" });
       expect(link).toHaveAttribute("href", "/");
       expect(link).toHaveTextContent("lumen");
-      expect(container.querySelectorAll("svg rect")).toHaveLength(3);
+      // leaf body + folded corner, and two text lines cut out
+      expect(container.querySelectorAll("svg path")).toHaveLength(2);
+      expect(container.querySelectorAll("svg rect")).toHaveLength(2);
       unmount();
     }
   });
@@ -37,7 +39,36 @@ describe("public/favicon.svg", () => {
     expect(file).not.toMatch(/<script|\son\w+=|href=|url\(|<image|<foreignObject/i);
     expect(file.replace('xmlns="http://www.w3.org/2000/svg"', "")).not.toMatch(/https?:/i);
   });
+  it("is the leaf mark: a folded corner and two text lines", () => {
+    expect(file.match(/<path/g)).toHaveLength(2);
+    expect(file.match(/<rect/g)).toHaveLength(2);
+    expect(file).toMatch(/data-part="fold"/);
+  });
   it("has a plain hex fill before the oklch token so older Safari renders it", () => {
     expect(file).toMatch(/<path fill="#[0-9a-f]{6}"[^>]*style="fill:\s*oklch\(0\.88 0\.17 118\)"/i);
+  });
+});
+
+describe.each(["light", "dark"])("public/logo-mark-%s.svg", (variant) => {
+  const read = () => readFileSync(`public/logo-mark-${variant}.svg`, "utf8");
+  it("has no script, handler or external reference", () => {
+    const file = read();
+    expect(file).not.toMatch(/<script|\son\w+=|href=|url\(|<image|<foreignObject|var\(/i);
+    expect(file.replace('xmlns="http://www.w3.org/2000/svg"', "")).not.toMatch(/https?:/i);
+  });
+  it("uses the same shapes as favicon.svg and the Logo component", () => {
+    const fav = readFileSync("public/favicon.svg", "utf8");
+    const ds = (f: string) => [...f.matchAll(/ d="([^"]+)"/g)].map((m) => m[1]);
+    expect(ds(read())).toEqual(ds(fav));
+    expect(read().match(/<rect/g)).toHaveLength(2);
+  });
+});
+
+describe("logo variants differ in colour", () => {
+  it("dark-surface mark is lime with an hex fallback; light-surface mark is ink", () => {
+    const dark = readFileSync("public/logo-mark-dark.svg", "utf8");
+    const light = readFileSync("public/logo-mark-light.svg", "utf8");
+    expect(dark).toMatch(/fill="#cee654"[^>]*style="fill:\s*oklch\(/);
+    expect(light).toMatch(/<path fill="#0c0c0b"/);
   });
 });
