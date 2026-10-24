@@ -49,7 +49,7 @@ Limits for this feature (attempt cap, stored rate-limit header cap, field length
 size cap, price ceiling) live in `config.json` and can be overridden by upper-snake env vars such as `MODEL_ATTEMPTS_MAX`.
 With no models: production answers `422 no_models_configured`, other environments let the Python service use its
 `LLM_*` default. The global LLM cap applies only to that shared default key.
-The schema is the numbered SQL in `infra/sql/` (`pnpm db:migrate` from the repo root applies the pending files to the dev database; tests apply every file to `lumen_test` themselves). Design and reasons: `docs/DATABASE.md`. In short: every tenant table points at `tenants(id)` with `ON DELETE CASCADE`; a request's sources are `request_sources` rows; chunk counts and a request's tokens and cost are the views `document_stats` and `request_usage`, not stored columns.
+The schema is the numbered SQL in `infra/sql/` (`pnpm db:migrate` from the repo root applies the pending files to the dev database; tests apply every file to `lumen_test` themselves). Design and reasons: `docs/DATABASE.md`. Upgrading drops `request_logs.tokens_in`, `tokens_out` and `cost_usd` without carrying them over: requests that have no `model_calls` rows (logged before the table existed) show null tokens and cost afterwards. `pnpm --filter @lumen/api auth:migrate` also enables RLS on Better Auth's tables (`infra/sql/auth/001_auth_tables_rls.sql`). In short: every tenant table points at `tenants(id)` with `ON DELETE CASCADE`; a request's sources are `request_sources` rows; chunk counts and a request's tokens and cost are the views `document_stats` and `request_usage`, not stored columns.
 
 ## Dashboard endpoints (Phase 4)
 
