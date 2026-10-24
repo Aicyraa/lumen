@@ -15,6 +15,7 @@ class Outcome:
     control_leaks: dict = field(
         default_factory=dict
     )  # tenant label -> leaks found in the leaky stack
+    control_problems: int = 0  # questions in the combined control that crashed or got no answer
     cross_asked: int = 0
     positives_passed: int = 0
     single_controls: dict = field(default_factory=dict)  # name -> {tenant: leaks}; informational
@@ -24,7 +25,12 @@ class Outcome:
 
 
 def control_detected(o: Outcome) -> bool:
-    return o.control_ran and bool(o.control_leaks) and all(n > 0 for n in o.control_leaks.values())
+    return (
+        o.control_ran
+        and o.control_problems == 0
+        and bool(o.control_leaks)
+        and all(n > 0 for n in o.control_leaks.values())
+    )
 
 
 def enough(o: Outcome) -> bool:
@@ -52,6 +58,8 @@ def summary_lines(o: Outcome) -> list[str]:
     if control_detected(o):
         per = ", ".join(f"tenant {k}: {v}" for k, v in sorted(o.control_leaks.items()))
         ctrl = f"NEGATIVE CONTROL: detected leaks with the tenant filter removed ({per})"
+    elif o.control_ran and o.control_problems:
+        ctrl = f"NEGATIVE CONTROL: {o.control_problems} problem(s) (crashes or unanswered questions), so its leak count cannot be trusted"
     elif not o.control_ran:
         ctrl = "NEGATIVE CONTROL: did not run"
     else:
