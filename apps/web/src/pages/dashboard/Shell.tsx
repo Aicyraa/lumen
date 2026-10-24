@@ -1,5 +1,6 @@
 import { useLocation, useNavigate, NavLink, Link, Outlet } from "react-router";
 import { Logo } from "../../components/Logo";
+import { PageFade } from "../../components/motion";
 import { UsageMeters } from "../../components/UsageMeters";
 import { authClient } from "../../lib/auth-client";
 import { useProject, useWorkspaces } from "../../lib/projects";
@@ -51,7 +52,7 @@ export function Shell() {
           </div>
         )}
       </aside>
-      <main className="content"><Outlet /></main>
+      <main className="content"><PageFade id={location.pathname}><Outlet /></PageFade></main>
     </div>
   );
 }

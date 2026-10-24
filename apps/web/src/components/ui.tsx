@@ -1,3 +1,4 @@
+import { motion } from "motion/react";
 import type { ReactNode } from "react";
 
 export function PageHead({ num, title, children }: { num: string; title: string; children?: ReactNode }) {
@@ -23,7 +24,7 @@ export function Segmented<T extends string>({ options, value, onChange, label, p
   return (
     <div className={`segmented${pills ? " pills" : ""}${plain ? " plain" : ""}`} role="group" aria-label={label}>
       {options.map(([id, text]) => (
-        <button key={id} type="button" aria-pressed={value === id} className={value === id ? "on" : ""} onClick={() => onChange(id)}>{text}</button>
+        <button key={id} type="button" aria-pressed={value === id} className={value === id ? "on" : ""} onClick={() => onChange(id)}>{value === id && <motion.span layoutId={`seg-${label}`} className="seg-pill" transition={{ duration: 0.2 }} />}{text}</button>
       ))}
     </div>
   );

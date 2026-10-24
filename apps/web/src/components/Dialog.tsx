@@ -1,3 +1,4 @@
+import { motion } from "motion/react";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -34,11 +35,12 @@ export function Dialog({ title, label, onClose, dismissable = true, variant = "m
 
   return (
     <div className={`overlay overlay-${variant}`} onMouseDown={(e) => { if (dismissable && e.target === e.currentTarget) onClose(); }}>
-      <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className={variant === "drawer" ? "drawer" : "modal"}>
+      <motion.div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className={variant === "drawer" ? "drawer" : "modal"}
+        initial={variant === "drawer" ? { x: 32, opacity: 0 } : { y: 12, scale: 0.98, opacity: 0 }} animate={{ x: 0, y: 0, scale: 1, opacity: 1 }} transition={{ duration: 0.22, ease: [0.2, 0.7, 0.1, 1] }}>
         {label && <div className="label lime">{label}</div>}
         <h2 id={titleId} className={variant === "drawer" ? "drawer-title" : "modal-title"}>{title}</h2>
         {children}
-      </div>
+      </motion.div>
     </div>
   );
 }

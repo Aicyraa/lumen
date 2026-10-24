@@ -1,10 +1,12 @@
-import { Link, NavLink, Outlet } from "react-router";
+import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { useSignOut } from "../lib/useSignOut";
 import { Logo } from "./Logo";
+import { PageFade } from "./motion";
 
 // Top bar for the pages that are not inside one project: Projects and Account.
 export function AppFrame() {
   const { signOut, failed } = useSignOut();
+  const location = useLocation();
   return (
     <div className="frame">
       <header className="frame-bar">
@@ -17,7 +19,7 @@ export function AppFrame() {
         </nav>
       </header>
       {failed && <div role="alert" className="error-text frame-alert">Could not sign out, please try again <button type="button" className="link-btn red" onClick={() => void signOut()}>Retry</button></div>}
-      <main className="frame-main"><Outlet /></main>
+      <main className="frame-main"><PageFade id={location.pathname}><Outlet /></PageFade></main>
     </div>
   );
 }

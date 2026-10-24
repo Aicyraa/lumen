@@ -1,3 +1,4 @@
+import { MotionConfig } from "motion/react";
 import { Navigate, Route, Routes } from "react-router";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { SessionCacheGuard } from "./components/SessionCacheGuard";
@@ -23,6 +24,7 @@ import { TryIt } from "./pages/dashboard/TryIt";
 export function App() {
   return (
     <ErrorBoundary>
+    <MotionConfig reducedMotion="user">
       <SessionCacheGuard />
       <NoProjectRedirect />
       <Routes>
@@ -51,6 +53,7 @@ export function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+    </MotionConfig>
     </ErrorBoundary>
   );
 }

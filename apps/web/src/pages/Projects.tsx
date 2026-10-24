@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { Dialog } from "../components/Dialog";
 import { Loading } from "../components/Loading";
+import { Reveal } from "../components/motion";
 import { Plus, AnimateIcon } from "../components/icons";
 import { ErrorText } from "../components/ui";
 import { post } from "../lib/api";
@@ -39,8 +40,8 @@ export function Projects() {
       {ws.isError && <div><ErrorText>{(ws.error as Error).message}</ErrorText><button type="button" className="btn btn-outline btn-sm" onClick={() => ws.refetch()}>Retry</button></div>}
       {ws.isSuccess && !list.length && <div className="empty">No projects yet. Create one to get started.</div>}
       <ul className="cards">
-        {list.map((p) => (
-          <li key={p.id}>
+        {list.map((p, i) => (
+          <Reveal as="li" key={p.id} delay={i * 0.05}>
             <Link to={`/projects/${p.slug}/documents`} className="card project-card">
               <div className="row-between"><h2 className="card-title-sm">{p.name}</h2><span className="mono small muted-3">{p.role}</span></div>
               <p className="small muted-2 project-desc">{p.description ?? "No description"}</p>
@@ -50,7 +51,7 @@ export function Projects() {
               </dl>
               <div className="mono small muted-3">Created {fmtDate(p.created_at)}</div>
             </Link>
-          </li>
+          </Reveal>
         ))}
       </ul>
       {creating && (

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { PageHead, Segmented, ErrorText } from "../../components/ui";
+import { CountUp } from "../../components/motion";
 import { api } from "../../lib/api";
 import { useOrgId } from "../../lib/session";
 import { fmtCost, fmtDay, fmtInt, fmtMs, fmtScore } from "../../lib/format";
@@ -33,10 +34,10 @@ export function Analytics() {
       {s && (
         <>
           <div className="stats">
-            <Stat label="REQUESTS" value={fmtInt(s.total_requests)} note={note} />
+            <Stat label="REQUESTS" value={<CountUp value={s.total_requests} />} note={note} />
             <Stat label="MEDIAN LATENCY" value={fmtMs(s.latency_ms.median)} note={`p95 ${fmtMs(s.latency_ms.p95)}`} />
             <Stat label="ESTIMATED PROVIDER COST" value={fmtCost(s.total_cost_usd)} note="Estimate from the prices you set on your models" />
-            <Stat label="UNANSWERED" value={fmtInt(unanswered.data?.total)} note="Weak or no match" />
+            <Stat label="UNANSWERED" value={unanswered.data ? <CountUp value={unanswered.data.total} /> : "—"} note="Weak or no match" />
           </div>
           <div className="split">
             <div className="stack-sm minw0">
@@ -100,6 +101,6 @@ export function Analytics() {
   );
 }
 
-function Stat({ label, value, note }: { label: string; value: string; note: string }) {
+function Stat({ label, value, note }: { label: string; value: React.ReactNode; note: string }) {
   return <div className="stat"><div className="label">{label}</div><div className="stat-value">{value}</div><div className="small muted-3">{note}</div></div>;
 }
