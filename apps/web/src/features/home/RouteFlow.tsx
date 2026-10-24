@@ -49,7 +49,7 @@ const NODES: {
   {
     id: "cheap",
     x: 520,
-    y: 20,
+    y: 10,
     w: 190,
     label: "Cheap model",
     sub: "easy questions",
@@ -58,7 +58,7 @@ const NODES: {
   {
     id: "expensive",
     x: 520,
-    y: 112,
+    y: 140,
     w: 190,
     label: "Expensive model",
     sub: "hard or unsure",
@@ -67,7 +67,7 @@ const NODES: {
   {
     id: "error",
     x: 520,
-    y: 262,
+    y: 270,
     w: 190,
     label: "502 error",
     sub: "provider_error",
@@ -96,40 +96,40 @@ const EDGES: {
     id: "r-c",
     from: "router",
     to: "cheap",
-    d: "M430 180 C475 180 475 56 520 56",
+    d: "M430 178 C462 178 458 46 520 46",
     label: ["easy", 452, 110],
   },
   {
     id: "r-e",
     from: "router",
     to: "expensive",
-    d: "M430 190 C475 190 475 148 520 148",
+    d: "M430 192 C475 192 475 176 520 176",
     label: ["hard", 452, 176],
   },
   {
     id: "r-x",
     from: "router",
     to: "error",
-    d: "M340 232 V298 H520",
+    d: "M340 232 V306 H520",
     label: ["every model fails", 350, 288],
   },
   {
     id: "r-a",
     from: "router",
     to: "answer",
-    d: "M430 214 H780",
+    d: "M430 226 H780",
     label: ["no match: no model called", 556, 206],
   },
-  { id: "c-a", from: "cheap", to: "answer", d: "M710 56 C745 56 745 180 780 180" },
-  { id: "e-a", from: "expensive", to: "answer", d: "M710 148 C745 148 745 190 780 190" },
+  { id: "c-a", from: "cheap", to: "answer", d: "M710 46 C745 46 745 180 780 180" },
+  { id: "e-a", from: "expensive", to: "answer", d: "M710 176 C745 176 745 190 780 190" },
 ];
 
 // Edge labels sit on chips placed beside the lines (centre x, y), never on a stroke.
 const LABELS: { text: string; x: number; y: number; edge: string }[] = [
-  { text: "easy", x: 392, y: 92, edge: "r-c" },
-  { text: "hard", x: 392, y: 140, edge: "r-e" },
-  { text: "every model fails", x: 262, y: 280, edge: "r-x" },
-  { text: "no match: no model called", x: 556, y: 232, edge: "r-a" },
+  { text: "easy", x: 430, y: 108, edge: "r-c" },
+  { text: "hard", x: 490, y: 156, edge: "r-e" },
+  { text: "every model fails", x: 422, y: 286, edge: "r-x" },
+  { text: "no match: no model called", x: 544, y: 246, edge: "r-a" },
 ];
 
 const SCENARIOS: Record<
@@ -209,7 +209,7 @@ export function RouteExplorer() {
         <svg
           ref={ref}
           className={`route-flow${view === "in" ? " in-view" : ""}${view === "out" ? " is-out" : ""}`}
-          viewBox="0 0 960 350"
+          viewBox="0 0 960 360"
           role="group"
           aria-label="Routing diagram: a question reaches the router, which sends easy questions to the cheap model and hard ones to the expensive model; if every model of the chosen tier fails the request returns a 502 error; if nothing matches no model is called."
         >
