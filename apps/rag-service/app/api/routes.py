@@ -148,7 +148,7 @@ def query(req: QueryRequest, caller=Depends(get_caller)):
         raise ApiError(
             422, "no_models_configured", "No models are configured. Add a model in the Models tab."
         )
-    hits = store.search(req.tenant_id, qvec, route["k"])
+    hits = store.search(req.tenant_id, qvec, route["k"], query_text=req.query)
     system, user = build_prompt(req.query, [content for _, _, content, _ in hits])
     attempts = []
     for label, m in plan:  # top to bottom; the first model that answers wins

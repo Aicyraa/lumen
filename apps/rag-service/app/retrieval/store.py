@@ -1,8 +1,11 @@
 import os
+import re
 
 import numpy as np
 import psycopg
 from pgvector.psycopg import register_vector
+
+from app.core.config import load_config
 
 
 def _connect() -> psycopg.Connection:
@@ -41,14 +44,55 @@ def add_chunks(tenant_id: str, document_id: str, chunks: list[str], vectors: np.
             )
 
 
-def search(tenant_id: str, query_vector: np.ndarray, k: int) -> list[tuple[int, str, str, float]]:
-    """Top-k chunks of this tenant as (chunk_id, document_id, content, score); score is cosine similarity."""
+def search(
+    tenant_id: str, query_vector: np.ndarray, k: int, *, query_text: str = ""
+) -> list[tuple[int, str, str, float]]:
+    """Top-k tenant chunks; optional keyword/vector rank fusion, with cosine scores preserved."""
+    terms = " OR ".join(re.findall(r"\w+(?:-\w+)*", query_text))
     with _connect() as conn:
-        rows = conn.execute(
-            "SELECT id, document_id, content, 1 - (embedding <=> %s) AS score FROM chunks"
-            " WHERE tenant_id = %s ORDER BY embedding <=> %s LIMIT %s",
-            (query_vector, tenant_id, query_vector, k),
-        ).fetchall()
+        if terms:
+            cfg = load_config()["retrieval"]
+            # Rank fusion combines word matches and meaning without treating unlike scores as comparable.
+            rows = conn.execute(
+                """
+                WITH semantic AS (
+                    SELECT id, row_number() OVER (ORDER BY embedding <=> %(vector)s, id) AS rank
+                    FROM chunks WHERE tenant_id = %(tenant)s
+                    ORDER BY embedding <=> %(vector)s, id LIMIT %(candidates)s
+                ), lexical AS (
+                    SELECT id, row_number() OVER (
+                        ORDER BY ts_rank(to_tsvector('english', content),
+                            websearch_to_tsquery('english', %(terms)s)) DESC, id
+                    ) AS rank
+                    FROM chunks WHERE tenant_id = %(tenant)s
+                        AND to_tsvector('english', content) @@ websearch_to_tsquery('english', %(terms)s)
+                    ORDER BY rank LIMIT %(candidates)s
+                ), fused AS (
+                    SELECT coalesce(s.id, l.id) AS id,
+                        coalesce(1.0 / (%(constant)s + s.rank), 0) +
+                        coalesce(1.0 / (%(constant)s + l.rank), 0) AS rank
+                    FROM semantic s FULL JOIN lexical l ON l.id = s.id
+                )
+                SELECT c.id, c.document_id, c.content, 1 - (c.embedding <=> %(vector)s) AS score
+                FROM fused f JOIN chunks c ON c.id = f.id
+                WHERE c.tenant_id = %(tenant)s
+                ORDER BY f.rank DESC, c.embedding <=> %(vector)s, c.id LIMIT %(k)s
+                """,
+                {
+                    "vector": query_vector,
+                    "tenant": tenant_id,
+                    "terms": terms,
+                    "candidates": max(k, cfg["candidate_limit"]),
+                    "constant": cfg["rrf_rank_constant"],
+                    "k": k,
+                },
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT id, document_id, content, 1 - (embedding <=> %s) AS score FROM chunks"
+                " WHERE tenant_id = %s ORDER BY embedding <=> %s, id LIMIT %s",
+                (query_vector, tenant_id, query_vector, k),
+            ).fetchall()
     return [(r[0], str(r[1]), r[2], float(r[3])) for r in rows]
 
 

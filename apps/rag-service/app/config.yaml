@@ -1,9 +1,13 @@
 embedding:
   model: all-MiniLM-L6-v2   # 384 numbers; changing it means changing VECTOR(384) and re-embedding
 
-# All numbers are placeholders to calibrate on the evaluation set, not tuned values.
+retrieval:
+  candidate_limit: 40
+  rrf_rank_constant: 60
+
+# First local calibration: five synthetic campus PDFs; broader validation is still needed.
 router:
-  k_cheap: 3
+  k_cheap: 5
   k_expensive: 8
   long_query_words: 25
   hard_words: [compare, difference, versus, vs, "which applies", both, why, exception, unless, except]
@@ -17,7 +21,7 @@ router:
 llm:
   connect_timeout_seconds: 5
   timeout_seconds: 30           # read timeout per call; a slow model counts as a timeout attempt
-  max_output_tokens: 512
+  max_output_tokens: 1024
   temperature: 0
   omit_temperature_providers: [openai, anthropic]   # their newer models reject a fixed temperature
   rate_limit_retry_seconds: 2   # wait before the single retry after a provider 429
