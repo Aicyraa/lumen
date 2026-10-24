@@ -242,7 +242,9 @@ export function Home() {
             </h2>
           </div>
           <div className="routing-grid">
-            <RouteFlow />
+            <div className="route-wrap">
+              <RouteFlow />
+            </div>
             <ul className="route-steps">
               {ROUTING.map(([t, b], i) => (
                 <Reveal as="li" key={t} delay={i * 0.08} className="step">

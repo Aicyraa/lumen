@@ -2256,3 +2256,13 @@ table.data.compact td {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.route-wrap {
+  overflow-x: auto;
+  min-width: 0;
+}
+@media (max-width: 640px) {
+  .route-flow {
+    min-width: 600px;
+  }
+}
