@@ -1,0 +1,147 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { z } from "zod";
+
+interface Tunables {
+  ingestTimeoutMs: number;
+  interruptedIngestAfterSeconds: number;
+  globalLlmCapPerMinute: number;
+  uploadMaxBytes: number;
+  queryMaxChars: number;
+  uploadDir: string;
+  requestsPageSizeDefault: number;
+  requestsPageSizeMax: number;
+  queryTimeoutMs: number;
+  ragDeleteTimeoutMs: number;
+  modelTestTimeoutMs: number;
+  snippetMaxChars: number;
+  passageMaxChars: number;
+  unansweredScoreBelow: number;
+  unansweredPageSize: number;
+  projectNameMaxChars: number;
+  projectDescriptionMaxChars: number;
+  verificationResendWindowSeconds: number;
+  verificationResendMax: number;
+  verificationEmailExpiresSeconds: number;
+  verificationResendPerEmailWindowSeconds: number;
+  verificationResendPerEmailMax: number;
+  dbConnectionTimeoutMs: number;
+  projectIdMaxChars: number;
+  projectSlugMaxChars: number;
+  projectSlugRandomBytes: number;
+  projectCreateLockMs: number;
+  modelAttemptsMax: number;
+  rateLimitHeadersMax: number;
+  modelTestMaxTokens: number;
+  endpointResponseMaxBytes: number;
+  modelIdMaxChars: number;
+  endpointUrlMaxChars: number;
+  apiKeyMaxChars: number;
+  apiKeyMinChars: number;
+  providerNameMaxChars: number;
+  sessionIdMaxChars: number;
+  maxPricePerMillion: number;
+  endpointGuardCacheTtlMs: number;
+}
+const tunables: Tunables = JSON.parse(
+  readFileSync(new URL("../../../config.json", import.meta.url), "utf8"),
+);
+const posInt = z.coerce.number().int().positive();
+const required = z.object({
+  DATABASE_URL: z.string().min(1),
+  BETTER_AUTH_SECRET: z.string().min(32),
+  BETTER_AUTH_URL: z.string().url(),
+  DASHBOARD_ORIGIN: z.string().min(1),
+  INTERNAL_SECRET: z.string().min(1),
+  RAG_SERVICE_URL: z.string().url(),
+  MAX_DOCUMENTS_PER_TENANT: posInt,
+  RATE_LIMIT_PER_MINUTE: posInt,
+  MAX_REQUESTS_PER_MONTH: posInt,
+  MAX_PROJECTS_PER_USER: posInt,
+  MODEL_KEY_ENCRYPTION_SECRET: z.string().regex(/^[0-9a-fA-F]{64}$/), // 32 bytes as hex
+  TRUST_PROXY: z
+    .string()
+    .optional()
+    .refine((v) => v?.trim().toLowerCase() !== "true"), // `true` would trust any client's X-Forwarded-For
+});
+
+export interface OAuthCredentials {
+  clientId?: string;
+  clientSecret?: string;
+}
+export type Config = Tunables & {
+  databaseUrl: string;
+  authSecret: string;
+  authUrl: string;
+  dashboardOrigin: string;
+  internalSecret: string;
+  ragUrl: string;
+  maxDocuments: number;
+  ratePerMinute: number;
+  maxRequestsPerMonth: number;
+  maxProjectsPerUser: number;
+  smtpUrl: string; // empty in development: the verification link is printed in the log instead
+  mailFrom: string;
+  google: OAuthCredentials;
+  github: OAuthCredentials;
+  devRoutes: boolean;
+  modelKeySecret: string;
+  production: boolean;
+  trustProxy: boolean | number | string; // Express `trust proxy`: false (default), a hop count, or trusted addresses
+};
+
+// TRUST_PROXY: unset, "", "false" or "0" = off; digits = that many proxy hops; anything else = a list of trusted addresses.
+function parseTrustProxy(v: string | undefined): boolean | number | string {
+  const t = (v ?? "").trim();
+  if (!t || t === "false" || t === "0") return false;
+  return /^\d+$/.test(t) ? Number(t) : t;
+}
+
+// Throws naming the missing variables (never their values) so the server refuses to start.
+export function loadConfig(
+  env: NodeJS.ProcessEnv = process.env,
+  overrides: Partial<Config> = {},
+): Config {
+  const production = env.NODE_ENV === "production";
+  // Production cannot verify emails without a mail server.
+  const schema = production
+    ? required.extend({ SMTP_URL: z.string().min(1), MAIL_FROM: z.string().min(1) })
+    : required;
+  const parsed = schema.safeParse(env);
+  if (!parsed.success) {
+    const names = [...new Set(parsed.error.issues.map((i) => String(i.path[0])))];
+    throw new Error(`missing or invalid environment variables: ${names.join(", ")}`);
+  }
+  const e = parsed.data;
+  // Tunables: config.json defaults, each overridable by an upper-snake env var of the same name.
+  const t: Tunables = { ...tunables };
+  for (const k of Object.keys(t) as (keyof Tunables)[]) {
+    const v = env[k.replace(/[A-Z]/g, (c) => "_" + c).toUpperCase()];
+    if (v)
+      (t as unknown as Record<string, number | string>)[k] =
+        typeof t[k] === "number" ? Number(v) : v;
+  }
+  return {
+    databaseUrl: e.DATABASE_URL,
+    authSecret: e.BETTER_AUTH_SECRET,
+    authUrl: e.BETTER_AUTH_URL,
+    dashboardOrigin: e.DASHBOARD_ORIGIN,
+    internalSecret: e.INTERNAL_SECRET,
+    ragUrl: e.RAG_SERVICE_URL.replace(/\/$/, ""),
+    maxDocuments: e.MAX_DOCUMENTS_PER_TENANT,
+    ratePerMinute: e.RATE_LIMIT_PER_MINUTE,
+    maxRequestsPerMonth: e.MAX_REQUESTS_PER_MONTH,
+    maxProjectsPerUser: e.MAX_PROJECTS_PER_USER,
+    smtpUrl: env.SMTP_URL ?? "",
+    mailFrom: env.MAIL_FROM || "Lumen <no-reply@localhost>",
+    google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET },
+    github: { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET },
+    modelKeySecret: e.MODEL_KEY_ENCRYPTION_SECRET,
+    production,
+    trustProxy: parseTrustProxy(e.TRUST_PROXY),
+    devRoutes: env.NODE_ENV === "development", // dev-only routes are an explicit opt-in
+    ...t,
+    uploadDir: resolve(new URL("../../..", import.meta.url).pathname, t.uploadDir), // relative to apps/api
+    ...overrides,
+  };
+}

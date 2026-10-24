@@ -67,22 +67,22 @@ These are never negotiable. If a task seems to require breaking one, stop and sa
 ```text
 lumen/                       # root: tooling and docs only, no application code
   AGENTS.md  CLAUDE.md  README.md
-  package.json  pnpm-workspace.yaml  turbo.json     # Turborepo: dev, build, test, bootstrap
-  docker-compose.yml         # db first; api and rag-service added later
-  .env.example
-  infra/sql/001_app_tables.sql
-  docs/                      # AI_BUILD_BRIEF.md, PROJECT_WORKFLOW.md, DESIGN.md, NOTES.md
+  package.json  pnpm-workspace.yaml  turbo.json  biome.json  tsconfig.base.json  .editorconfig  .nvmrc
+  docker-compose.yml         # db (the db scripts use podman or docker directly)
+  scripts/                   # env.mjs (env:init, env:check), db.mjs (db:up, db:migrate, ...)
+  infra/                     # sql/ numbered migrations, .env.example (database password, Supabase strings)
+  docs/                      # AI_BUILD_BRIEF.md, PROJECT_WORKFLOW.md, WEBSITE_GUIDE.md, DESIGN.md, NOTES.md, mockups
   tools/eval/                # questions.csv, run_eval.py, results.csv (scripts, not an app)
   apps/
-    api/                     # Node/Express + Better Auth (ES modules), own package.json
-      src/ (server.ts, app.ts, config/, db/, auth/, middleware/, routes/, services/, lib/, types/)
-      test/ (mirrors src/: routes/, middleware/, services/, config/, auth/, helpers/)
-    web/                     # React + Vite dashboard, own package.json
-      src/ (lib/auth-client.ts, pages/, components/)
-    rag-service/             # Python/FastAPI; package.json only wraps pytest/uvicorn for Turborepo
-      app/ (main.py, chunking.py, embeddings.py, store.py, router.py, llm.py, config.yaml)
-      scripts/ (ingest_sample.py, ask.py)
-      tests/  requirements.txt  pytest.ini
+    api/                     # Node/Express + Better Auth (TypeScript), own .env
+      src/ (server.ts, app.ts, modules/<feature>/, shared/{config,db,middleware,lib,services,types})
+      test/ (mirrors src/)   tsconfig.{json,app,test,scripts}.json
+    web/                     # React + Vite dashboard and public site, own .env (VITE_ only)
+      src/ (app/, features/<feature>/, shared/{ui,motion,lib,styles})
+      test/ (mirrors src/)   tsconfig.{json,app,node,test}.json
+    rag-service/             # Python/FastAPI, own .env, pyproject.toml
+      app/ (main.py, cli.py, config.yaml, api/, core/, ingest/, retrieval/, llm/)
+      tests/ (mirrors app/)
 ```
 
 | Variable | Used by | Meaning |
@@ -100,6 +100,8 @@ lumen/                       # root: tooling and docs only, no application code
 | `MAX_DOCUMENTS_PER_TENANT` | api | Document limit per tenant. Drives `429 document_limit` and the Documents usage meter |
 | `RATE_LIMIT_PER_MINUTE` | api | Requests per minute per tenant (shared by `/v1/chat` and `/api/dashboard/try`). Drives `429 rate_limited` and the Requests / min meter |
 | `MAX_REQUESTS_PER_MONTH` | api | Monthly request allowance per tenant. Drives the This month meter |
+| `MAX_PROJECTS_PER_USER` | api | Projects (organizations) one user may own. Drives `422 project_limit` |
+| `SMTP_URL`, `MAIL_FROM` | api | SMTP connection URL and sender for verification emails. Empty in development prints the link in the API log; required in production |
 | `MODEL_KEY_ENCRYPTION_SECRET` | api | 32 bytes (64 hex characters) used to encrypt tenants' provider API keys at rest (AES-256-GCM). Losing or changing it makes stored keys unreadable |
 | `VITE_CALC_PRICE_CHEAP`, `VITE_CALC_PRICE_EXPENSIVE` | web | **Phase 7 only.** Example cost per request used only by the home-page savings calculator (an illustration) |
 
@@ -546,7 +548,7 @@ Report using the format in section 9.
 Do Phase 4 only. Build the React dashboard in apps/web/ per sections 4 and 6.
 - Follow docs/DESIGN.md for every screen.
 - A public home page (no login), sections in the order of docs/DESIGN.md: hero with a Sign in button, how it works in three steps, a demo (easy, hard and no-answer example), Quickstart (cURL, Node and Python tabs with a Copy button, using the real `POST /v1/chat` contract), built-in features and Security. The FAQ section is postponed (decided 2026-10-23); leave it out for now. Leave out the savings calculator (pricing is being reconsidered, see Phase 7) and make no cost, savings or pricing claims in any copy. Security copy (and the FAQ when it returns) may only state what the product actually does. In particular, do not say tenants can choose a retention period.
-- A sign-in page with Continue with Google and Continue with GitHub using authClient.signIn.social.
+- A sign-in page with Continue with Google and Continue with GitHub (authClient.signIn.social) and an email and password form (authClient.signIn.email, plus sign-up), in the mockup's style. The mockup says "Google and GitHub only, no passwords"; that line is overridden (decided 2026-10-23).
 - A protected dashboard shell that redirects to sign-in when there is no session.
 - An API keys page using the API key plugin's client methods: create (show the key once), list, revoke.
 - A Documents page: upload, status polling until ready or failed, delete.
@@ -554,7 +556,7 @@ Do Phase 4 only. Build the React dashboard in apps/web/ per sections 4 and 6.
 - An Analytics page: requests per day, route mix, median latency, and the unanswered-questions list, all from the dashboard analytics endpoints.
 - A Requests page: the request log from GET /api/dashboard/requests with a tier filter, and a detail view per request from GET /api/dashboard/requests/:id showing route, usage and sources with filenames.
 - Usage meters in the sidebar (documents, requests per minute, requests this month) from GET /api/dashboard/usage. The limits come from config, never from the front end.
-- - A public Docs page at /docs (quickstart, authentication with the x-api-key header, the POST /v1/chat and document endpoints with request and response examples, error codes) and a Privacy page at /privacy, both linked from the home page hero ("Read the docs") and footer, in the same design. Write them from the real contracts in section 6; the Privacy page may only state what the product does (queries are logged for analytics, full document text is never logged, provider keys are stored encrypted) and must not promise a retention period.
+- A public Docs page at /docs (quickstart, authentication with the x-api-key header, the POST /v1/chat and document endpoints with request and response examples, error codes) and a Privacy page at /privacy, both linked from the home page hero ("Read the docs") and footer, in the same design. Write them from the real contracts in section 6; the Privacy page may only state what the product does (queries are logged for analytics, full document text is never logged, provider keys are stored encrypted) and must not promise a retention period.
 - A Models page (Phase 3B endpoints): Cheap, Expensive and Fallback groups, models in order with provider, endpoint, masked key and status, reorder arrows, Remove, and an Add model form (provider, model id, endpoint URL, API key, tier) with Test & save. The key field is write-only. Each model row also shows its usage for the range (requests, tokens, failures, fallback use) and the provider-reported limits when known ("not reported" otherwise), from GET /api/dashboard/models/usage. Analytics gets a By model section (requests, tokens, failures, fallback use per model, fallback models included). Cost is shown as "estimated provider cost" from the tenant-entered prices (Models form has optional input and output price per 1M tokens): per model on the Models page, per request in the Requests list and detail and Try it usage, and cost per day plus total on Analytics (by model, fallback models included). Show "no price set" for unpriced models. No savings figure and no Lumen pricing. See docs/WEBSITE_GUIDE.md section 06.
 Dashboard nav order: Documents, API keys, Try it, Analytics, Requests, Models.
 Add any missing dashboard endpoints from section 6 to apps/api/ (including the `sources` column on request_logs, written by the chat route), always filtered by tenant, with a supertest case that tenant A cannot read tenant B's request id (404).
@@ -566,14 +568,83 @@ Use plain CSS or one small component library. Report using the format in section
 - [ ] The analytics page shows real numbers after a few requests
 - [ ] The Requests page lists those requests, the tier filter works, and a detail view shows sources with real filenames
 - [ ] The usage meters match the configured limits, and changing a limit in the environment changes the meter
-- [ ] The home page has Quickstart and Security sections (FAQ postponed), /docs and /privacy exist and are linked, and no copy mentions a retention period, cost, savings or pricing
+- [ ] The home page has Quickstart and Security sections (FAQ postponed), /docs and /privacy exist and are linked, and no copy mentions a retention period or any Lumen price, savings or pricing (the tenant's own estimated provider cost, labelled as an estimate, is allowed in the dashboard)
+- [ ] Google, GitHub and email + password sign-in each create a user and personal organization (the Google and GitHub ones need the OAuth credentials in .env; run them in a real browser)
+- [ ] The Models page shows usage, limits (or "not reported") and estimated cost per model, with price fields in the Add model form, and no key is ever shown after saving
 - [ ] Two different accounts never see each other's documents, keys, requests or analytics
 
-**Design versus brief.** The design mockups go beyond the first Phase 4 scope (Quickstart, calculator, Security, FAQ, the Requests page and the usage meters) and those are now in scope as written above. Where the mockups still differ, follow this brief:
+**Design source.** The mockups are in `docs/lumen-website-ui-mockups/project/` (`Lumen Website.dc.html` static screens, `Lumen Prototype.dc.html` interactive prototype; `support.js` is only the design-canvas runtime and `uploads/` holds outdated copies of old briefs, ignore both). Rebuild them as real React components; the `{{ ... }}` markers are the design runtime's templating, not product code. Layout, spacing, tokens and components come from the mockups and `docs/DESIGN.md`; behaviour and copy rules come from this brief. Where they differ, follow this brief:
 
-- Money: the mockups' calculator, cost and savings figures ($0.0012 and $0.0001 per request, the savings stat, cost columns) are skipped in Phase 4 and built in Phase 7. There, the calculator's example prices live in `VITE_CALC_*` variables and the calculator is labelled as an illustration. The real prices per 1k tokens live in `config.yaml` and are not exposed to the public page.
-- Limits: 50 documents, 60 requests a minute and 50,000 a month are placeholders. The human chooses the real values.
-- Retention: the FAQ line "You choose a retention period" must be reworded, for example "Queries are logged for your analytics and never include full document text." Retention returns when it is built.
+- Sign-in: add email and password next to Google and GitHub (the mockup says no passwords).
+- Lumen pricing: skip the Savings section (05) and its example prices, the Pricing nav and footer links, the demo's `cost_usd` figure and the Analytics "EST. SAVINGS" tile. Keep the other sections' numbering as in the mockup (a gap at 05), so adding it later changes nothing.
+- FAQ (section 08): postponed, skip it (its text also promises a retention period, which is forbidden).
+- Cost: the mockup's cost columns, tiles and drawer fields stay, but they show the tenant's estimated provider cost (labelled "estimated provider cost", "no price set" when a model has no price), never a Lumen price.
+- Request ids: UUIDs, not `req_...`.
+- Models: the mockup (tab 06) shows the Cheap / Expensive / Fallback groups, Add model with Test & save, reorder and Remove. Extend it in the same style with: optional input and output price per 1M tokens in the form, per-model usage, provider-reported limits or "not reported", status and estimated cost per row, and a By model section on Analytics (fallback models included). The key field is write-only and the key is never shown again.
+- Docs and Privacy: no mockup exists; design them in the same style from the real contracts.
+- Limits: 50 documents, 60 requests a minute and 50,000 a month in the mockup are placeholders; the numbers come from the API (`GET /api/dashboard/usage`).
+- Retention: never mention a retention period anywhere.
+
+### Phase 4B: accounts, projects and website polish (extra phase, added 2026-10-24 after the first manual test)
+
+Two steps, one engineer at a time: 4B-1 `api-engineer`, then 4B-2 `web-engineer`. Stays on the `phase-4-dashboard` branch.
+
+**Decisions.** (1) Email + password accounts must verify their email before they can sign in. (2) No implicit account linking: signing in with a second provider that has the same email is rejected with `account_not_linked`; a signed-in user links Google or GitHub explicitly in Account settings. (3) A project is a Better Auth organization (the tenant); a user can have several and picks one after signing in. (4) `MAX_PROJECTS_PER_USER` (env, the human chose 5, adjustable) caps projects a user may own. (5) A new user gets one default project, "My project", renamable and deletable; a signed-in user is still never without a tenant at sign-in time. (6) Verification email goes through SMTP (`SMTP_URL`, `MAIL_FROM`); in development with `SMTP_URL` empty the link is printed in the API log (development only); in production a missing `SMTP_URL` stops the API from starting.
+
+```text
+Phase 4B-1 (api-engineer, apps/api): Do this only.
+- Email verification: emailAndPassword.requireEmailVerification true, emailVerification with sendOnSignUp and sendOnSignIn, sendVerificationEmail through nodemailer over SMTP_URL (check current Better Auth and nodemailer docs); the link goes to the API's verify endpoint and redirects to the dashboard origin /verify-email (status in the query). Rate-limit resend. Never log the link outside development, never log SMTP_URL.
+- Account linking: accountLinking with disableImplicitLinking true; explicit linking from a signed-in session via the client's linkSocial must work and be tested; a same-email social sign-in for an existing user returns account_not_linked (test it).
+- Projects (no new table; description lives in organization metadata): GET /api/dashboard/workspaces (every organization the session's user belongs to: id, name, slug, description, role, created_at, documents count, requests this month); POST (name 1-60 chars, optional description, slug generated unique; enforces MAX_PROJECTS_PER_USER owned projects, 422 project_limit); PATCH rename/description (owner/admin); DELETE (owner only, body must repeat the project name) which in ONE transaction removes all of the tenant's data (request_logs, model_calls, tenant_models, documents and chunks, api keys, uploaded files) and then the organization. Every statement filtered by tenant_id; another user's project id is 404. Activating a project uses the organization plugin's set-active; the API must refuse a session whose active organization the user is not a member of. Keep the auto-created default project on first sign-in.
+- Config: MAX_PROJECTS_PER_USER required at startup like the other limits; SMTP settings as above.
+- Tests: verification flow with a captured mail (unverified user cannot sign in, verified can, resend), no implicit linking, explicit linking, project CRUD and isolation (user A cannot list, rename, delete or activate B's project), the cap, full-data deletion, startup refusal without SMTP_URL in production.
+
+Phase 4B-2 (web-engineer, apps/web): Do this only, against the 4B-1 endpoints.
+- Routes: /projects (list as cards with name, description, role, created date, documents and requests counts; Create project dialog; empty and error states), /projects/:slug/{documents,keys,try,analytics,requests,models,settings} (entering a project activates it; the sidebar has a project switcher and a link back to Projects; settings: rename, description, delete with type-the-name confirmation), /account (email and verification state, linked sign-in methods with Link Google/GitHub, sign out), /verify-email (success, expired and error states with Resend), and /dashboard/* redirecting to /projects. After sign-in go to /projects.
+- Sign-in page: explain email_not_verified (resend) and account_not_linked ("sign in with your original method, then link this one in Account settings"); add icons (Google and GitHub marks, mail) using Animate UI icons (https://animate-ui.com/docs/icons; check its current install method and licence; keep the DESIGN.md palette).
+- Docs page: a structured layout (sticky table of contents with scroll-spy, a readable content column with a max width, grouped sections for Getting started, Authentication, Chat, Documents, Feedback, Errors, Limits, tables for error codes, copyable code blocks, responsive); reachable at /docs whether or not the user is signed in, and the public nav and the dashboard sidebar link to it; the public nav shows Projects (instead of Sign in and Get an API key) when signed in. Privacy page gets the same layout.
+- Home page: fix the oversized hero (headline at most about 5.5vw, capped so the headline, paragraph and buttons fit in one screen at 1355x700 and 1440x900); every home section is at least one full viewport (min-height 100dvh, content centred) and the home page uses CSS scroll-snap (proximity or mandatory on the root scroller, with a section taller than the viewport still scrolling normally); keyboard and reduced-motion friendly, mobile safe.
+- Animation: apply Animate UI and the motion library across the whole site (page and section transitions, staggered reveals, hover and press states, animated icons, drawer and dialog transitions, tab and list transitions, count-up numbers, chart bars), with the DESIGN.md palette and fonts unchanged, prefers-reduced-motion respected, no layout shift, nothing that hides content if scripts fail, and no animation that delays reading (under 600 ms for entrances). If Animate UI components need Tailwind or the shadcn CLI, say so and use the smallest setup that works without rewriting the existing CSS.
+Tests first for behaviour (route guards, project switch activates the organization and clears cache, create/delete flows, verification and linking error screens, docs reachable signed in and out); browser verification at 1355x700, 1440x900 and a phone width with screenshots (hero fits, one section per screen, snap works, docs layout). Report in the section 9 format.
+```
+
+- [ ] An unverified email + password user cannot sign in until they verify; the link works once; resend is rate limited
+- [ ] Signing in with a second provider that has the same email shows account_not_linked; linking from Account settings works and then either method signs in
+- [ ] A user can create projects up to MAX_PROJECTS_PER_USER (the next one returns 422 project_limit), open each, and the dashboard of one never shows another's documents, keys, models, requests or analytics
+- [ ] Deleting a project removes all its data (counts in every table are 0 for that tenant) and only the owner can do it
+- [ ] /docs is structured, readable on desktop and phone, and reachable signed in and signed out
+- [ ] The hero fits one screen at 1355x700, each home section fills a screen, and scroll snap works
+- [ ] Motion is present across the site, reduced-motion turns it off, and the site is fully usable with it off
+
+### Phase R2: codebase restructure for scalability and maintainability (extra phase, 2026-10-24; goal: easy to grow and maintain)
+
+Order: rag-engineer, then api-engineer, then web-engineer (one at a time), then the lead does the root tooling and the `.env` split. Behaviour must not change: every existing test stays green (api 364, rag-service 149, web 150) and moves only when its source moves. Branch `phase-r2-restructure` (from `phase-4-dashboard`). Then the database phase, then the UI tweaks phase (4C), in that order, so the UI work lands in the final structure.
+
+Target structure (group code by feature or flow; code used by one feature lives in it, shared code in `shared/`):
+- `apps/api/src/`: `server.ts`, `app.ts`, `modules/<feature>/` for auth, documents, chat, feedback, models, projects, analytics, requests, usage, dev (each: routes, service or queries, validation schema), and `shared/` for config, db, middleware, lib, types and the RAG client. `apps/api/test/` mirrors `src/`.
+- `apps/web/src/`: `app/` (App, routes, providers), `features/<feature>/` for home, docs, auth, projects, documents, keys, try-it, analytics, requests, models, account (components, hooks, api calls, local types), and `shared/` for ui, motion, lib. All tests move to `apps/web/test/`, mirroring `src/`.
+- `apps/rag-service/`: `pyproject.toml` (dependencies, pytest and ruff config), `app/` split into `api/` (routes, dependencies, schemas), `core/` (config, env, errors), `ingest/` (chunking, extraction), `retrieval/` (embeddings, store, router), `llm/` (client, prompt, endpoint guard), plus `config.yaml`; `scripts/` for operator scripts; `tests/` mirroring `app/`.
+- tsconfig split by environment: a root `tsconfig.base.json`, then per app `tsconfig.json` (references only), `tsconfig.app.json` (src), `tsconfig.test.json` (tests), `tsconfig.node.json` or `tsconfig.scripts.json` (config files and scripts).
+- Scripts: every app exposes the same names where they apply (`dev`, `build`, `start`, `test`, `typecheck`, `lint`, `format`, `clean`), and rag-service has a Python handler `python -m app.cli <command>` (dev, test, lint, format, check-env, ingest, ask) that its `package.json` scripts call. Root `package.json` has only the important scripts: `setup`, `dev`, `dev:api`, `dev:web`, `dev:rag`, `build`, `test`, `typecheck`, `lint`, `format`, `check` (typecheck + lint + test), `clean`, `db:up`, `db:down`, `db:psql`, `db:migrate`, `env:init`, `env:check`.
+- Root tools: Turborepo tasks with correct `dependsOn`, `inputs` and `outputs`; Biome for TypeScript lint and format; Ruff for Python lint and format; `.editorconfig`; `engines` and `.nvmrc`; a `scripts/` folder for repo-level helpers (`env-init`, `env-check`, `db-migrate`).
+- Environment files live with their app: `apps/api/.env`, `apps/rag-service/.env`, `apps/web/.env` (only `VITE_` variables) and `infra/.env` (database password, Supabase connection strings, used by docker compose and the db scripts), each with a `.env.example`; there is no repo-root `.env` any more. Each app loads only its own file (plus the real environment). Shared values (`DATABASE_URL`, `INTERNAL_SECRET`) are repeated in each app that needs them, and `env:check` verifies they agree without printing them.
+- Duplicates: remove files that duplicate another (checked by content hash and by name); keep empty placeholders only where a directory must exist.
+
+Checks: all tests green, `pnpm check` passes from the root, `pnpm dev` starts all three apps, no file imports from another app, `git grep` finds no repo-root `.env` reads, and the old and new test counts match exactly.
+
+### Phase DB: normalized schema (extra phase, after R2)
+
+The design and its reasons are in `docs/DATABASE.md` (that page wins over the SQL shown in section 5, which is the historical first version). Steps: (1) api-engineer writes migrations 003 onward in `infra/sql/` (tenants registry and foreign keys, request_sources, derived columns replaced by views, indexes, RLS), backfilling existing rows, and updates apps/api and the API tests; the project delete becomes `DELETE FROM tenants` in one transaction; the API inserts the tenants row when an organization is created; (2) rag-engineer then updates apps/rag-service (store, ingest, tests: the test setup applies the application migrations, tests insert tenants rows, no `chunk_count` column); (3) the lead applies the migrations to the local development and test databases and runs everything; (4) after review, the lead applies the same migrations, plus Better Auth's own tables, to the Supabase project `lumen` through the Supabase migration tool (the human explicitly chose the main project on 2026-10-24 because the Free plan has no branching; it had no tables), then runs the Supabase advisors and fixes findings.
+
+- [ ] A fresh database and an upgraded old database both end at the same schema (`pnpm db:migrate` on each)
+- [ ] No derived value is stored (chunk_count, token and cost totals, sources JSON) and the API and rag-service tests still pass with the same behaviour
+- [ ] Deleting a project removes every tenant row through the cascade, in one transaction, and an interrupted delete leaves nothing half deleted
+- [ ] Every foreign key is indexed, RLS is on for every application table, and the Supabase security advisor shows no unresolved finding for them
+- [ ] Rule 1 still holds: every statement touching tenant data filters on tenant_id (grep), and the isolation tests go red when a filter is removed
+
+### Phase 4C: UI tweaks (extra phase, after DB)
+
+The human's 13 tweaks (2026-10-24): large Product page with more explanatory sections and filled space; Docs sections as tabs; animations trigger when visible; dashboard sidebar without the lumen logo, not scrollable, no Docs link, no numbers, user name shown by sign-in provider, a button to Projects; a centred status text on every dashboard tab; Analytics layout redesign; Models layout redesign with Add model as a modal; richer Account page; new logo (SVG) for the system and favicon.
 
 ### Phase 5: isolation suite and evaluation
 

@@ -5,8 +5,11 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
-    "typecheck": "tsc --noEmit",
-    "test": "tsc --noEmit && vitest run",
+    "test": "tsc -b && vitest run",
+    "typecheck": "tsc -b",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "clean": "rm -rf node_modules/.cache",
     "auth:migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {
@@ -17,6 +20,7 @@
     "express": "^5.3.0",
     "express-rate-limit": "^8.7.1",
     "multer": "^2.4.0",
+    "nodemailer": "^10.2.1",
     "pg": "^8.23.1",
     "pino": "^10.4.0",
     "zod": "^4.6.7"
@@ -26,6 +30,7 @@
     "@types/express": "^5.0.6",
     "@types/multer": "^2.3.0",
     "@types/node": "^26.6.5",
+    "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
     "supertest": "^7.3.1",

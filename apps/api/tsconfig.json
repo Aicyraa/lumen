@@ -1,14 +1,8 @@
 {
-  "compilerOptions": {
-    "target": "ES2023",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "strict": true,
-    "noEmit": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "types": ["node"]
-  },
-  "include": ["src", "test", "scripts", "vitest.config.ts"]
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.test.json" },
+    { "path": "./tsconfig.scripts.json" }
+  ]
 }

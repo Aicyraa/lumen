@@ -3,13 +3,32 @@
   "private": true,
   "packageManager": "pnpm@12.14.0",
   "scripts": {
+    "bootstrap": "pnpm install && pnpm --filter @lumen/rag-service bootstrap && pnpm env:init",
     "dev": "turbo run dev",
+    "dev:api": "pnpm --filter @lumen/api dev",
+    "dev:web": "pnpm --filter @lumen/web dev",
+    "dev:rag": "pnpm --filter @lumen/rag-service dev",
     "build": "turbo run build",
     "test": "turbo run test --concurrency=1",
-    "bootstrap": "turbo run bootstrap",
-    "db:up": "podman start lumen-db || docker compose up -d db"
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "format": "turbo run format",
+    "check": "turbo run typecheck lint && turbo run test --concurrency=1",
+    "clean": "turbo run clean",
+    "db:up": "node scripts/db.mjs up",
+    "db:down": "node scripts/db.mjs down",
+    "db:psql": "node scripts/db.mjs psql",
+    "db:migrate": "node scripts/db.mjs migrate",
+    "db:status": "node scripts/db.mjs status",
+    "env:init": "node scripts/env.mjs init",
+    "env:check": "node scripts/env.mjs check"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.6.2",
     "turbo": "^2.11.10"
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=12"
   }
 }
