@@ -169,4 +169,11 @@ describe("Analytics", () => {
     expect(screen.getByText(/No models yet/)).toBeInTheDocument();
     expect(screen.queryByRole("list", { name: "Requests per day" })).toBeNull();
   });
+
+  it("starts the bar animation once the page is seen, even though the data arrives after the first render", async () => {
+    mockFetch(handler);
+    const { container } = renderWithProviders(<Analytics />);
+    await screen.findByText("840 ms");
+    await waitFor(() => expect(container.querySelector(".an")).toHaveClass("in-view"));
+  });
 });
