@@ -195,6 +195,24 @@ def test_model_generic_refusal_is_normalized_without_an_extra_call(client, llm, 
     assert len(llm.calls) == 1
 
 
+def test_reranker_selects_final_sources_from_a_larger_tenant_scoped_pool(
+    client, llm, best_score, monkeypatch
+):
+    doc = add_doc("tenant_a", [f"Own passage {i}" for i in range(12)])
+    add_doc("tenant_b", ["Other tenant secret"])
+    best_score(0.6)
+
+    def reverse(query, hits, k):
+        assert len(hits) > k
+        assert all(h[1] == doc for h in hits)
+        return list(reversed(hits))[:k]
+
+    monkeypatch.setattr("app.api.routes.rerank", reverse)
+    body = ask(client).json()
+    assert len(body["sources"]) == body["route"]["k"] == 5
+    assert "[1] Own passage 11" in llm.calls[0]["user"]
+
+
 def test_query_only_sees_the_callers_tenant(client, llm, best_score):
     add_doc("tenant_a", ["A's own passage"])
     doc_b = add_doc("tenant_b", ["B's secret passage"])
