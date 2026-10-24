@@ -25,10 +25,19 @@ def test_header_and_size():
     assert 36 <= len(rows()) <= 50
 
 
-def test_human_columns_are_empty():
-    for r in rows():
-        for col in ("expected_answer", "held_out", "cheap_ok", "expensive_ok"):
-            assert r[col] == "", (col, r["query"])
+def test_agent_drafted_answers_and_the_documented_held_out_rule():
+    """AGENT-DRAFTED, unverified by the human (see DRAFT_ANSWERS_REVIEW.md)."""
+    from evalkit.heldout import pick_held_out
+
+    rs = rows()
+    picked = pick_held_out(rs)
+    for r in rs:
+        assert r["expected_answer"].strip(), r["query"]
+        assert r["held_out"] == ("true" if r["query"] in picked else "false"), r["query"]
+        assert r["cheap_ok"] == "" and r["expensive_ok"] == ""
+        if r["type"] == "unanswerable":
+            assert r["expected_answer"] == "I could not find that in the documents."
+    assert sum(r["held_out"] == "true" for r in rs) == 10
 
 
 def test_types_and_sources():
