@@ -5,6 +5,7 @@ import { ApiError, post } from "../../shared/lib/api";
 import { fmtScore } from "../../shared/lib/format";
 import type { TryResponse } from "../../shared/lib/types";
 import { RouteCard } from "../../shared/ui/RouteCard";
+import { StatusMessage } from "../../shared/ui/StatusMessage";
 import { UsageCard } from "../../shared/ui/UsageCard";
 import { ErrorText, PageHead } from "../../shared/ui/ui";
 import { useOrgId } from "../auth/session";
@@ -72,9 +73,9 @@ export function TryIt() {
           </button>
         </form>
         {ask.isPending && (
-          <div className="mono small lime pulse" role="status">
-            EMBEDDING · PROBE SEARCH · ROUTING…
-          </div>
+          <StatusMessage state="loading">
+            Embedding, searching your documents, routing…
+          </StatusMessage>
         )}
         {err && (
           <ErrorText>
@@ -87,6 +88,11 @@ export function TryIt() {
               err.message
             )}
           </ErrorText>
+        )}
+        {!r && !err && !ask.isPending && (
+          <StatusMessage state="empty">
+            Ask a question to see the answer, its route and its sources here.
+          </StatusMessage>
         )}
         {r && (
           <div className="stack fade-in">
