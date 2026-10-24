@@ -83,30 +83,44 @@ describe("Shell", () => {
     expect(await screen.findByRole("meter", { name: "Documents" })).toBeInTheDocument();
   });
 
-  it("has no logo at the top, no Docs link, no numbers and no big All projects button", () => {
+  it("top row: logo mark beside an icon-only Projects button; no dropdown, no Docs link, no numbers", () => {
     mockFetch(handler);
     renderWithProviders(tree(), { route: "/projects/mayas/documents" });
     const side = screen.getByRole("complementary");
-    expect(within(side).queryByRole("link", { name: "Lumen home" })).toBeNull();
+    const top = side.firstElementChild as HTMLElement;
+    expect(top).toHaveClass("side-top");
+    expect(top.querySelector("svg.side-mark")).not.toBeNull();
+    const projects = within(top).getByRole("link", { name: "Projects" });
+    expect(projects).toHaveAttribute("href", "/projects");
+    expect(projects).toHaveAttribute("title", "Projects");
+    expect(projects.textContent).toBe("");
+    expect(within(side).queryByRole("combobox")).toBeNull();
+    expect(within(side).queryByRole("listbox")).toBeNull();
+    expect(within(side).queryByRole("button", { name: /^Project:/ })).toBeNull();
     expect(within(side).queryByRole("link", { name: "Docs" })).toBeNull();
+    expect(within(side).queryByRole("link", { name: "Lumen home" })).toBeNull();
     expect(side.querySelector(".nav-num")).toBeNull();
-    const all = within(side).getByRole("link", { name: "All projects" });
-    expect(all).toHaveAttribute("href", "/projects");
-    expect(all).not.toHaveClass("btn");
-    expect(all.textContent).toBe(""); // icon only, named by aria-label
   });
 
-  it("ends with a small brand footer below Sign out that links to /projects", () => {
+  it("shows the current project's name as a plain label under the top row", () => {
     mockFetch(handler);
     renderWithProviders(tree(), { route: "/projects/mayas/documents" });
     const side = screen.getByRole("complementary");
-    const brand = within(side).getByRole("link", { name: "Lumen, all projects" });
-    expect(brand).toHaveAttribute("href", "/projects");
-    expect(brand).toHaveTextContent("lumen");
-    expect(brand.querySelector("svg")).not.toBeNull();
-    const signOut = within(side).getByRole("button", { name: "Sign out" });
-    expect(signOut.compareDocumentPosition(brand) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(side.lastElementChild).toBe(brand);
+    const label = within(side).getByText("Maya's workspace");
+    expect(label).toHaveClass("project-label");
+    expect(label.closest("a, button, select, [role=option]")).toBeNull();
+    expect(label.previousElementSibling).toHaveClass("side-top");
+  });
+
+  it("Sign out is a full-width button on its own line at the bottom; no brand footer", () => {
+    mockFetch(handler);
+    renderWithProviders(tree(), { route: "/projects/mayas/documents" });
+    const side = screen.getByRole("complementary");
+    const out = within(side).getByRole("button", { name: "Sign out" });
+    expect(out).toHaveClass("signout-btn");
+    expect(side.lastElementChild).toBe(out);
+    expect(within(side).queryByRole("link", { name: /Lumen, all projects/ })).toBeNull();
+    expect(side.querySelector(".brand-foot")).toBeNull();
   });
 
   it("shows the provider display name with the email below it", () => {
