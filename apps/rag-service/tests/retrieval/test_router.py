@@ -28,7 +28,9 @@ def test_hard_word_is_escalated():
 
 
 def test_weak_score_goes_expensive_and_is_clearly_hard():
-    r = decide("What time does the cafe open?", 0.20, CFG)  # above no_answer_score, below weak_score
+    r = decide(
+        "What time does the cafe open?", 0.20, CFG
+    )  # above no_answer_score, below weak_score
     assert (r["model_tier"], r["k"], r["difficulty"]) == ("expensive", CFG.k_expensive, 0.5)
     assert r["escalated"] is False  # difficulty 0.5 reaches hard_at
 

@@ -13,7 +13,9 @@ def add_doc(tenant, texts):
 
 
 def delete(client, doc_id, tenant):
-    return client.delete(f"/internal/documents/{doc_id}", params={"tenant_id": tenant}, headers=AUTH)
+    return client.delete(
+        f"/internal/documents/{doc_id}", params={"tenant_id": tenant}, headers=AUTH
+    )
 
 
 def remaining(tenant):

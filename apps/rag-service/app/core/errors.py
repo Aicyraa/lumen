@@ -8,4 +8,6 @@ class ApiError(Exception):
 
 
 def error_response(status: int, code: str, message: str, extra: dict | None = None) -> JSONResponse:
-    return JSONResponse(status_code=status, content={"error": {"code": code, "message": message}, **(extra or {})})
+    return JSONResponse(
+        status_code=status, content={"error": {"code": code, "message": message}, **(extra or {})}
+    )

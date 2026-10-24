@@ -1,4 +1,5 @@
 """POST /internal/query with tenant models: tiers, backups, fallback, errors, attempts, snippets."""
+
 import logging
 
 import pytest
@@ -10,12 +11,21 @@ KEY = "sk-tenant-secret-key-abcdef"
 
 
 def M(model_id, provider="openai_compatible", tmid=None):
-    return {"provider": provider, "model_id": model_id, "endpoint_url": f"https://{model_id}.example.com/v1",
-            "api_key": KEY, "tenant_model_id": tmid or f"id-{model_id}"}
+    return {
+        "provider": provider,
+        "model_id": model_id,
+        "endpoint_url": f"https://{model_id}.example.com/v1",
+        "api_key": KEY,
+        "tenant_model_id": tmid or f"id-{model_id}",
+    }
 
 
 def models(cheap=(), expensive=(), fallback=()):
-    return {"cheap": [M(x) for x in cheap], "expensive": [M(x) for x in expensive], "fallback": [M(x) for x in fallback]}
+    return {
+        "cheap": [M(x) for x in cheap],
+        "expensive": [M(x) for x in expensive],
+        "fallback": [M(x) for x in fallback],
+    }
 
 
 @pytest.fixture
@@ -34,9 +44,13 @@ def test_models_are_tried_top_to_bottom_and_the_backup_answers(client, llm, docs
     body = ask(client, models=models(cheap=["c1", "c2", "c3"])).json()
     assert tried(llm) == ["c1", "c2"]  # c3 is never reached
     assert body["answer"] == "Fake answer [1]"
-    assert [(a["model_id"], a["tenant_model_id"], a["tier"], a["outcome"]) for a in body["attempts"]] == [
-        ("c1", "id-c1", "cheap", "error"), ("c2", "id-c2", "cheap", "ok")]
-    assert (body["usage"]["tokens_in"], body["usage"]["tokens_out"]) == (321, 45)  # the attempt that answered
+    assert [
+        (a["model_id"], a["tenant_model_id"], a["tier"], a["outcome"]) for a in body["attempts"]
+    ] == [("c1", "id-c1", "cheap", "error"), ("c2", "id-c2", "cheap", "ok")]
+    assert (body["usage"]["tokens_in"], body["usage"]["tokens_out"]) == (
+        321,
+        45,
+    )  # the attempt that answered
     assert body["usage"]["cost_usd"] is None and body["route"]["model_tier"] == "cheap"
 
 
@@ -48,10 +62,21 @@ def test_the_requests_own_endpoint_and_key_reach_the_caller(client, llm, docs):
 
 def test_whole_tier_failing_falls_back_in_order(client, llm, docs):
     llm.outcomes = {"c1": "error", "c2": "timeout", "f1": "rate_limited"}
-    body = ask(client, models=models(cheap=["c1", "c2"], expensive=["e1"], fallback=["f1", "f2"])).json()
-    assert tried(llm) == ["c1", "c2", "f1", "f2"]  # the expensive tier is not touched on a cheap route
+    body = ask(
+        client, models=models(cheap=["c1", "c2"], expensive=["e1"], fallback=["f1", "f2"])
+    ).json()
+    assert tried(llm) == [
+        "c1",
+        "c2",
+        "f1",
+        "f2",
+    ]  # the expensive tier is not touched on a cheap route
     assert [(a["tier"], a["outcome"]) for a in body["attempts"]] == [
-        ("cheap", "error"), ("cheap", "timeout"), ("fallback", "rate_limited"), ("fallback", "ok")]
+        ("cheap", "error"),
+        ("cheap", "timeout"),
+        ("fallback", "rate_limited"),
+        ("fallback", "ok"),
+    ]
     assert body["route"]["model_tier"] == "cheap"  # route still reports the router's tier only
     assert "api_key" not in str(body)
 
@@ -64,8 +89,14 @@ def test_everything_failing_is_502_provider_error_with_every_attempt(client, llm
     body = resp.json()
     assert body["error"]["code"] == "provider_error" and body["error"]["message"]
     assert [(a["model_id"], a["outcome"], a["tokens_in"]) for a in body["attempts"]] == [
-        ("c1", "error", None), ("f1", "timeout", None)]
-    assert KEY not in resp.text and KEY not in caplog.text and "c1.example.com" not in body["error"]["message"]
+        ("c1", "error", None),
+        ("f1", "timeout", None),
+    ]
+    assert (
+        KEY not in resp.text
+        and KEY not in caplog.text
+        and "c1.example.com" not in body["error"]["message"]
+    )
 
 
 def test_expensive_route_uses_the_expensive_models(client, llm, best_score):
@@ -90,7 +121,10 @@ def test_a_tenant_with_only_fallback_models_uses_them(client, llm, docs):
 def test_no_models_at_all_is_422_with_zero_calls(client, llm, docs):
     resp = ask(client, models=models())
     assert resp.status_code == 422
-    assert resp.json()["error"]["code"] == "no_models_configured" and "Models" in resp.json()["error"]["message"]
+    assert (
+        resp.json()["error"]["code"] == "no_models_configured"
+        and "Models" in resp.json()["error"]["message"]
+    )
     assert llm.calls == []
 
 
@@ -123,7 +157,9 @@ def test_tenant_models_are_never_mixed_with_the_env_default(client, llm, docs):
     assert tried(llm) == ["c1"]  # cheap-model was not tried as a last resort
 
 
-def test_no_documents_and_no_answer_paths_are_model_free_with_empty_attempts(client, llm, best_score):
+def test_no_documents_and_no_answer_paths_are_model_free_with_empty_attempts(
+    client, llm, best_score
+):
     best_score(0.9)
     body = ask(client, tenant="nobody", models=models(cheap=["c1"])).json()  # no documents
     assert body["attempts"] == []
@@ -141,20 +177,37 @@ def test_no_models_path_needs_no_models_when_nothing_matches(client, llm, best_s
 
 
 def test_rate_limits_and_reported_cost_are_passed_through_when_present(client, llm, docs):
-    llm.extra = {"c1": {"rate_limits": {"x-ratelimit-remaining-requests": "9"}, "reported_cost_usd": 0.0002}}
+    llm.extra = {
+        "c1": {"rate_limits": {"x-ratelimit-remaining-requests": "9"}, "reported_cost_usd": 0.0002}
+    }
     a = ask(client, models=models(cheap=["c1"])).json()["attempts"][0]
-    assert a["rate_limits"] == {"x-ratelimit-remaining-requests": "9"} and a["reported_cost_usd"] == 0.0002
+    assert (
+        a["rate_limits"] == {"x-ratelimit-remaining-requests": "9"}
+        and a["reported_cost_usd"] == 0.0002
+    )
     llm.extra = {}
     a = ask(client, models=models(cheap=["c1"])).json()["attempts"][0]
     assert "rate_limits" not in a and "reported_cost_usd" not in a
-    assert set(a) == {"provider", "model_id", "tenant_model_id", "tier", "outcome", "tokens_in", "tokens_out", "latency_ms"}
+    assert set(a) == {
+        "provider",
+        "model_id",
+        "tenant_model_id",
+        "tier",
+        "outcome",
+        "tokens_in",
+        "tokens_out",
+        "latency_ms",
+    }
 
 
-@pytest.mark.parametrize("bad", [
-    {"cheap": [{**M("c1"), "provider": "mystery"}]},
-    {"cheap": [{k: v for k, v in M("c1").items() if k != "api_key"}]},
-    {"cheap": "c1"},
-])
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"cheap": [{**M("c1"), "provider": "mystery"}]},
+        {"cheap": [{k: v for k, v in M("c1").items() if k != "api_key"}]},
+        {"cheap": "c1"},
+    ],
+)
 def test_malformed_models_are_422_invalid_request(client, llm, docs, bad):
     resp = ask(client, models=bad)
     assert resp.status_code == 422 and resp.json()["error"]["code"] == "invalid_request"

@@ -10,8 +10,14 @@ from tests.conftest import AUTH, FAKE_ENV
 DOC_ID = "00000000-0000-0000-0000-000000000001"
 # (method, path, kwargs that make an otherwise valid request)
 PROTECTED = [
-    ("post", "/internal/ingest", {"data": {"tenant_id": "t", "document_id": DOC_ID},
-                                  "files": {"file": ("a.txt", b"hello", "text/plain")}}),
+    (
+        "post",
+        "/internal/ingest",
+        {
+            "data": {"tenant_id": "t", "document_id": DOC_ID},
+            "files": {"file": ("a.txt", b"hello", "text/plain")},
+        },
+    ),
     ("post", "/internal/query", {"json": {"tenant_id": "t", "query": "hi"}}),
     ("delete", f"/internal/documents/{DOC_ID}?tenant_id=t", {}),
 ]
@@ -42,8 +48,11 @@ def test_auth_is_checked_before_the_request_body(client, method, path, kwargs):
 
 
 def test_non_ascii_secret_is_401_not_a_crash(client):
-    resp = client.post("/internal/query", json={"tenant_id": "t", "query": "hi"},
-                       headers={"X-Internal-Secret": "café".encode("utf-8")})  # raw non-ASCII bytes
+    resp = client.post(
+        "/internal/query",
+        json={"tenant_id": "t", "query": "hi"},
+        headers={"X-Internal-Secret": "café".encode("utf-8")},
+    )  # raw non-ASCII bytes
     assert_error(resp, 401, "unauthorized")
 
 
@@ -57,7 +66,11 @@ def test_unknown_route_uses_the_error_shape(client):
 
 
 def test_invalid_body_uses_the_error_shape(client):
-    assert_error(client.post("/internal/query", json={"tenant_id": "t"}, headers=AUTH), 422, "invalid_request")
+    assert_error(
+        client.post("/internal/query", json={"tenant_id": "t"}, headers=AUTH),
+        422,
+        "invalid_request",
+    )
 
 
 @pytest.mark.parametrize("missing", ["INTERNAL_SECRET", "DATABASE_URL"])
@@ -70,7 +83,9 @@ def test_service_refuses_to_start_without_required_env(monkeypatch, missing):
     assert not any(v in str(exc.value) for v in FAKE_ENV.values())  # names only, never values
 
 
-@pytest.mark.parametrize("missing", ["LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL_CHEAP", "LLM_MODEL_EXPENSIVE"])
+@pytest.mark.parametrize(
+    "missing", ["LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL_CHEAP", "LLM_MODEL_EXPENSIVE"]
+)
 def test_llm_env_is_optional_at_startup(monkeypatch, missing):
     monkeypatch.delenv(missing)  # only a dev/test default now
     with TestClient(main.app) as c:

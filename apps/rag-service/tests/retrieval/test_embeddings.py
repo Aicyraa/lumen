@@ -10,5 +10,7 @@ def test_embed_gives_normalized_384_vectors():
 
 
 def test_similar_text_scores_higher_than_unrelated():
-    a, b, c = embed(["how do I reset my password", "password reset steps", "bananas grow in warm climates"])
+    a, b, c = embed(
+        ["how do I reset my password", "password reset steps", "bananas grow in warm climates"]
+    )
     assert a @ b > a @ c

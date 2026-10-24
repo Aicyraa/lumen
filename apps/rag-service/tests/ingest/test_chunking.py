@@ -29,5 +29,6 @@ def test_every_word_is_covered_and_last_chunk_is_not_tiny_repeat():
 
 def test_overlap_must_be_smaller_than_size():
     import pytest
+
     with pytest.raises(ValueError):
         chunk("a b c", size_words=10, overlap_words=10)

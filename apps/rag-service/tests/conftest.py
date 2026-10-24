@@ -73,9 +73,18 @@ class FakeCaller:
     def __call__(self, m, tier, system, user):
         from app.llm.client import Attempt
 
-        self.calls.append({"tier": tier, "model_id": m["model_id"], "model": m, "system": system, "user": user})
+        self.calls.append(
+            {"tier": tier, "model_id": m["model_id"], "model": m, "system": system, "user": user}
+        )
         outcome = self.outcomes.get(m["model_id"], "ok")
-        a = Attempt(m["provider"], m["model_id"], m.get("tenant_model_id"), tier, outcome=outcome, latency_ms=5)
+        a = Attempt(
+            m["provider"],
+            m["model_id"],
+            m.get("tenant_model_id"),
+            tier,
+            outcome=outcome,
+            latency_ms=5,
+        )
         if outcome == "ok":
             a.text = "Fake answer [1]"
             a.tokens_in, a.tokens_out = self.tokens.get(m["model_id"], (100, 10))

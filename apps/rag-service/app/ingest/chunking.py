@@ -6,7 +6,9 @@ def chunk(text: str, size_words: int = 120, overlap_words: int = 30) -> list[str
     step = size_words - overlap_words
     chunks = []
     for start in range(0, len(words), step):
-        chunks.append(" ".join(words[start:start + size_words]))
-        if start + size_words >= len(words):  # this chunk reached the end; no tiny repeat chunk after it
+        chunks.append(" ".join(words[start : start + size_words]))
+        if start + size_words >= len(
+            words
+        ):  # this chunk reached the end; no tiny repeat chunk after it
             break
     return chunks

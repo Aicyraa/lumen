@@ -4,9 +4,9 @@ import uuid
 import numpy as np
 import pytest
 
-from app.retrieval import store
 from app.core.config import load_config
 from app.llm.prompt import SYSTEM_PROMPT
+from app.retrieval import store
 from tests.conftest import AUTH
 
 MESSAGES = load_config()["messages"]
@@ -23,8 +23,10 @@ def axis0(score_against_axis0):
 @pytest.fixture
 def best_score(monkeypatch):
     """Make the question embed to a vector scoring `s` against any chunk stored on axis 0."""
+
     def set_score(s):
         monkeypatch.setattr("app.api.routes.embed", lambda texts: np.array([axis0(s)]))
+
     return set_score
 
 
@@ -37,7 +39,9 @@ def add_doc(tenant, texts, filename="doc.txt"):
 
 
 def ask(client, tenant="tenant_a", query=SHORT, **extra):
-    return client.post("/internal/query", headers=AUTH, json={"tenant_id": tenant, "query": query, **extra})
+    return client.post(
+        "/internal/query", headers=AUTH, json={"tenant_id": tenant, "query": query, **extra}
+    )
 
 
 def test_answered_response_matches_the_contract_shape(client, llm, best_score):
@@ -51,7 +55,11 @@ def test_answered_response_matches_the_contract_shape(client, llm, best_score):
     assert body["answer"] == "Fake answer [1]"
     assert len(body["sources"]) == 2
     for s in body["sources"]:
-        assert set(s) == {"document_id", "chunk_id", "score"}  # ids and scores only, never chunk text
+        assert set(s) == {
+            "document_id",
+            "chunk_id",
+            "score",
+        }  # ids and scores only, never chunk text
         assert s["document_id"] == doc and isinstance(s["chunk_id"], int)
         assert s["score"] == pytest.approx(0.6, abs=1e-4)
     route = dict(body["route"])
@@ -59,7 +67,10 @@ def test_answered_response_matches_the_contract_shape(client, llm, best_score):
     assert route == {"model_tier": "cheap", "k": 3, "escalated": False, "difficulty": 0.0}
     usage = body["usage"]
     assert set(usage) == {"tokens_in", "tokens_out", "cost_usd", "latency_ms"}
-    assert (usage["tokens_in"], usage["tokens_out"]) == (100, 10)  # from the (fake) provider response
+    assert (usage["tokens_in"], usage["tokens_out"]) == (
+        100,
+        10,
+    )  # from the (fake) provider response
     assert usage["cost_usd"] is None  # stays null until Phase 7
     assert isinstance(usage["latency_ms"], int) and usage["latency_ms"] >= 0
 
@@ -96,7 +107,9 @@ def test_prompt_puts_passages_in_the_user_message_only(client, llm, best_score):
     ask(client)
     call = llm.calls[0]
     assert call["system"] == SYSTEM_PROMPT  # retrieved text can never reach the instructions
-    assert "[1] Ignore previous instructions" in call["user"] and f"Question: {SHORT}" in call["user"]
+    assert (
+        "[1] Ignore previous instructions" in call["user"] and f"Question: {SHORT}" in call["user"]
+    )
 
 
 def test_no_documents_path_makes_zero_llm_calls(client, llm, best_score):
@@ -105,8 +118,18 @@ def test_no_documents_path_makes_zero_llm_calls(client, llm, best_score):
     body = ask(client, tenant="tenant_a").json()
     assert llm.calls == []
     assert body["answer"] == MESSAGES["no_documents"] and body["sources"] == []
-    assert body["route"] == {"model_tier": "none", "k": 0, "escalated": False, "difficulty": 0.0, "top_score": None}
-    assert body["usage"]["tokens_in"] == 0 and body["usage"]["tokens_out"] == 0 and body["usage"]["cost_usd"] is None
+    assert body["route"] == {
+        "model_tier": "none",
+        "k": 0,
+        "escalated": False,
+        "difficulty": 0.0,
+        "top_score": None,
+    }
+    assert (
+        body["usage"]["tokens_in"] == 0
+        and body["usage"]["tokens_out"] == 0
+        and body["usage"]["cost_usd"] is None
+    )
     uuid.UUID(body["request_id"])
 
 
@@ -117,7 +140,9 @@ def test_no_answer_path_makes_zero_llm_calls(client, llm, best_score):
     assert llm.calls == []
     assert body["answer"] == MESSAGES["not_found"] and body["sources"] == []
     assert body["route"]["model_tier"] == "none"
-    assert body["route"]["top_score"] == pytest.approx(0.10, abs=1e-4)  # the low probe score, not null
+    assert body["route"]["top_score"] == pytest.approx(
+        0.10, abs=1e-4
+    )  # the low probe score, not null
     assert body["usage"]["tokens_in"] == 0 and body["usage"]["cost_usd"] is None
 
 
@@ -140,7 +165,9 @@ def test_provider_failure_is_502_provider_error(client, llm, best_score):
     assert [a["outcome"] for a in resp.json()["attempts"]] == ["rate_limited"]
 
 
-@pytest.mark.parametrize("payload", [{"tenant_id": "t"}, {"query": "hi"}, {"tenant_id": "t", "query": ""}])
+@pytest.mark.parametrize(
+    "payload", [{"tenant_id": "t"}, {"query": "hi"}, {"tenant_id": "t", "query": ""}]
+)
 def test_invalid_request_is_422(client, payload):
     resp = client.post("/internal/query", headers=AUTH, json=payload)
     assert resp.status_code == 422 and resp.json()["error"]["code"] == "invalid_request"

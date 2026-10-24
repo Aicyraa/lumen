@@ -2,6 +2,7 @@ import pytest
 
 from app.ingest.extract import extract_text
 
+
 def make_pdf(text: str) -> bytes:
     """Smallest valid one-page PDF, with a real xref table so pypdf accepts it."""
     stream = f"BT /F1 12 Tf 20 100 Td ({text}) Tj ET".encode()

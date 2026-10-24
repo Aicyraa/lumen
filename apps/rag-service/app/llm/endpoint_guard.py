@@ -25,7 +25,11 @@ def _is_public(ip) -> bool:
     if ip.version == 6 and ip.ipv4_mapped:  # ::ffff:10.0.0.1 is the IPv4 address
         ip = ip.ipv4_mapped
     # is_global is false for private, loopback, link-local (incl. 169.254.169.254), CGNAT and reserved ranges
-    return ip.is_global and not ip.is_multicast and not (ip.version == 6 and any(ip in n for n in BLOCKED_V6))
+    return (
+        ip.is_global
+        and not ip.is_multicast
+        and not (ip.version == 6 and any(ip in n for n in BLOCKED_V6))
+    )
 
 
 def assert_endpoint(url: str, production: bool, resolve=None) -> None:
@@ -48,7 +52,9 @@ def assert_endpoint(url: str, production: bool, resolve=None) -> None:
         addresses = [host]  # a literal IP needs no DNS
     except ValueError:
         try:
-            addresses = (resolve or _resolve)(host)  # looked up at call time so tests can replace _resolve
+            addresses = (resolve or _resolve)(
+                host
+            )  # looked up at call time so tests can replace _resolve
         except OSError:
             raise EndpointError("The endpoint host could not be resolved.") from None
     if not addresses:
@@ -58,4 +64,6 @@ def assert_endpoint(url: str, production: bool, resolve=None) -> None:
         if local_dev and _is_loopback(ip):
             continue
         if not _is_public(ip):
-            raise EndpointError("The endpoint points to a private or internal address, which is not allowed.")
+            raise EndpointError(
+                "The endpoint points to a private or internal address, which is not allowed."
+            )

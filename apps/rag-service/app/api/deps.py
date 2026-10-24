@@ -16,4 +16,6 @@ def require_secret(request: Request, x_internal_secret: Annotated[str | None, He
 
 
 def get_caller():
-    return lambda m, tier, system, user: call_model(m, tier, system, user, load_config()["llm"], is_production())
+    return lambda m, tier, system, user: call_model(
+        m, tier, system, user, load_config()["llm"], is_production()
+    )

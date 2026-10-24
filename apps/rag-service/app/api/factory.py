@@ -12,7 +12,9 @@ from app.core.errors import ApiError, error_response
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.settings = SimpleNamespace(**load_settings())  # refuse to start when anything is missing
+    app.state.settings = SimpleNamespace(
+        **load_settings()
+    )  # refuse to start when anything is missing
     yield
 
 
@@ -29,7 +31,9 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
     # field names and messages only: the submitted values may be document text
     first = exc.errors()[0]
     where = ".".join(str(p) for p in first["loc"] if p not in ("body", "query", "path"))
-    return error_response(422, "invalid_request", f"{where}: {first['msg']}" if where else first["msg"])
+    return error_response(
+        422, "invalid_request", f"{where}: {first['msg']}" if where else first["msg"]
+    )
 
 
 def create_app() -> FastAPI:

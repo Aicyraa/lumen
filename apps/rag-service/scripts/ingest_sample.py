@@ -1,4 +1,5 @@
 """Usage: python scripts/ingest_sample.py <tenant_id> <file>  (.txt, .md or .pdf)"""
+
 import sys
 from pathlib import Path
 
@@ -9,8 +10,8 @@ from app.core.env import load_env
 load_env()  # DATABASE_URL from the repo-root .env
 
 from app.ingest.chunking import chunk
-from app.retrieval.embeddings import embed
 from app.ingest.extract import extract_text
+from app.retrieval.embeddings import embed
 from app.retrieval.store import add_chunks, add_document
 
 

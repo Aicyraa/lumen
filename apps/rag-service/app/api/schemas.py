@@ -19,7 +19,11 @@ class TenantModels(BaseModel):
 
 class QueryRequest(BaseModel):
     tenant_id: str = Field(min_length=1)
-    query: str = Field(min_length=1)  # the upper length limit is enforced by Express (400/422 there)
+    query: str = Field(
+        min_length=1
+    )  # the upper length limit is enforced by Express (400/422 there)
     session_id: str | None = None  # accepted for the contract; Express stores it in request_logs
-    models: TenantModels | None = None  # absent: use the dev/test default from the LLM_* environment
+    models: TenantModels | None = (
+        None  # absent: use the dev/test default from the LLM_* environment
+    )
     include_snippets: bool = False  # Try it only: adds filename and snippet to each source

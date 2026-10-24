@@ -1,4 +1,5 @@
 """Usage: python scripts/ask.py <tenant_id> "<question>"  (prints the top 3 chunks, no LLM)"""
+
 import sys
 from pathlib import Path
 
@@ -13,7 +14,9 @@ from app.retrieval.store import search
 
 
 def main(tenant_id: str, question: str) -> None:
-    for rank, (chunk_id, _doc, content, score) in enumerate(search(tenant_id, embed([question])[0], 3), 1):
+    for rank, (chunk_id, _doc, content, score) in enumerate(
+        search(tenant_id, embed([question])[0], 3), 1
+    ):
         print(f"#{rank} score={score:.3f} chunk={chunk_id}\n    {content[:200]}...\n")
 
 
