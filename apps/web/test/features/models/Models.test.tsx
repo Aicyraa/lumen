@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Models } from "../../../src/features/models/Models";
@@ -453,7 +453,7 @@ describe("Models", () => {
       const btn = within(screen.getByTestId("model-a")).getByRole("button", {
         name: "About estimated provider cost",
       });
-      btn.focus();
+      act(() => btn.focus());
       expect(within(screen.getByTestId("model-a")).getByRole("tooltip")).toHaveTextContent(
         /prices you enter for each model/i,
       );

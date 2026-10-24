@@ -12,6 +12,7 @@ import type {
   TenantModel,
 } from "../../shared/lib/types";
 import { Dialog } from "../../shared/ui/Dialog";
+import { InfoTip } from "../../shared/ui/InfoTip";
 import { StatusMessage } from "../../shared/ui/StatusMessage";
 import { ErrorText, PageHead, Segmented, StatusDot } from "../../shared/ui/ui";
 import { useOrgId } from "../auth/session";
@@ -42,6 +43,7 @@ const GROUPS: {
   tier: ModelTier;
   title: string;
   note: string;
+  tip: string;
   empty: string;
   tone: "ready" | "cheap" | "processing";
 }[] = [
@@ -50,6 +52,7 @@ const GROUPS: {
     title: "Cheap",
     tone: "ready",
     note: "Easy questions. Tried top to bottom.",
+    tip: "Easy questions go here first. The models in this tier are tried top to bottom.",
     empty: "No cheap model. Easy questions will use the expensive tier.",
   },
   {
@@ -57,6 +60,7 @@ const GROUPS: {
     title: "Expensive",
     tone: "cheap",
     note: "Hard questions and escalations. Tried top to bottom.",
+    tip: "Hard questions and escalations from the cheap tier go here. The models are tried top to bottom.",
     empty: "No expensive model. Hard questions will use the cheap tier.",
   },
   {
@@ -64,6 +68,7 @@ const GROUPS: {
     title: "Fallback",
     tone: "processing",
     note: "Used when every model in a tier fails or times out.",
+    tip: "Answers when every model in a tier fails or times out.",
     empty: "No fallback. If every model in a tier fails, the request returns an error.",
   },
 ];
@@ -125,12 +130,6 @@ export function Models() {
           </button>
         </div>
       </PageHead>
-      <p className="body muted-2 maxw">
-        Connect your own provider keys. Easy questions go to the cheap tier and hard ones to the
-        expensive tier. Each tier tries its models top to bottom; if all of them fail, the fallback
-        answers. Cost figures are your estimated provider cost, from the prices you enter for each
-        model.
-      </p>
       {usage.data && (
         <div className="mono small muted-3">
           ESTIMATED PROVIDER COST, {range.toUpperCase()}: {fmtCost(usage.data.total_cost_usd)}
@@ -177,6 +176,7 @@ export function Models() {
                     <span className="mono small muted-4">
                       {rows.length} {rows.length === 1 ? "MODEL" : "MODELS"}
                     </span>
+                    <InfoTip label={`About the ${g.tier} tier`}>{g.tip}</InfoTip>
                   </div>
                   <div className="small muted-3">{g.note}</div>
                 </div>
