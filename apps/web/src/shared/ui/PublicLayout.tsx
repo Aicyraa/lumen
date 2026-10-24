@@ -4,10 +4,10 @@ import { readSession } from "../../features/auth/sessionShape";
 import { authClient } from "../lib/auth-client";
 import { Logo } from "./Logo";
 
-export function PublicLayout({ children }: { children: ReactNode }) {
+export function PublicLayout({ children, fill = false }: { children: ReactNode; fill?: boolean }) {
   const signedIn = !!readSession(authClient.useSession()).user;
   return (
-    <div className="public">
+    <div className={`public${fill ? " public-fill" : ""}`}>
       <header className="pub-nav">
         <nav aria-label="Main" className="pub-nav-left">
           <Link to="/#how">Product</Link>
