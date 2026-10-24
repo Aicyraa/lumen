@@ -11,6 +11,8 @@ import type {
   Range,
   TenantModel,
 } from "../../shared/lib/types";
+import { Dialog } from "../../shared/ui/Dialog";
+import { StatusMessage } from "../../shared/ui/StatusMessage";
 import { ErrorText, PageHead, Segmented, StatusDot } from "../../shared/ui/ui";
 import { useOrgId } from "../auth/session";
 
@@ -116,8 +118,8 @@ export function Models() {
           <button
             type="button"
             className="btn btn-primary"
-            aria-expanded={open}
-            onClick={() => setOpen(!open)}
+            aria-haspopup="dialog"
+            onClick={() => setOpen(true)}
           >
             Add model
           </button>
@@ -135,50 +137,68 @@ export function Models() {
         </div>
       )}
       {open && (
-        <AddModel
-          onDone={() => {
-            setOpen(false);
-            refresh();
-          }}
-          onCancel={() => setOpen(false)}
-        />
+        <Dialog title="Add model" label="NEW MODEL" onClose={() => setOpen(false)}>
+          <AddModel
+            onDone={() => {
+              setOpen(false);
+              refresh();
+            }}
+            onCancel={() => setOpen(false)}
+          />
+        </Dialog>
       )}
       <ErrorText>{rowError}</ErrorText>
-      {models.isError && <ErrorText>{(models.error as Error).message}</ErrorText>}
-      <div className="stack-lg">
-        {GROUPS.map((g) => {
-          const rows = models.data?.[g.tier] ?? [];
-          return (
-            <section key={g.tier} className="group" aria-labelledby={`g-${g.tier}`}>
-              <div className="group-head">
-                <div className="row-gap-sm">
-                  <span className={`dot status-${g.tone}`} aria-hidden="true" />
-                  <h2 id={`g-${g.tier}`} className="group-title">
-                    {g.title}
-                  </h2>
-                  <span className="mono small muted-4">
-                    {rows.length} {rows.length === 1 ? "MODEL" : "MODELS"}
-                  </span>
+      {models.isPending && <StatusMessage state="loading">Loading models…</StatusMessage>}
+      {models.isError && (
+        <StatusMessage state="error" onRetry={() => models.refetch()}>
+          Could not load models. {(models.error as Error).message}
+        </StatusMessage>
+      )}
+      {models.isSuccess && (
+        <div className="models-grid">
+          {GROUPS.map((g) => {
+            const rows = models.data?.[g.tier] ?? [];
+            return (
+              <section key={g.tier} className="card tier-card" aria-labelledby={`g-${g.tier}`}>
+                <div className="group-head">
+                  <div className="row-gap-sm">
+                    <span className={`dot status-${g.tone}`} aria-hidden="true" />
+                    <h2 id={`g-${g.tier}`} className="group-title">
+                      {g.title}
+                    </h2>
+                    <span className="mono small muted-4">
+                      {rows.length} {rows.length === 1 ? "MODEL" : "MODELS"}
+                    </span>
+                  </div>
+                  <div className="small muted-3">{g.note}</div>
                 </div>
-                <div className="small muted-3">{g.note}</div>
-              </div>
-              {rows.map((m, i) => (
-                <ModelRow
-                  key={m.id}
-                  m={m}
-                  u={byId.get(m.id)}
-                  rank={i === 0 ? "PRIMARY" : `BACKUP ${i}`}
-                  first={i === 0}
-                  last={i === rows.length - 1}
-                  onMove={(direction) => move.mutate({ id: m.id, direction })}
-                  onRemove={() => remove.mutate(m.id)}
-                />
-              ))}
-              {models.isSuccess && !rows.length && <div className="empty small">{g.empty}</div>}
-            </section>
-          );
-        })}
-      </div>
+                {rows.length > 0 && (
+                  <div className="model-row model-head" role="row">
+                    {["MODEL", "ENDPOINT", "STATUS", "USAGE", "LIMITS", "COST", ""].map((h) => (
+                      <span key={h || "actions"} role="columnheader">
+                        {h}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {rows.map((m, i) => (
+                  <ModelRow
+                    key={m.id}
+                    m={m}
+                    u={byId.get(m.id)}
+                    rank={i === 0 ? "PRIMARY" : `BACKUP ${i}`}
+                    first={i === 0}
+                    last={i === rows.length - 1}
+                    onMove={(direction) => move.mutate({ id: m.id, direction })}
+                    onRemove={() => remove.mutate(m.id)}
+                  />
+                ))}
+                {!rows.length && <div className="card-empty">{g.empty}</div>}
+              </section>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -210,46 +230,53 @@ function ModelRow({
 }) {
   const fails = u ? u.failures.error + u.failures.timeout + u.failures.rate_limited : 0;
   return (
-    <div className="model-row" data-testid={`model-${m.id}`}>
-      <span className={`mono small rank${first ? " lime" : " muted-3"}`}>{rank}</span>
-      <div className="model-main">
-        <div className="row-gap-sm">
-          <span className="mono">{m.model_id}</span>
-          <span className="small muted-3">{PROVIDERS.find((p) => p[0] === m.provider)?.[1]}</span>
-        </div>
-        <div className="mono small muted-3 ellipsis">
-          {m.endpoint_url} · {m.key_hint}
-        </div>
-        <div className="small muted-3">
-          {u ? (
-            <>
-              {fmtInt(u.requests)} {u.requests === 1 ? "request" : "requests"} ·{" "}
-              {fmtInt(u.tokens_in)} in / {fmtInt(u.tokens_out)} out tokens · {fails} failures
-              {fails
-                ? ` (${u.failures.error} error, ${u.failures.timeout} timeout, ${u.failures.rate_limited} rate limited)`
-                : ""}
-              {m.tier === "fallback"
-                ? ` · ${u.fallback_uses} as fallback`
-                : ` · ${u.backup_uses} as backup`}{" "}
-              · median {fmtMs(u.median_latency_ms)}
-            </>
-          ) : (
-            "usage loading…"
-          )}
-        </div>
-        <div className="small muted-3">{limitsText(u)}</div>
-        <div className="small muted-3">
+    <div className="model-row" role="row" data-testid={`model-${m.id}`}>
+      <div className="model-cell" role="cell">
+        <span className={`mono small rank${first ? " lime" : " muted-3"}`}>{rank}</span>
+        <span className="mono ellipsis">{m.model_id}</span>
+        <span className="small muted-3">{PROVIDERS.find((p) => p[0] === m.provider)?.[1]}</span>
+      </div>
+      <div className="model-cell" role="cell">
+        <span className="mono small ellipsis">{m.endpoint_url}</span>
+        <span className="mono small muted-3">{m.key_hint}</span>
+      </div>
+      <div className="model-cell" role="cell">
+        <StatusDot tone={m.status === "connected" ? "ready" : "failed"}>
+          {m.status === "connected" ? "Connected" : "Failing"}
+        </StatusDot>
+      </div>
+      <div className="model-cell small muted-3" role="cell">
+        {u ? (
+          <>
+            {fmtInt(u.requests)} {u.requests === 1 ? "request" : "requests"} · {fmtInt(u.tokens_in)}{" "}
+            in / {fmtInt(u.tokens_out)} out tokens · {fails} failures
+            {fails
+              ? ` (${u.failures.error} error, ${u.failures.timeout} timeout, ${u.failures.rate_limited} rate limited)`
+              : ""}
+            {m.tier === "fallback"
+              ? ` · ${u.fallback_uses} as fallback`
+              : ` · ${u.backup_uses} as backup`}{" "}
+            · median {fmtMs(u.median_latency_ms)}
+          </>
+        ) : (
+          "usage loading…"
+        )}
+      </div>
+      <div className="model-cell small muted-3" role="cell">
+        {limitsText(u)}
+      </div>
+      <div className="model-cell small muted-3" role="cell">
+        <span>
+          estimated provider cost <span className="mono text">{fmtCost(u?.cost_usd)}</span>
+        </span>
+        <span>
           price per 1M tokens:{" "}
           {m.input_price_per_1m == null && m.output_price_per_1m == null
             ? "none set"
-            : `in ${m.input_price_per_1m ?? "—"}, out ${m.output_price_per_1m ?? "—"}`}{" "}
-          · estimated provider cost <span className="mono text">{fmtCost(u?.cost_usd)}</span>
-        </div>
+            : `in ${m.input_price_per_1m ?? "—"}, out ${m.output_price_per_1m ?? "—"}`}
+        </span>
       </div>
-      <StatusDot tone={m.status === "connected" ? "ready" : "failed"}>
-        {m.status === "connected" ? "Connected" : "Failing"}
-      </StatusDot>
-      <div className="row-gap-sm">
+      <div className="model-cell model-actions" role="cell">
         <button
           type="button"
           className="circle-btn"
@@ -268,15 +295,15 @@ function ModelRow({
         >
           ↓
         </button>
+        <button
+          type="button"
+          className="link-btn danger-hover"
+          aria-label={`Remove ${m.model_id}`}
+          onClick={onRemove}
+        >
+          Remove
+        </button>
       </div>
-      <button
-        type="button"
-        className="link-btn danger-hover"
-        aria-label={`Remove ${m.model_id}`}
-        onClick={onRemove}
-      >
-        Remove
-      </button>
     </div>
   );
 }
@@ -323,8 +350,7 @@ function AddModel({ onDone, onCancel }: { onDone: () => void; onCancel: () => vo
   }
 
   return (
-    <form className="card form-card" onSubmit={submit} aria-label="Add model" autoComplete="off">
-      <div className="label">ADD MODEL</div>
+    <form className="stack-sm" onSubmit={submit} autoComplete="off">
       <div className="field">
         <span>Provider</span>
         <Segmented
@@ -338,7 +364,7 @@ function AddModel({ onDone, onCancel }: { onDone: () => void; onCancel: () => vo
           pills
         />
       </div>
-      <div className="grid-3">
+      <div className="grid-2">
         <label className="field">
           <span>Model ID</span>
           <input value={modelId} onChange={(e) => setModelId(e.target.value)} className="mono" />
@@ -359,7 +385,7 @@ function AddModel({ onDone, onCancel }: { onDone: () => void; onCancel: () => vo
           />
         </label>
       </div>
-      <div className="grid-3">
+      <div className="grid-2">
         <label className="field">
           <span>Input price per 1M tokens (optional)</span>
           <input
