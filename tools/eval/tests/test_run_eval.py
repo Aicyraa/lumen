@@ -207,3 +207,15 @@ def test_a_failing_service_counts_as_wrong_and_is_reported(env, server, capsys):
     assert got["always_cheap"]["accuracy"] == "0.0" and got["always_cheap"]["median_latency_ms"] == ""
     assert "provider_error" in read(tmp / "verdicts.csv")[0]["reason"]
     assert "3 system errors" in capsys.readouterr().out
+
+
+def test_resume_retries_pairs_that_failed(env, server):
+    q, envp, rag, judge, tmp = env
+    bad = server(lambda *a: (502, {}, {"error": {"code": "provider_error", "message": "m"}}))
+    good_url = rag.url
+    envp.write_text(envp.read_text().replace(good_url, bad.url))
+    main(args(env, "--limit", "1"))
+    envp.write_text(envp.read_text().replace(bad.url, good_url))
+    main(args(env, "--limit", "1", "--resume"))
+    assert len(rag.calls) == 3  # the three failed pairs were run again
+    assert {r["accuracy"] for r in read(tmp / "results.csv") if r["setup"] != "always_expensive"} == {"1.0"}
