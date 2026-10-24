@@ -45,7 +45,7 @@ export function Analytics() {
   const note = range === "7d" ? "Last 7 days" : "Last 30 days";
 
   return (
-    <div className="stack an">
+    <div className={`stack an${seen ? " in-view" : ""}`} ref={ref}>
       <PageHead title="Analytics">
         <Segmented label="Range" options={RANGES} value={range} onChange={setRange} />
       </PageHead>
@@ -62,7 +62,7 @@ export function Analytics() {
         </StatusMessage>
       )}
       {s && (
-        <div className={`an-body${seen ? " in-view" : ""}`} ref={ref}>
+        <div className="an-body">
           <div className="an-stats">
             <Stat label="REQUESTS" value={<CountUp value={s.total_requests} />} note={note} />
             <Stat

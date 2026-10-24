@@ -373,7 +373,7 @@ function AddModel({ onDone, onCancel }: { onDone: () => void; onCancel: () => vo
           <span>Endpoint URL</span>
           <input value={endpoint} onChange={(e) => setEndpoint(e.target.value)} className="mono" />
         </label>
-        <label className="field">
+        <label className="field span-2">
           <span>API key</span>
           <input
             type="password"
@@ -406,7 +406,7 @@ function AddModel({ onDone, onCancel }: { onDone: () => void; onCancel: () => vo
             placeholder="e.g. 0.40"
           />
         </label>
-        <p className="small muted-3 self-end">
+        <p className="small muted-3 span-2">
           Used only to estimate your provider cost. Leave empty to show "no price set".
         </p>
       </div>
