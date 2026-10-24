@@ -125,24 +125,23 @@ export function DocTabs({
       <div className="doc-page">
         <div className="doc-toc">
           <div className="label-sm">SECTIONS</div>
-          <ul role="tablist" aria-label="Docs sections" aria-orientation="vertical">
+          <div role="tablist" aria-label="Docs sections" aria-orientation="vertical">
             {toc.map((t, i) => (
-              <li key={t.id} role="presentation">
-                <button
-                  type="button"
-                  role="tab"
-                  id={`tab-${t.id}`}
-                  aria-selected={active === t.id}
-                  aria-controls={`panel-${t.id}`}
-                  tabIndex={active === t.id ? 0 : -1}
-                  onClick={() => select(t.id)}
-                  onKeyDown={(e) => onKeyDown(e, i)}
-                >
-                  {t.label}
-                </button>
-              </li>
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                id={`tab-${t.id}`}
+                aria-selected={active === t.id}
+                aria-controls={`panel-${t.id}`}
+                tabIndex={active === t.id ? 0 : -1}
+                onClick={() => select(t.id)}
+                onKeyDown={(e) => onKeyDown(e, i)}
+              >
+                {t.label}
+              </button>
             ))}
-          </ul>
+          </div>
         </div>
         <main className="doc-content">
           <SectionLabel>{label}</SectionLabel>

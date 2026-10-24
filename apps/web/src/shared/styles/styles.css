@@ -1522,7 +1522,8 @@ html.snap-home {
   flex-direction: column;
   gap: 12px;
 }
-.doc-toc ul {
+.doc-toc ul,
+.doc-toc [role="tablist"] {
   display: flex;
   flex-direction: column;
   border-left: 1px solid var(--line);
@@ -1763,7 +1764,8 @@ html.snap-home {
     margin: 0 calc(var(--pad) * -1);
     padding-inline: var(--pad);
   }
-  .doc-toc ul {
+  .doc-toc ul,
+  .doc-toc [role="tablist"] {
     flex-direction: row;
     overflow-x: auto;
     border-left: 0;
