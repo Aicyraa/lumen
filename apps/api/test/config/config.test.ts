@@ -92,4 +92,18 @@ describe("loadConfig", () => {
       c.verificationResendPerEmailWindowSeconds, c.verificationResendPerEmailMax]).toEqual([5000, 100, 30, 3, 15000, 3600, 5]);
     expect(loadConfig({ ...good, DB_CONNECTION_TIMEOUT_MS: "900", VERIFICATION_RESEND_PER_EMAIL_MAX: "2" })).toMatchObject({ dbConnectionTimeoutMs: 900, verificationResendPerEmailMax: 2 });
   });
+
+  describe("TRUST_PROXY", () => {
+    it("is off unless set", () => {
+      expect(loadConfig(good).trustProxy).toBe(false);
+      for (const v of ["", "false", "0"]) expect(loadConfig({ ...good, TRUST_PROXY: v }).trustProxy).toBe(false);
+    });
+    it("takes a number of proxy hops or a list of trusted addresses", () => {
+      expect(loadConfig({ ...good, TRUST_PROXY: "1" }).trustProxy).toBe(1);
+      expect(loadConfig({ ...good, TRUST_PROXY: "loopback, 10.0.0.0/8" }).trustProxy).toBe("loopback, 10.0.0.0/8");
+    });
+    it("refuses `true` (it would trust any client's X-Forwarded-For), naming the variable", () => {
+      expect(() => loadConfig({ ...good, TRUST_PROXY: "true" })).toThrow("TRUST_PROXY");
+    });
+  });
 });
