@@ -5,6 +5,7 @@ import { apiKey } from "@better-auth/api-key";
 import type { Config } from "../config/config.js";
 import type { Pool } from "../db/pool.js";
 import type { Logger } from "pino";
+import { createWindowCounter } from "../lib/windowCounter.js";
 import { KeyedLock } from "../lib/keyedLock.js";
 import { ownedProjectCount } from "../services/projects.js";
 import type { Mailer } from "../services/mailer.js";
@@ -29,6 +30,9 @@ export function createAuth({ pool, config, mailer, log, social }: { pool: Pool; 
   }
 
   // One project creation per user at a time, from the cap check to the insert, for every way of creating one. No DB connection is held while waiting.
+  // At most N verification emails per address per window, whichever route asks (sign-up, sign-in, resend) and from however many clients.
+  // The mail is dropped silently, so responses are the same for every address and nothing can be enumerated.
+  const perEmail = createWindowCounter({ windowMs: config.verificationResendPerEmailWindowSeconds * 1000, max: config.verificationResendPerEmailMax });
   const createLock = new KeyedLock();
   const held = new Map<string, () => void>();
   const releaseProjectLock = (userId: string) => { held.get(userId)?.(); held.delete(userId); };
@@ -63,6 +67,7 @@ export function createAuth({ pool, config, mailer, log, social }: { pool: Pool; 
       autoSignInAfterVerification: true, // the first click also signs in; a second click only redirects
       expiresIn: config.verificationEmailExpiresSeconds,
       sendVerificationEmail: async ({ user, url }) => {
+        if (!perEmail.allow(user.email.toLowerCase())) return;
         // Whatever callbackURL the client sent, the user lands on the dashboard's /verify-email page (errors add ?error=...).
         const link = new URL(url);
         link.searchParams.set("callbackURL", `${config.dashboardOrigin}/verify-email?status=verified`);

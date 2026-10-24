@@ -57,6 +57,7 @@ const required = z.object({
   MAX_REQUESTS_PER_MONTH: posInt,
   MAX_PROJECTS_PER_USER: posInt,
   MODEL_KEY_ENCRYPTION_SECRET: z.string().regex(/^[0-9a-fA-F]{64}$/), // 32 bytes as hex
+  TRUST_PROXY: z.string().optional().refine((v) => v?.trim().toLowerCase() !== "true"), // `true` would trust any client's X-Forwarded-For
 });
 
 export interface OAuthCredentials {
@@ -81,7 +82,15 @@ export type Config = Tunables & {
   devRoutes: boolean;
   modelKeySecret: string;
   production: boolean;
+  trustProxy: boolean | number | string; // Express `trust proxy`: false (default), a hop count, or trusted addresses
 };
+
+// TRUST_PROXY: unset, "", "false" or "0" = off; digits = that many proxy hops; anything else = a list of trusted addresses.
+function parseTrustProxy(v: string | undefined): boolean | number | string {
+  const t = (v ?? "").trim();
+  if (!t || t === "false" || t === "0") return false;
+  return /^\d+$/.test(t) ? Number(t) : t;
+}
 
 // Throws naming the missing variables (never their values) so the server refuses to start.
 export function loadConfig(env: NodeJS.ProcessEnv = process.env, overrides: Partial<Config> = {}): Config {
@@ -117,6 +126,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, overrides: Part
     github: { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET },
     modelKeySecret: e.MODEL_KEY_ENCRYPTION_SECRET,
     production,
+    trustProxy: parseTrustProxy(e.TRUST_PROXY),
     devRoutes: env.NODE_ENV === "development", // dev-only routes are an explicit opt-in
     ...t,
     uploadDir: resolve(new URL("../..", import.meta.url).pathname, t.uploadDir), // relative to apps/api

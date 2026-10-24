@@ -22,6 +22,7 @@ import { errorHandler, notFoundHandler, sendError } from "./lib/errors.js";
 // Everything is injected so tests can pass a test database and a stubbed RAG client.
 export function createApp({ config, pool, auth, rag, log, resolveHost }: Omit<Deps, "pending"> & { auth: Auth }) {
   const app = express();
+  app.set("trust proxy", config.trustProxy); // off unless TRUST_PROXY says how many proxies sit in front
   const pending = new Set<Promise<void>>(); // background ingests still running
   app.locals.idle = () => Promise.allSettled([...pending]);
   app.use(cors({ origin: config.dashboardOrigin, credentials: true }));
