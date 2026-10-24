@@ -15,7 +15,9 @@ describe("Logo", () => {
       const link = screen.getByRole("link", { name: "Lumen home" });
       expect(link).toHaveAttribute("href", "/");
       expect(link).toHaveTextContent("lumen");
-      expect(container.querySelectorAll("svg rect")).toHaveLength(3);
+      // leaf body + folded corner, and two text lines cut out
+      expect(container.querySelectorAll("svg path")).toHaveLength(2);
+      expect(container.querySelectorAll("svg rect")).toHaveLength(2);
       unmount();
     }
   });
@@ -36,6 +38,11 @@ describe("public/favicon.svg", () => {
   it("has no script, handler or external reference", () => {
     expect(file).not.toMatch(/<script|\son\w+=|href=|url\(|<image|<foreignObject/i);
     expect(file.replace('xmlns="http://www.w3.org/2000/svg"', "")).not.toMatch(/https?:/i);
+  });
+  it("is the leaf mark: a folded corner and two text lines", () => {
+    expect(file.match(/<path/g)).toHaveLength(2);
+    expect(file.match(/<rect/g)).toHaveLength(2);
+    expect(file).toMatch(/data-part="fold"/);
   });
   it("has a plain hex fill before the oklch token so older Safari renders it", () => {
     expect(file).toMatch(/<path fill="#[0-9a-f]{6}"[^>]*style="fill:\s*oklch\(0\.88 0\.17 118\)"/i);
