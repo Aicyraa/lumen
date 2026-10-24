@@ -833,6 +833,9 @@ label.btn:focus-within {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
   gap: 40px;
+  width: 100%;
+  max-width: 1120px;
+  margin-inline: auto;
 }
 .try-grid .side {
   padding-top: 96px;
