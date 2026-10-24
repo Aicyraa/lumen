@@ -247,7 +247,7 @@ CREATE INDEX request_logs_tenant_time_idx ON request_logs (tenant_id, created_at
 CREATE TABLE tenant_models (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id         TEXT NOT NULL,
-  tier              TEXT NOT NULL CHECK (tier IN ('cheap', 'expensive', 'fallback')),
+  tier              TEXT NOT NULL CHECK (tier IN ('cheap', 'expensive')),       -- 'fallback' removed 2026-10-24 (migration 010)
   position          INTEGER NOT NULL,         -- 0 = PRIMARY, 1 = BACKUP 1, ...; tried top to bottom
   provider          TEXT NOT NULL CHECK (provider IN ('openai', 'anthropic', 'google', 'openai_compatible')),
   model_id          TEXT NOT NULL,
@@ -272,7 +272,7 @@ CREATE TABLE model_calls (
   tenant_model_id UUID,                       -- NULL for the dev/test default model or a since-deleted model
   provider        TEXT NOT NULL,              -- snapshot, survives deleting the model
   model_id        TEXT NOT NULL,              -- snapshot
-  tier            TEXT NOT NULL CHECK (tier IN ('cheap', 'expensive', 'fallback', 'default')),
+  tier            TEXT NOT NULL CHECK (tier IN ('cheap', 'expensive', 'fallback', 'default')),  -- 'fallback' kept only so old history stays valid; nothing writes it
   outcome         TEXT NOT NULL CHECK (outcome IN ('ok', 'error', 'timeout', 'rate_limited')),
   tokens_in       INTEGER,
   tokens_out      INTEGER,
@@ -336,9 +336,9 @@ All errors use one shape: `{ "error": { "code": "<snake_case>", "message": "<hum
 | `GET /api/dashboard/requests/:id` | One request: query, route, usage, feedback and sources (with `filename` joined from `documents`). Another tenant's id returns `404 not_found` |
 | `GET /api/dashboard/requests/:id` (sources) | Each source carries `filename` and a passage of about 300 characters read live from `chunks` with a tenant-scoped join when the drawer opens. Nothing is stored in `request_logs`. If the document or chunk is gone (deleted or re-ingested), show the filename only, or "deleted document" |
 | `GET /api/dashboard/usage` | `{ documents: { used, max }, requests_per_minute: { used, max }, requests_this_month: { used, max } }`. The `max` values come from `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE` and `MAX_REQUESTS_PER_MONTH`, and `requests_per_minute.used` reads the same counter the rate limiter uses |
-| `GET /api/dashboard/models` | The tenant's models grouped by tier (cheap, expensive, fallback), in order, with provider, model id, endpoint, masked key and status. Never the key itself |
+| `GET /api/dashboard/models` | The tenant's models grouped by tier (cheap, expensive), in order, with provider, model id, endpoint, masked key and status. Never the key itself |
 | `POST /api/dashboard/models` | Add a model `{ provider, model_id, endpoint_url, api_key, tier }`. Tests the connection first ("Test & save"); on failure nothing is saved and the error says why. New models go to the end of the tier |
-| `GET /api/dashboard/models/usage?range=7d` | Per model (all tiers, fallback included): requests, tokens in and out, failures by outcome, how often it served as a backup or fallback, median latency, current status, and the provider-reported limits last seen (`rate_limits`, `rate_limits_seen_at`, or null when the provider reports none). Computed from `model_calls`, always filtered by `tenant_id`. Includes the tenant's estimated provider cost per model and in total (null for unpriced models) |
+| `GET /api/dashboard/models/usage?range=7d` | Per model (both tiers): requests, tokens in and out, failures by outcome, how often it served as a backup (an earlier model in its tier failed), median latency, current status, and the provider-reported limits last seen (`rate_limits`, `rate_limits_seen_at`, or null when the provider reports none). Computed from `model_calls`, always filtered by `tenant_id`. Includes the tenant's estimated provider cost per model and in total (null for unpriced models) |
 | `PATCH /api/dashboard/models/:id` | Move up or down within its tier (`{ direction: "up" \| "down" }`) |
 | `DELETE /api/dashboard/models/:id` | Remove a model and close the gap in the order |
 
@@ -349,7 +349,7 @@ API keys are created, listed and revoked with the API key plugin through the Bet
 | Endpoint | Request | Response |
 | --- | --- | --- |
 | `POST /internal/ingest` | multipart: `tenant_id`, `document_id`, `file` | `200 { chunk_count }`, or `422 { error: "no_text_extracted" }` for a scanned or empty file |
-| `POST /internal/query` | JSON `{ tenant_id, query, session_id?, models? }`. `models` is `{ cheap: [...], expensive: [...], fallback: [...] }`, each item `{ provider, model_id, endpoint_url, api_key }`, decrypted by Express for this request only | the chat response above |
+| `POST /internal/query` | JSON `{ tenant_id, query, session_id?, models? }`. `models` is `{ cheap: [...], expensive: [...] }`, each item `{ provider, model_id, endpoint_url, api_key }`, decrypted by Express for this request only | the chat response above |
 | `DELETE /internal/documents/{document_id}?tenant_id=...` | none | `200 { deleted_chunks }` |
 | `GET /internal/health` | none, no secret needed | `200 { status: "ok" }` |
 
@@ -368,7 +368,7 @@ Ingest is synchronous in Python. Express calls it in the background after answer
 **Tenant models** (from docs/WEBSITE_GUIDE.md, Models tab). Each tenant supplies its own provider keys; Lumen supplies only the embedding model. Express loads the tenant's `tenant_models`, decrypts the keys for this one request and passes them in `models`. Step 5 of the flow then works like this:
 
 - The router picks the tier (cheap or expensive) as before; models inside that tier are tried top to bottom (PRIMARY, then BACKUP 1, 2, ...). A model is skipped when it fails (after the one 429 retry) or times out, and the next one is tried.
-- If every model in the chosen tier fails, the `fallback` group is tried in order. If that also fails, return `502 provider_error`.
+- If every model in the chosen tier fails, return `502 provider_error` (there is no fallback tier: removed by the human on 2026-10-24; the other tier is not tried either, except when the chosen tier has no models at all).
 - If the tenant has no model for the chosen tier, use the other tier's models; if it has none at all, return `422 no_models_configured` with a message telling the user to add a model in the Models tab. The `LLM_*` environment variables are a dev/test default used only when `models` is absent and the service runs outside production.
 - Provider adapters: `openai` and `openai_compatible` use the OpenAI SDK with the stored endpoint; `anthropic` and `google` use their OpenAI-compatible endpoints or native SDKs (check current docs). The response `route` still reports only `model_tier`; do not return which key was used.
 - The global LLM cap in `apps/api/config.json` applies only to calls that use the shared dev/test default key (`LLM_*`), never to a tenant's own keys. The per-tenant limits still apply to every request. A provider 429 on a tenant's key gets one retry, then the next model in the tier, then the fallback group, then `502 provider_error`.
@@ -517,6 +517,8 @@ Report using the format in section 9.
 
 ### Phase 3B: tenant models (backend; added 2026-10-23 from docs/WEBSITE_GUIDE.md)
 
+> Superseded in part (2026-10-24): the fallback group and everything about it below no longer exists. A tenant has two tiers, cheap and expensive; see Phase 4E and section 7.
+
 Order: `api-engineer` first (table, encryption, endpoints), then `rag-engineer` (query accepts `models`, tiers, fallback). The Models tab itself is built in Phase 4.
 
 ```text
@@ -644,6 +646,8 @@ The design and its reasons are in `docs/DATABASE.md` (that page wins over the SQ
 
 ### Phase 4C: UI tweaks (extra phase, after DB; the human's 13 tweaks of 2026-10-24)
 
+> Superseded in part (2026-10-24): the Fallback tier card and the fallback node of the routing diagram are removed (Phase 4E); the demo section is removed from the home page.
+
 Order: api-engineer (account endpoint, small), then web-engineer. Work lands in the R2 structure (`features/`, `shared/`, tests in `test/`).
 
 - Product (home) page: larger content and type scale, more sections that explain the product (what it is and who it is for, how routing works with an animated cheap, expensive and fallback diagram, features grid, use cases, security, quickstart, closing call to action), and no empty areas: fill space with design in the existing palette (SVG illustrations, grid or line patterns, large figures from real facts only, never invented customer numbers). No pricing, savings or retention copy; claims only for what the product does.
@@ -655,6 +659,14 @@ Order: api-engineer (account endpoint, small), then web-engineer. Work lands in 
 - Models: redesign the layout (tier cards for Cheap, Expensive and Fallback with model rows, status, usage and limits aligned in columns) and make Add model a modal dialog (focus trap, Escape, key field write-only as today).
 - Account page: add useful data: name, email and verification, member since, sign-in methods with when each was linked, projects owned versus the allowed maximum, totals across the user's projects (documents, requests this month, API keys, models), and sign out. Data comes from a new `GET /api/dashboard/account` (session only, no active project needed) that returns only the caller's own data: `{ user: { name, email, email_verified, image, created_at }, providers: [{ provider, linked_at }], projects: { owned, max }, totals: { documents, requests_this_month, api_keys, models } }`.
 - Logo: recreate the supplied mark (`/tmp/claude-1000/-home-jee-Desktop-Code-Projects-lumen/14037824-13f9-4a53-932e-885450f2007b/images/12.png`: a lime rounded document shape with its lower-left corner heavily rounded and three dark horizontal bars of different lengths, shown on dark, on light and as a favicon) as a hand-written SVG that stays crisp at any size, with a light and a dark variant, used for the in-app logo, the sign-in page and the favicon (`favicon.svg`, plus a PNG fallback and an apple-touch icon rendered from the SVG).
+
+### Phase 4E: third round of UI tweaks and removal of the fallback model (2026-10-24)
+
+Order: api-engineer (tier removal, migration 010), rag-engineer (service), then web-engineer. Branch `phase-4e-ui-and-fallback`.
+
+**Logic.** The fallback model/tier is removed from the product. A tenant has two tiers, cheap and expensive; models inside a tier are tried top to bottom (PRIMARY, BACKUP 1, 2, ...). If every model of the chosen tier fails the request returns `502 provider_error`; if the chosen tier has no models, the other tier's models are used. Migration `010_remove_fallback_tier.sql` deletes existing fallback rows (their encrypted keys go with them) and restricts `tenant_models.tier` to cheap and expensive; `model_calls.tier` still accepts the old value for history only.
+
+**UI** (web): (1) sidebar: remove the custom project dropdown; at the top a row with the logo mark beside the Projects icon button (the way to switch project is the Projects page), the current project's name as a plain label, and a full-width Sign out button on its own line (the bottom brand footer goes away); (2) the logo mark has three text lines (the previous redraw had two); (3) the favicon must be the new logo everywhere (index.html links with a cache-busting query, `favicon.ico` fallback, `favicon.svg`, PNGs, apple-touch icon; check nothing still serves the old mark); (4) Docs: the page is a full-height layout where the footer stays at the bottom of the screen and only the content container scrolls (the nav and footer stay put; the scroll region is keyboard focusable and labelled); (5) Home section 02: scale down the right-hand stat cards and let the left column (heading and text) use the empty space; (6) remove the Demo section from the home page; (7) enlarge the routing diagram so it fills its space and make it interactive (scenario buttons Easy, Hard, Tier fails, No match highlight and animate the path; hovering or focusing a node shows what it does; keyboard accessible, no fallback node); (8) section order on the home page: Quickstart becomes section 06, before Security (07); (9) enter and leave animations on the home page: elements animate in when they enter the viewport and out when they leave (replayable, under 600 ms, reduced motion respected, content never stays hidden while visible). The Models tab, Docs, Home, Privacy copy and every doc lose all mention of a fallback.
 
 ### Phase 5: isolation suite and evaluation
 

@@ -84,7 +84,7 @@ One row per call: time, query, route, `k`, latency (and estimated provider cost)
 
 ### 06 Models
 Bring-your-own provider keys and tier ordering.
-- Three groups: **Cheap** (easy questions), **Expensive** (hard questions and escalations), **Fallback** (used when a whole tier fails or times out).
+- Two groups: **Cheap** (easy questions) and **Expensive** (hard questions and escalations). The mockup also shows a **Fallback** group; the human removed it on 2026-10-24.
 - Within a tier, models are tried top to bottom: PRIMARY then BACKUP 1, 2...
 - Each row: model, provider, endpoint, masked key, status (Connected / Failing), ↑ ↓ reorder, **Remove**.
 - **Add model** form: provider (OpenAI, Anthropic, Google, OpenAI-compatible), model ID, endpoint URL, API key, tier. **Test & save** checks the connection; new models go to the end of the tier.
