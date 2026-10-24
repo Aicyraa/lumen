@@ -15,8 +15,7 @@ afterAll(async () => {
   await ctx.close();
 });
 
-const get = (t: Tenant) =>
-  request(ctx.app).get("/api/dashboard/account").set("cookie", t.cookie);
+const get = (t: Tenant) => request(ctx.app).get("/api/dashboard/account").set("cookie", t.cookie);
 const newProject = async (t: Tenant, name: string) => {
   const res = await request(ctx.app)
     .post("/api/dashboard/workspaces")
@@ -46,7 +45,8 @@ describe("GET /api/dashboard/account", () => {
     expect(res.body.user).toMatchObject({ name: "a", email: a.email, email_verified: true });
     const providers = res.body.providers.map((p: { provider: string }) => p.provider).sort();
     expect(providers).toEqual(["email", "google"]);
-    for (const p of res.body.providers) expect(Object.keys(p).sort()).toEqual(["linked_at", "provider"]);
+    for (const p of res.body.providers)
+      expect(Object.keys(p).sort()).toEqual(["linked_at", "provider"]);
     expect(res.body.providers.find((p: any) => p.provider === "google").linked_at).toBe(
       "2026-01-02T03:04:05.000Z",
     );

@@ -2,6 +2,7 @@ import { toNodeHandler } from "better-auth/node";
 import cors from "cors";
 import express from "express";
 import { rateLimit } from "express-rate-limit";
+import { accountRouter } from "./modules/account/account.routes.js";
 import { analyticsRouter } from "./modules/analytics/analytics.routes.js";
 import type { Auth } from "./modules/auth/auth.js";
 import { chatHandler } from "./modules/chat/chat.routes.js";
@@ -63,6 +64,7 @@ export function createApp({
   const dash = express.Router();
   dash.use(requireSession(auth, pool));
   dash.use("/workspaces", workspacesRouter(deps, auth)); // projects of the user; no active project needed
+  dash.use("/account", accountRouter(deps)); // the user's own data; no active project needed
   dash.use(requireTenant);
   dash.get("/documents", async (req, res) => {
     const { rows } = await pool.query(
