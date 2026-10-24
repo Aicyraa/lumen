@@ -3,6 +3,7 @@ import { fromNodeHeaders } from "better-auth/node";
 import { z } from "zod";
 import type { Auth } from "../auth/auth.js";
 import { ApiError } from "../lib/errors.js";
+import { removeTenantUploads } from "../lib/uploads.js";
 import { MONTH_START_SQL } from "../lib/range.js";
 import { descriptionOf, ownedProjectCount, projectSlug } from "../services/projects.js";
 import type { Deps } from "../types/types.js";
@@ -14,7 +15,7 @@ const roles = (role: string) => role.split(","); // Better Auth stores several r
 
 // Projects of the signed-in user (a project = a Better Auth organization = a tenant). These routes do not need an active project.
 // A project is only visible through the user's own membership row, so another user's id is a 404.
-export function workspacesRouter({ pool, config }: Deps, auth: Auth) {
+export function workspacesRouter({ pool, config, log }: Deps, auth: Auth) {
   const r = Router();
   const name = z.string().trim().min(1).max(config.projectNameMaxChars);
   const description = z.string().trim().max(config.projectDescriptionMaxChars);
@@ -89,11 +90,12 @@ export function workspacesRouter({ pool, config }: Deps, auth: Auth) {
     if (req.body?.name !== me.name) throw new ApiError(422, "name_mismatch", "Type the project's name to confirm.");
     const id = req.params.id;
     // One transaction: all of the tenant's data, its keys and members, then the organization. Any failure leaves everything in place.
-    // Uploaded files need no cleanup: each is removed as soon as its ingest finishes, and an ingest still running for this
-    // project fails harmlessly because its document row is gone.
+    // An ingest still running for this project fails harmlessly (its document row is gone, and chunks need one); its file is removed below.
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
+      // Lock the organization row first: a chat or upload that is still writing for this project waits here, then finds the project gone.
+      await client.query("SELECT 1 FROM organization WHERE id = $1 FOR UPDATE", [id]);
       for (const sql of [
         "DELETE FROM model_calls WHERE tenant_id = $1",
         "DELETE FROM request_logs WHERE tenant_id = $1",
@@ -113,6 +115,8 @@ export function workspacesRouter({ pool, config }: Deps, auth: Auth) {
     } finally {
       client.release();
     }
+    // Files go only after the commit: a failed deletion must not cost the project its pending uploads.
+    await removeTenantUploads(config.uploadDir, id).catch((err) => log.warn({ err: err.message }, "upload cleanup failed"));
     res.status(204).end();
   });
 

@@ -7,6 +7,7 @@ import type { Request, Response } from "express";
 import multer from "multer";
 import { z } from "zod";
 import { ApiError } from "../lib/errors.js";
+import { uploadName } from "../lib/uploads.js";
 import type { Deps } from "../types/types.js";
 import "../types/types.js";
 
@@ -19,7 +20,7 @@ export function documentsRouter({ pool, rag, config, log, pending }: Deps) {
   const r = Router();
   mkdirSync(config.uploadDir, { recursive: true });
   const uploadFile = multer({
-    storage: multer.diskStorage({ destination: config.uploadDir, filename: (req, file, cb) => cb(null, randomUUID()) }),
+    storage: multer.diskStorage({ destination: config.uploadDir, filename: (req, file, cb) => cb(null, uploadName(req.tenantId, randomUUID())) }),
     limits: { fileSize: config.uploadMaxBytes, files: 1 },
     fileFilter: (req, file, cb) =>
       ALLOWED.has(extname(file.originalname).toLowerCase())

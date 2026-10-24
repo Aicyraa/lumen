@@ -23,9 +23,13 @@ export function chatHandler({ pool, rag, config, log }: Deps, { tryIt = false } 
   // Ids and scores only: never chunk text, never the answer (section 5).
   const insertLog = (req: Request, id: string | null, q: z.infer<typeof body>, r: LogInput) =>
     pool.query(
+      // Written only while the project still exists: a chat that finishes after its project was deleted leaves no orphan row.
+      // The share lock makes the check wait for a delete that is committing.
       `INSERT INTO request_logs (id, tenant_id, api_key_id, session_id, query, sources, model_tier, k, escalated,
                                  difficulty, top_score, tokens_in, tokens_out, cost_usd, latency_ms, status)
-       VALUES (COALESCE($1, gen_random_uuid()), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $16, $14, $15)`,
+       SELECT COALESCE($1::uuid, gen_random_uuid()), $2::text, $3::text, $4::text, $5::text, $6::jsonb, $7::text, $8::int, $9::boolean,
+              $10::real, $11::real, $12::int, $13::int, $16::numeric, $14::int, $15::text
+       WHERE EXISTS (SELECT 1 FROM organization WHERE id = $2::text FOR SHARE)`,
       [id, req.tenantId, req.apiKeyId ?? null, q.session_id ?? null, q.query,
         JSON.stringify((r.sources ?? []).map((s) => ({ document_id: s.document_id, chunk_id: s.chunk_id, score: s.score }))),
         r.route?.model_tier ?? null, r.route?.k ?? null, r.route?.escalated ?? null, r.route?.difficulty ?? null,

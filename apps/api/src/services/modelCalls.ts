@@ -53,7 +53,8 @@ export async function recordAttempts(pool: Pool, tenantId: string, requestId: st
   for (const a of attempts) {
     await pool.query(
       `INSERT INTO model_calls (tenant_id, request_id, tenant_model_id, provider, model_id, tier, outcome, tokens_in, tokens_out, latency_ms, cost_usd, cost_source)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+       SELECT $1::text, $2::uuid, $3::uuid, $4::text, $5::text, $6::text, $7::text, $8::int, $9::int, $10::int, $11::numeric, $12::text
+       WHERE EXISTS (SELECT 1 FROM organization WHERE id = $1::text FOR SHARE)`, // no rows for a project that was deleted meanwhile
       [tenantId, requestId, a.known ?? null, a.provider, a.model_id, a.tier, a.outcome, a.tokens_in ?? null, a.tokens_out ?? null, a.latency_ms ?? null, a.cost_usd, a.cost_source]);
   }
   const last = new Map<string, { ok: boolean; limits: Record<string, string | number> | null }>();
