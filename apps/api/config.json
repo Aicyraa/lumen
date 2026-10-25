@@ -1,5 +1,8 @@
 {
   "ingestTimeoutMs": 120000,
+  "uploadRatePerMinute": 20,
+  "maxConcurrentIngests": 3,
+  "ingestLimitRetryAfterSeconds": 10,
   "ingestBusyRetries": 3,
   "ingestBusyBackoffMs": 2000,
   "ingestBusyBackoffMaxMs": 30000,

@@ -4,6 +4,9 @@ import { z } from "zod";
 
 interface Tunables {
   ingestTimeoutMs: number;
+  uploadRatePerMinute: number; // uploads a project may start per minute, /v1 and dashboard together
+  maxConcurrentIngests: number; // uploads of one project being ingested at once
+  ingestLimitRetryAfterSeconds: number; // Retry-After when that cap is reached
   ingestBusyRetries: number; // retries after the rag-service answers 503 busy
   ingestBusyBackoffMs: number; // first wait, doubled each retry unless the service sent Retry-After
   ingestBusyBackoffMaxMs: number;

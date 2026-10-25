@@ -72,6 +72,7 @@ describe("rate limiter usage reader", () => {
       ratePerMinute: 5,
       globalLlmCapPerMinute: 5,
       modelTestRatePerMinute: 5,
+      uploadRatePerMinute: 5,
     });
     const app = express();
     app.use((req, _res, next) => {

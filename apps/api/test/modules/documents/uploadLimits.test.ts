@@ -39,6 +39,10 @@ const hang = () => {
       release.push(() => resolve({ status: 200, body: { chunk_count: 1 } })),
     );
 };
+const started = async (n: number) => {
+  for (let i = 0; i < 100 && release.length < n; i++) await new Promise((r) => setTimeout(r, 20));
+  expect(release.length).toBe(n); // that many ingests reached the (fake) rag-service
+};
 const filesOf = (t: Tenant) =>
   readdirSync(ctx.config.uploadDir).filter((n) => n.startsWith(`${t.tenantId}__`));
 
@@ -66,6 +70,7 @@ describe("concurrent ingests per tenant", () => {
     ).toBe(before);
     expect(filesOf(a)).toHaveLength(2); // the two running ingests' files, not the refused one
     expect((await upload(b)).status).toBe(202);
+    await started(3);
     for (const r of release.splice(0)) r();
     await ctx.app.locals.idle();
     ctx.stub.reset();

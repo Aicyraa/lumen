@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { unlink } from "node:fs/promises";
 import { extname } from "node:path";
-import type { Request, Response } from "express";
+import type { Request, RequestHandler, Response } from "express";
 import { Router } from "express";
 import multer from "multer";
 import { z } from "zod";
@@ -30,7 +30,10 @@ const failureReason = (err: Error & { code?: string }) =>
 const notFound = () => new ApiError(404, "not_found", "Document not found.");
 
 // Shared by /v1/documents (API key) and /api/dashboard/documents (session): the tenant is req.tenantId.
-export function documentsRouter({ pool, rag, config, log, pending }: Deps) {
+export function documentsRouter(
+  { pool, rag, config, log, pending }: Deps,
+  uploadLimiter: RequestHandler,
+) {
   const r = Router();
   mkdirSync(config.uploadDir, { recursive: true });
   const uploadFile = multer({
@@ -73,6 +76,21 @@ export function documentsRouter({ pool, rag, config, log, pending }: Deps) {
       ]);
       if (n >= config.maxDocuments)
         throw new ApiError(429, "document_limit", "Document limit reached for this account.");
+      // Ingests that crashed with their process stay 'processing' until the next sweep; past the cutoff they no longer count.
+      const {
+        rows: [{ running }],
+      } = await client.query(
+        `SELECT count(*)::int AS running FROM documents
+         WHERE tenant_id = $1 AND status = 'processing' AND created_at > now() - make_interval(secs => $2)`,
+        [tenantId, config.interruptedIngestAfterSeconds],
+      );
+      if (running >= config.maxConcurrentIngests)
+        throw new ApiError(
+          429,
+          "ingest_limit",
+          "Too many documents are being processed. Try again shortly.",
+          config.ingestLimitRetryAfterSeconds,
+        );
       const { rows } = await client.query(
         "INSERT INTO documents (tenant_id, filename) VALUES ($1, $2) RETURNING id",
         [tenantId, filename],
@@ -149,7 +167,7 @@ export function documentsRouter({ pool, rag, config, log, pending }: Deps) {
     }
   }
 
-  r.post("/", async (req, res) => {
+  r.post("/", uploadLimiter, async (req, res) => {
     await parseUpload(req, res);
     if (!req.file) throw new ApiError(422, "invalid_request", "A 'file' field is required.");
     let id: Awaited<ReturnType<typeof insertWithinLimit>>;

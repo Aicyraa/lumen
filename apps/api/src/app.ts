@@ -62,7 +62,7 @@ export function createApp({
   app.locals.rateLimitUsed = limiters.used;
   const v1 = express.Router();
   v1.use(requireApiKey(auth));
-  v1.use("/documents", documentsRouter(deps));
+  v1.use("/documents", documentsRouter(deps, limiters.uploads));
   v1.post("/chat", ...llm, chatHandler(deps));
   v1.post("/feedback", feedbackHandler(deps));
   app.use("/v1", v1);
@@ -104,7 +104,7 @@ export function createApp({
   dash.post("/feedback", feedbackHandler(deps)); // same logic as /v1/feedback; the tenant is the session's organization
   dash.use("/analytics", analyticsRouter(deps));
   dash.use("/requests", requestsRouter(deps));
-  dash.use("/documents", documentsRouter(deps));
+  dash.use("/documents", documentsRouter(deps, limiters.uploads));
   dash.use("/models", modelsRouter(deps, limiters.modelTests));
   dash.post("/try", ...llm, chatHandler(deps, { tryIt: true })); // same limiter instance as /v1/chat: one shared counter
   app.use("/api/dashboard", dash);
