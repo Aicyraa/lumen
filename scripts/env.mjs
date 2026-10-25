@@ -9,12 +9,17 @@ const REQUIRED = {
   "apps/api": [
     "DATABASE_URL", "BETTER_AUTH_SECRET", "BETTER_AUTH_URL", "DASHBOARD_ORIGIN", "INTERNAL_SECRET",
     "RAG_SERVICE_URL", "MAX_DOCUMENTS_PER_TENANT", "RATE_LIMIT_PER_MINUTE", "MAX_REQUESTS_PER_MONTH",
-    "MAX_PROJECTS_PER_USER", "MODEL_KEY_ENCRYPTION_SECRET",
+    "MAX_PROJECTS_PER_USER", "MODEL_KEY_ENCRYPTION_SECRET", "NODE_ENV",
   ],
   "apps/rag-service": ["DATABASE_URL", "INTERNAL_SECRET", "NODE_ENV"],
   "apps/web": [],
   infra: ["POSTGRES_PASSWORD"],
 };
+// Optional apps/api numbers (defaults in config.json): fine when unset, an error when set to a non-number.
+const OPTIONAL_NUMBERS = [
+  "MAX_MODELS_PER_TIER", "MODEL_TEST_RATE_PER_MINUTE", "UPLOAD_RATE_PER_MINUTE", "MAX_CONCURRENT_INGESTS",
+  "INGEST_LIMIT_RETRY_AFTER_SECONDS", "INGEST_BUSY_RETRIES", "INGEST_BUSY_BACKOFF_MS", "INGEST_BUSY_BACKOFF_MAX_MS",
+];
 const same = (a, b) => a && b && createHash("sha256").update(a).digest("hex") === createHash("sha256").update(b).digest("hex");
 
 function init() {
@@ -33,6 +38,10 @@ function check() {
   for (const [dir, names] of Object.entries(REQUIRED)) {
     if (!existsSync(join(ROOT, dir, ".env"))) { console.log(`MISSING FILE ${dir}/.env`); bad++; continue; }
     for (const n of names) if (!envs[dir][n]) { console.log(`MISSING ${dir}: ${n}`); bad++; }
+  }
+  for (const n of OPTIONAL_NUMBERS) {
+    const v = envs["apps/api"][n];
+    if (v && !/^\d+$/.test(v)) { console.log(`apps/api: ${n} is not a whole number`); bad++; }
   }
   const api = envs["apps/api"], rag = envs["apps/rag-service"];
   for (const n of ["DATABASE_URL", "INTERNAL_SECRET"]) {
