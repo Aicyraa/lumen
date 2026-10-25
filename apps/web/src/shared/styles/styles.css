@@ -674,6 +674,8 @@ table.data tbody tr:last-child td {
 .nav-item {
   display: flex;
   justify-content: space-between;
+  position: relative;
+  isolation: isolate;
   padding: 8px 12px;
   border-radius: 8px;
   font-size: 14px;
@@ -683,11 +685,17 @@ table.data tbody tr:last-child td {
   color: var(--text);
 }
 .nav-item.active {
-  background: var(--surface-active);
   color: var(--text);
 }
 .usage {
   margin-top: auto;
+.nav-pill {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 8px;
+  background: var(--surface-active);
+}
   padding: 12px 12px;
   display: flex;
   flex-direction: column;
@@ -779,14 +787,6 @@ table.data tbody tr:last-child td {
 }
 .dropzone.drag {
   border-color: var(--lime);
-}
-.dz-title {
-  font-size: 18px;
-  font-weight: 500;
-}
-label.btn:focus-within {
-  outline: 2px solid var(--lime);
-  outline-offset: 2px;
 .dz-wrap {
   display: flex;
   flex-direction: column;
@@ -795,6 +795,14 @@ label.btn:focus-within {
 .dz-wrap > .error-text {
   margin-top: 12px;
 }
+}
+.dz-title {
+  font-size: 18px;
+  font-weight: 500;
+}
+label.btn:focus-within {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
 }
 .askbar {
   display: flex;
@@ -942,6 +950,9 @@ label.btn:focus-within {
 }
 .group-head {
   display: flex;
+.list li:last-child {
+  border-bottom: 0;
+}
   flex-wrap: wrap;
   gap: 8px 16px;
   justify-content: space-between;
@@ -950,9 +961,6 @@ label.btn:focus-within {
   border-bottom: 1px solid var(--line);
 }
 .group-title {
-.list li:last-child {
-  border-bottom: 0;
-}
   font-size: 20px;
   font-weight: 500;
   letter-spacing: -0.02em;
@@ -1395,6 +1403,10 @@ label.btn:focus-within {
   }
   .docs-cols > :nth-child(3),
   .docs-cols > :nth-child(4) {
+  .side-top {
+    flex: 1 1 200px;
+    margin-bottom: 0;
+  }
     display: none;
   }
   .keys-cols {
@@ -1876,6 +1888,7 @@ html.snap-home {
     width: 100%;
   }
 }
+/* biome-ignore lint/style/noDescendingSpecificity: sets animation only; the earlier row-line rule sets border-top */
 .doc-content ol.doc-list {
   list-style: decimal;
   padding-left: 22px;
@@ -1888,7 +1901,6 @@ html.snap-home {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 14px;
-/* biome-ignore lint/style/noDescendingSpecificity: sets animation only; the earlier row-line rule sets border-top */
   padding: 20px 24px;
 }
 .doc-content .codewrap pre.code {
@@ -1945,7 +1957,7 @@ html.snap-home {
 .an-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 20px;
+  gap: 28px;
 }
 .an-stats .stat {
   padding: 28px 32px;
@@ -2079,18 +2091,6 @@ html.snap-home {
     grid-template-columns: minmax(0, 1fr);
   }
 }
-
-/* account */
-.acct-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 28px;
-  align-items: stretch;
-}
-.acct-methods {
-  grid-column: 1 / -1;
-}
-.acct-name {
 .model-row:last-child {
   padding-bottom: 0;
 }
@@ -2098,15 +2098,15 @@ html.snap-home {
 .model-row:not(.model-head) + .model-row {
   border-top: 1px solid var(--line-soft);
 }
-  font-size: 28px;
-  font-weight: 500;
-  letter-spacing: -0.03em;
-}
-.acct-totals {
+
+/* account */
+.acct-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px 24px;
-  margin: 0;
+  gap: 20px;
+  align-items: stretch;
+}
+.acct-methods {
 .model-usage {
   grid-column: 1 / 3;
 }
@@ -2116,32 +2116,32 @@ html.snap-home {
 .tier-hint {
   padding-top: 16px;
 }
+  grid-column: 1 / -1;
 }
+.acct-name {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+.acct-totals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+  margin: 0;
+}
+  justify-content: center;
 .acct-total {
   display: flex;
+.model-actions .link-btn {
+  flex-basis: 100%;
+  text-align: center;
+}
   flex-direction: column;
   gap: 4px;
 }
 .acct-total dd {
   margin: 0;
   font-size: 32px;
-}
-@media (max-width: 900px) {
-  .acct-grid {
-    grid-template-columns: minmax(0, 1fr);
-  justify-content: center;
-  }
-}
-.model-actions .link-btn {
-  flex-basis: 100%;
-  text-align: center;
-}
-
-/* home: scale, what it is, routing diagram, feature grid, use cases */
-.home .h2 {
-  font-size: clamp(34px, min(4.2vw, 7vh), 64px);
-}
-.home .lead {
 .modal-wide {
   max-width: 640px;
   padding: 32px 36px;
@@ -2167,9 +2167,25 @@ html.snap-home {
 .field input::placeholder {
   color: var(--text-4);
 }
+}
+@media (max-width: 900px) {
+  .acct-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* home: scale, what it is, routing diagram, feature grid, use cases */
+.home .h2 {
+  font-size: clamp(34px, min(4.2vw, 7vh), 64px);
+}
+.home .lead {
   font-size: clamp(19px, 1.6vw, 24px);
   max-width: 620px;
 }
+  .model-usage,
+  .model-limits {
+    grid-column: 1 / -1;
+  }
 .home .body {
   font-size: 17px;
 }
@@ -2182,10 +2198,6 @@ html.snap-home {
   inset: 0;
   width: 100%;
   height: 100%;
-  .model-usage,
-  .model-limits {
-    grid-column: 1 / -1;
-  }
   z-index: -1;
   pointer-events: none;
 }

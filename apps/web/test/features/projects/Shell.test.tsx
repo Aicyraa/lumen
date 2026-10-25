@@ -102,14 +102,26 @@ describe("Shell", () => {
     expect(side.querySelector(".nav-num")).toBeNull();
   });
 
-  it("shows the current project's name as a plain label under the top row", () => {
+  it("shows the current project's name as a plain label on the logo's row, before the Projects button", () => {
     mockFetch(handler);
     renderWithProviders(tree(), { route: "/projects/mayas/documents" });
     const side = screen.getByRole("complementary");
     const label = within(side).getByText("Maya's workspace");
     expect(label).toHaveClass("project-label");
     expect(label.closest("a, button, select, [role=option]")).toBeNull();
-    expect(label.previousElementSibling).toHaveClass("side-top");
+    expect(label.parentElement).toHaveClass("side-top");
+    expect(label.previousElementSibling).toBe(side.querySelector("svg.side-mark"));
+    expect(label.nextElementSibling).toBe(within(side).getByRole("link", { name: "Projects" }));
+  });
+
+  it("marks the current tab with the sliding pill", async () => {
+    mockFetch(handler);
+    renderWithProviders(tree(), { route: "/projects/mayas/documents" });
+    const nav = screen.getByRole("navigation", { name: "Dashboard" });
+    expect(nav.querySelectorAll(".nav-pill")).toHaveLength(1);
+    expect(
+      within(nav).getByRole("link", { name: "Documents" }).querySelector(".nav-pill"),
+    ).not.toBeNull();
   });
 
   it("Sign out is a full-width button on its own line at the bottom; no brand footer", () => {

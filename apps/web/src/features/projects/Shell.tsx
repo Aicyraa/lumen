@@ -1,3 +1,4 @@
+import { motion } from "motion/react";
 import { Suspense } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { authClient } from "../../shared/lib/auth-client";
@@ -33,6 +34,7 @@ export function Shell() {
       <aside className="sidebar">
         <div className="side-top">
           <LogoMark className="side-mark" />
+          <div className="project-label ellipsis">{project.name}</div>
           <Link to="/projects" className="icon-btn" aria-label="Projects" title="Projects">
             <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
               <g fill="none" stroke="currentColor" strokeWidth="1.3">
@@ -44,7 +46,6 @@ export function Shell() {
             </svg>
           </Link>
         </div>
-        <div className="project-label ellipsis">{project.name}</div>
         <nav aria-label="Dashboard" className="nav">
           {TABS.map(([path, label]) => (
             <NavLink
@@ -52,7 +53,18 @@ export function Shell() {
               to={`/projects/${project.slug}/${path}`}
               className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
             >
-              {label}
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <motion.span
+                      layoutId="nav-pill"
+                      className="nav-pill"
+                      transition={{ duration: 0.2 }}
+                    />
+                  )}
+                  {label}
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
