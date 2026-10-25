@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Annotated
 from uuid import UUID, uuid4
 
-import psycopg
+import numpy as np
 from fastapi import APIRouter, Depends, Form, UploadFile
 from pypdf.errors import PyPdfError
 
@@ -32,6 +32,26 @@ internal = APIRouter(prefix="/internal", dependencies=[Depends(require_secret)])
 @public.get("/internal/health")  # no secret; async because it does no blocking work
 async def health():
     return {"status": "ok"}
+
+
+def not_ingestable() -> ApiError:
+    return ApiError(409, "document_not_ingestable", "The document was already marked as failed.")
+
+
+def embed_checked(tenant_id: str, document_id: str, chunks: list[str]) -> np.ndarray:
+    """Embed in batches; re-read the document status every few batches so abandoned work stops early."""
+    cfg = load_config()["ingest"]
+    size, every = cfg["embed_batch_size"], cfg["status_check_every_batches"]
+    parts = []
+    for n, start in enumerate(range(0, len(chunks), size)):
+        if n % every == 0:  # n == 0 also rejects a missing or failed document before any embedding
+            status = store.document_status(tenant_id, document_id)
+            if status is None:
+                raise ApiError(404, "not_found", "Document not found.")
+            if status == "failed":
+                raise not_ingestable()
+        parts.append(embed(chunks[start : start + size]))
+    return np.vstack(parts)
 
 
 @internal.post("/ingest")
@@ -61,11 +81,13 @@ def ingest(
     chunks = chunk(text) if text.strip() else []
     if not chunks:
         raise ApiError(422, "no_text_extracted", "No text could be extracted from the file.")
-    vectors = embed(chunks)
+    vectors = embed_checked(tenant_id, str(document_id), chunks)
     try:  # one transaction: a failure leaves no chunks
         store.add_chunks(tenant_id, str(document_id), chunks, vectors)
-    except psycopg.errors.ForeignKeyViolation:  # no such document for this tenant
+    except store.DocumentMissing:
         raise ApiError(404, "not_found", "Document not found.")
+    except store.DocumentNotIngestable:
+        raise not_ingestable()
     log.info("ingested tenant=%s document=%s chunks=%d", tenant_id, document_id, len(chunks))
     return {"chunk_count": len(chunks)}
 

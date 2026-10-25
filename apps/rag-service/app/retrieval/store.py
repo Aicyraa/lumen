@@ -5,11 +5,11 @@ from app.retrieval.db import connection as _connect
 
 
 class DocumentMissing(LookupError):
-    pass
+    """The tenant has no such document."""
 
 
 class DocumentNotIngestable(RuntimeError):
-    pass
+    """The document was marked failed (for example the ingest timed out); its chunks must not be saved."""
 
 
 def ensure_tenant(tenant_id: str) -> None:
@@ -27,9 +27,28 @@ def add_document(tenant_id: str, filename: str) -> str:
     return str(row[0])
 
 
+def document_status(tenant_id: str, document_id: str) -> str | None:
+    """The document's status, or None when this tenant has no such document."""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT status FROM documents WHERE id = %s AND tenant_id = %s",
+            (document_id, tenant_id),
+        ).fetchone()
+    return row[0] if row else None
+
+
 def add_chunks(tenant_id: str, document_id: str, chunks: list[str], vectors: np.ndarray) -> None:
     # one transaction: a failure leaves no chunks. The composite FK rejects a document of another tenant.
     with _connect() as conn:
+        # FOR SHARE: a concurrent "mark failed" waits for this commit, so no chunk lands on a failed document
+        row = conn.execute(
+            "SELECT status FROM documents WHERE id = %s AND tenant_id = %s FOR SHARE",
+            (document_id, tenant_id),
+        ).fetchone()
+        if row is None:
+            raise DocumentMissing(document_id)
+        if row[0] == "failed":
+            raise DocumentNotIngestable(document_id)
         # re-ingesting the same document replaces its chunks instead of appending duplicates
         conn.execute(
             "DELETE FROM chunks WHERE tenant_id = %s AND document_id = %s", (tenant_id, document_id)

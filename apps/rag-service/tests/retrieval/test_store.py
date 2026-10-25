@@ -102,7 +102,9 @@ def test_chunk_with_other_tenant_than_its_document_is_rejected():
     ensure_tenant(
         "tenant_b"
     )  # so the rejection is the document's tenant, not a missing tenants row
-    with pytest.raises(psycopg.errors.ForeignKeyViolation):
+    with pytest.raises(
+        store.DocumentMissing
+    ):  # tenant_b has no such document; the FK is the backstop
         store.add_chunks("tenant_b", doc, ["x"], np.array([vec(0)]))
 
 
@@ -156,6 +158,6 @@ def test_add_chunks_for_an_existing_document_is_all_or_nothing():
 def test_add_chunks_for_a_missing_document_writes_nothing():
     missing = "00000000-0000-0000-0000-000000000000"
     ensure_tenant("t")
-    with pytest.raises(psycopg.errors.ForeignKeyViolation):
+    with pytest.raises(store.DocumentMissing):
         store.add_chunks("t", missing, ["x"], np.array([vec(0)]))
     assert count_chunks("t", missing) == 0
