@@ -8,7 +8,6 @@ from uuid import UUID, uuid4
 
 import numpy as np
 from fastapi import APIRouter, Depends, Form, UploadFile
-from pypdf.errors import PyPdfError
 
 from app.api.deps import get_caller, require_secret
 from app.api.schemas import QueryRequest, TenantModels
@@ -16,7 +15,7 @@ from app.core.config import is_production, load_config, router_cfg
 from app.core.errors import ApiError
 from app.core.logging import log
 from app.ingest.chunking import chunk
-from app.ingest.extract import extract_text
+from app.ingest.extract import DocumentTooLarge, UnreadableDocument, extract_text
 from app.llm.prompt import build_prompt, render_answer
 from app.retrieval import store
 from app.retrieval.embeddings import (
@@ -32,6 +31,10 @@ internal = APIRouter(prefix="/internal", dependencies=[Depends(require_secret)])
 @public.get("/internal/health")  # no secret; async because it does no blocking work
 async def health():
     return {"status": "ok"}
+
+
+def too_large() -> ApiError:
+    return ApiError(422, "document_too_large", "The document is too large to ingest.")
 
 
 def not_ingestable() -> ApiError:
@@ -69,11 +72,12 @@ def ingest(
         tmp.flush()
         try:
             text = extract_text(tmp.name)
-        except (
-            UnicodeDecodeError,
-            PyPdfError,
-        ):  # UnicodeDecodeError is a ValueError, so catch it first
+        except UnicodeDecodeError:  # a ValueError subclass, so catch it first
             text = ""
+        except UnreadableDocument:
+            raise ApiError(422, "unreadable_document", "The PDF could not be read.")
+        except DocumentTooLarge:
+            raise too_large()
         except ValueError:
             raise ApiError(415, "unsupported_type", "Only PDF, .txt and .md files are supported.")
     if "\x00" in text:  # Postgres text cannot hold NUL; treat the file as unreadable text
@@ -81,6 +85,8 @@ def ingest(
     chunks = chunk(text) if text.strip() else []
     if not chunks:
         raise ApiError(422, "no_text_extracted", "No text could be extracted from the file.")
+    if len(chunks) > load_config()["ingest"]["max_chunks"]:  # before any embedding work
+        raise too_large()
     vectors = embed_checked(tenant_id, str(document_id), chunks)
     try:  # one transaction: a failure leaves no chunks
         store.add_chunks(tenant_id, str(document_id), chunks, vectors)

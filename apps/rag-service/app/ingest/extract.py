@@ -2,6 +2,8 @@ from pathlib import Path
 
 from pypdf import PdfReader
 
+from app.core.config import load_config
+
 
 class UnreadableDocument(ValueError):
     """A PDF that cannot be read (corrupt or encrypted)."""
@@ -17,6 +19,14 @@ def extract_text(path) -> str:
     suffix = path.suffix.lower()
     if suffix in (".txt", ".md"):
         return path.read_text(encoding="utf-8")
-    if suffix == ".pdf":
-        return "\n".join(page.extract_text() or "" for page in PdfReader(path).pages)
-    raise ValueError(f"unsupported file type: {suffix}")
+    if suffix != ".pdf":  # checked before the file is opened
+        raise ValueError(f"unsupported file type: {suffix}")
+    try:  # pypdf raises many types for corrupt or encrypted files; only the PDF read is caught broadly
+        pages = PdfReader(path).pages
+        if len(pages) > load_config()["ingest"]["max_pages"]:
+            raise DocumentTooLarge(f"more than {load_config()['ingest']['max_pages']} pages")
+        return "\n".join(page.extract_text() or "" for page in pages)
+    except DocumentTooLarge:
+        raise
+    except Exception as e:
+        raise UnreadableDocument("the PDF could not be read") from e
