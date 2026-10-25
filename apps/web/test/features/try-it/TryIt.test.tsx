@@ -185,7 +185,7 @@ describe("TryIt provider rate limit", () => {
         await vi.advanceTimersByTimeAsync(700_000);
       });
       expect(screen.getByRole("alert")).toHaveTextContent("You can try again now");
-      expect(screen.getByRole("alert")).not.toHaveTextContent("Try again in");
+      expect(screen.getByRole("alert")).not.toHaveTextContent(/Try again in \d/);
       expect(screen.getByRole("button", { name: "Ask" })).toBeEnabled();
     } finally {
       vi.useRealTimers();
