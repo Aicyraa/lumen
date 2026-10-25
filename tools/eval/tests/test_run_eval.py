@@ -444,12 +444,12 @@ def test_not_found_with_sources_is_correct_and_counted(env, server, capsys):
     assert got[("always_cheap", "held_out")]["unanswerable_handled"] == "1.0"
 
 
-def test_changing_the_grading_rule_version_reruns_old_verdicts(env, monkeypatch):
+def test_changing_the_grading_rule_version_reruns_only_rule_graded_rows(env, monkeypatch):
     import evalkit.cli as cli
 
     q, envp, rag, judge, tmp = env
-    main(args(env, "--limit", "1"))
-    assert len(rag.calls) == 3
-    monkeypatch.setattr(cli, "GRADING_RULES", "some-other-rule")
-    main(args(env, "--limit", "1", "--resume"))
+    main(args(env))
     assert len(rag.calls) == 6
+    monkeypatch.setattr(cli, "GRADING_RULES", "some-other-rule")
+    main(args(env, "--resume"))
+    assert len(rag.calls) == 9  # the three Q2 (unanswerable) runs again, the judged Q1 runs reused

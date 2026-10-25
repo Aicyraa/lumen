@@ -23,17 +23,15 @@ class Verdict:
     correct: bool
     reason: str
     error: bool = False  # the judge itself failed; the human must look at it
+    listed_sources: int | None = None  # unanswerable rows: sources the response still listed
 
 
 def grade_unanswerable(answer: str, sources: list, not_found: str) -> Verdict:
-    """Correct only when the answer is the not-found message and no source is claimed."""
-    ok = answer.strip() == not_found.strip() and not sources
-    why = (
-        "rule: not-found message, no sources"
-        if ok
-        else "rule: expected the not-found message and no sources"
-    )
-    return Verdict(ok, why)
+    """Correct when the answer is the not-found message. Sources are not part of correctness (the service returns
+    the retrieved sources even then) but are counted, so the human can see how often that happens."""
+    ok = answer.strip() == not_found.strip()
+    why = "rule: not-found message" if ok else "rule: expected the not-found message"
+    return Verdict(ok, why, listed_sources=len(sources))
 
 
 def _parse(content: str) -> Verdict | None:

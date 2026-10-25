@@ -18,13 +18,28 @@ from evalkit.rag import query_rag
 
 HERE = Path(__file__).resolve().parents[1]
 FORCE = {"always_cheap": "cheap", "always_expensive": "expensive", "rule_router": None}
-VERDICT_COLUMNS = ["setup", "query", "answer_excerpt", "verdict", "reason", "flagged_for_review"]
+VERDICT_COLUMNS = [
+    "setup", "query", "answer_excerpt", "verdict", "reason", "flagged_for_review",
+    "unanswerable_with_sources",
+]  # fmt: skip
 EXCERPT = 300
+GRADING_RULES = "v2: unanswerable = not-found message, sources tracked"  # part of the resume key
 
 
 def pair_key(cfg, q, setup):
     """Identity of a run: edited answers, a changed split or a changed judge give a new key and so re-run."""
-    parts = [setup, q.tenant, q.query, q.expected_answer, str(q.held_out), cfg.judge_model]
+    parts = [
+        setup,
+        q.tenant,
+        q.query,
+        q.expected_answer,
+        str(q.held_out),
+        cfg.judge_model,
+    ]
+    if (
+        q.type == "unanswerable"
+    ):  # only these rows are graded by the rule; judged rows keep their key
+        parts.append(GRADING_RULES)
     return hashlib.sha256("\x1f".join(parts).encode()).hexdigest()[:24]
 
 
@@ -41,7 +56,7 @@ def run_pair(cfg, q, setup):
            "answer": a.answer, "tier": a.tier, "top_score": a.top_score,
            "latency_ms": a.latency_ms, "error": a.error,
            "connection_failed": a.connection_failed,
-           "quota_exhausted": a.quota_exhausted}  # fmt: skip
+           "quota_exhausted": a.quota_exhausted, "n_sources": len(a.sources)}  # fmt: skip
     rec["cost"] = None if a.error else cost_of(a.attempts, cfg.prices)
     if a.error:
         v = ("incorrect", f"system error: {a.error}")
@@ -78,7 +93,8 @@ def write_outputs(out_dir: Path, records: list[dict], fraction: float, seed: int
         for i, r in enumerate(records):
             excerpt = " ".join(r["answer"].split())[:EXCERPT]
             flag = "yes" if i in flagged or r["verdict"] == "error" or r["error"] else ""
-            w.writerow([r["setup"], r["query"], excerpt, r["verdict"], r["reason"], flag])
+            with_src = "yes" if r["qtype"] == "unanswerable" and r.get("n_sources") else ""
+            w.writerow([r["setup"], r["query"], excerpt, r["verdict"], r["reason"], flag, with_src])
     return results
 
 
@@ -96,7 +112,13 @@ def report(results, records, threshold):
         print(f"  [{r.setup}] top_score={r.top_score:.2f} {r.query}\n      answer: {ans}")
     errors = sum(1 for r in records if r["error"])
     judge_errors = sum(1 for r in records if r["verdict"] == "error")
-    print(f"\n{errors} system errors, {judge_errors} judge errors (counted wrong).")
+    n_src = sum(
+        1
+        for r in records
+        if r["qtype"] == "unanswerable" and r["verdict"] == "correct" and r.get("n_sources")
+    )
+    print(f"\n{n_src} not-found answer(s) still listed sources (graded correct; tracked).")
+    print(f"{errors} system errors, {judge_errors} judge errors (counted wrong).")
 
 
 def main(argv=None) -> int:

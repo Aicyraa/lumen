@@ -49,7 +49,7 @@ For each answered question it runs three setups against `POST {RAG_URL}/internal
 from `.env`): `always_cheap` (`force_tier: "cheap"`), `always_expensive` (`force_tier: "expensive"`) and `rule_router`
 (no `force_tier`). An answer is graded by an LLM judge (OpenAI-compatible `{EVAL_BASE_URL}/chat/completions`,
 temperature 0, strict JSON `{"correct": bool, "reason": str}`; one retry on a malformed reply). `unanswerable` rows are graded
-by rule: correct only when the answer is the not-found message and no sources are claimed. A system error (for example
+by rule: correct when the answer is the not-found message. Sources are ignored for correctness (the service returns the retrieved sources even then) but counted: `verdicts.csv` column `unanswerable_with_sources` is `yes` for such rows. The grading rule version is part of the resume key of unanswerable rows. A system error (for example
 `provider_error`) counts as wrong. A 429 is waited out using `Retry-After` and the `x-ratelimit-*` headers.
 
 Outputs (both git-ignored):
