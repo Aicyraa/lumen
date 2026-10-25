@@ -125,6 +125,15 @@ describe("Analytics", () => {
     }
   });
 
+  it("puts By model before Unanswered questions", async () => {
+    mockFetch(handler);
+    renderWithProviders(<Analytics />);
+    await screen.findByText("840 ms");
+    const heads = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+    expect(heads.indexOf("By model")).toBeGreaterThan(-1);
+    expect(heads.indexOf("By model")).toBeLessThan(heads.indexOf("Unanswered questions"));
+  });
+
   it("shows a centred loading message, then data", async () => {
     mockFetch(handler);
     renderWithProviders(<Analytics />);

@@ -1954,29 +1954,29 @@ html.snap-home {
 .an-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 20px;
+  gap: 28px;
 }
 .an-stats .stat {
-  padding: 20px 24px;
-  gap: 8px;
+  padding: 28px 32px;
+  gap: 10px;
 }
 .an-stats .stat-value {
   font-size: 36px;
 }
 .an-row {
   display: grid;
-  gap: 20px;
+  gap: 28px;
   align-items: stretch;
 }
 .an-row-top {
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
 }
 .an-row-bottom {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 .an .card {
-  padding: 24px;
-  gap: 16px;
+  padding: 32px;
+  gap: 20px;
 }
 .card-title {
   font: 500 11px var(--mono);
@@ -1996,15 +1996,8 @@ html.snap-home {
   color: var(--text-3);
   font-size: 14px;
 }
-table.data.compact {
-  min-width: 600px;
-  font-size: 13px;
-}
-table.data.compact td {
-  padding: 10px 10px 10px 0;
-}
 .an .bars {
-  height: 200px;
+  height: 240px;
 }
 @media (max-width: 1100px) {
   .an-stats {
@@ -2025,7 +2018,7 @@ table.data.compact td {
 .models-grid {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 28px;
 }
 .tier-card {
   padding: 24px;

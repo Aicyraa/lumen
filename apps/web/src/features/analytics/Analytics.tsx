@@ -169,36 +169,6 @@ export function Analytics() {
             </section>
           </div>
           <div className="an-row an-row-bottom">
-            <section className="card" aria-labelledby="an-unanswered">
-              <h2 className="card-title" id="an-unanswered">
-                Unanswered questions
-              </h2>
-              <div className="small muted-3">Add documents that cover these.</div>
-              {unanswered.isPending && <div className="card-empty">Loading…</div>}
-              {unanswered.isError && (
-                <div className="card-empty">
-                  Could not load unanswered questions.{" "}
-                  <button type="button" className="link-btn" onClick={() => unanswered.refetch()}>
-                    Retry
-                  </button>
-                </div>
-              )}
-              {unanswered.isSuccess && !unanswered.data.items.length && (
-                <div className="card-empty">No unanswered questions in this range.</div>
-              )}
-              {unanswered.isSuccess && unanswered.data.items.length > 0 && (
-                <ul className="list">
-                  {unanswered.data.items.map((u) => (
-                    <li key={u.id}>
-                      <span className="grow ellipsis">{u.query}</span>
-                      <span className="mono red">
-                        {u.top_score == null ? "no match" : fmtScore(u.top_score)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
             <section className="card" aria-labelledby="an-models">
               <h2 className="card-title" id="an-models">
                 By model
@@ -207,7 +177,7 @@ export function Analytics() {
                 <div className="card-empty">No models yet. Add one in the Models tab.</div>
               ) : (
                 <div className="scroll-x">
-                  <table className="data compact" aria-label="By model">
+                  <table className="data" aria-label="By model">
                     <thead>
                       <tr>
                         <th>MODEL</th>
@@ -244,6 +214,36 @@ export function Analytics() {
                     </tbody>
                   </table>
                 </div>
+              )}
+            </section>
+            <section className="card" aria-labelledby="an-unanswered">
+              <h2 className="card-title" id="an-unanswered">
+                Unanswered questions
+              </h2>
+              <div className="small muted-3">Add documents that cover these.</div>
+              {unanswered.isPending && <div className="card-empty">Loading…</div>}
+              {unanswered.isError && (
+                <div className="card-empty">
+                  Could not load unanswered questions.{" "}
+                  <button type="button" className="link-btn" onClick={() => unanswered.refetch()}>
+                    Retry
+                  </button>
+                </div>
+              )}
+              {unanswered.isSuccess && !unanswered.data.items.length && (
+                <div className="card-empty">No unanswered questions in this range.</div>
+              )}
+              {unanswered.isSuccess && unanswered.data.items.length > 0 && (
+                <ul className="list">
+                  {unanswered.data.items.map((u) => (
+                    <li key={u.id}>
+                      <span className="grow ellipsis">{u.query}</span>
+                      <span className="mono red">
+                        {u.top_score == null ? "no match" : fmtScore(u.top_score)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               )}
             </section>
           </div>
