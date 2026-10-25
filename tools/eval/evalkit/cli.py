@@ -23,11 +23,13 @@ VERDICT_COLUMNS = [
     "unanswerable_with_sources",
 ]  # fmt: skip
 EXCERPT = 300
+KEY_VERSION = 2  # state files without this marker used a key that ignored models and router config
+STATE_MARK = "_resume_key_version"
 GRADING_RULES = "v2: unanswerable = not-found message, sources tracked"  # part of the resume key
 
 
 def pair_key(cfg, q, setup):
-    """Identity of a run: edited answers, a changed split or a changed judge give a new key and so re-run."""
+    """Identity of a run: edited answers, a changed split, judge, model, provider or router config re-run."""
     parts = [
         setup,
         q.tenant,
@@ -35,6 +37,10 @@ def pair_key(cfg, q, setup):
         q.expected_answer,
         str(q.held_out),
         cfg.judge_model,
+        cfg.model_cheap,
+        cfg.model_expensive,
+        cfg.provider,
+        cfg.router_hash,
     ]
     if (
         q.type == "unanswerable"
@@ -77,7 +83,8 @@ def run_pair(cfg, q, setup):
 def write_outputs(out_dir: Path, records: list[dict], fraction: float, seed: int):
     results = [
         Result(r["setup"], r["split"], r["qtype"], r["verdict"] == "correct", r["latency_ms"],
-               r["tier"], r["top_score"], r["cost"], r["query"])
+               r["tier"], r["top_score"], r["cost"], r["query"],
+               bool(r["error"]) or r["verdict"] == "error")
         for r in records
     ]  # fmt: skip
     with (out_dir / "results.csv").open("w", newline="") as f:
@@ -112,13 +119,19 @@ def report(results, records, threshold):
         print(f"  [{r.setup}] top_score={r.top_score:.2f} {r.query}\n      answer: {ans}")
     errors = sum(1 for r in records if r["error"])
     judge_errors = sum(1 for r in records if r["verdict"] == "error")
+    answered = sum(1 for r in results if not r.errored)
+    print(
+        f"\naccuracy over {answered} answered of {len(results)} runs ({len(results) - answered} errors, left out)."
+    )
     n_src = sum(
         1
         for r in records
         if r["qtype"] == "unanswerable" and r["verdict"] == "correct" and r.get("n_sources")
     )
     print(f"\n{n_src} not-found answer(s) still listed sources (graded correct; tracked).")
-    print(f"{errors} system errors, {judge_errors} judge errors (counted wrong).")
+    print(
+        f"{errors} system errors, {judge_errors} judge errors (left out of accuracy; see the errors column)."
+    )
 
 
 def main(argv=None) -> int:
@@ -172,10 +185,18 @@ def main(argv=None) -> int:
             state = json.loads(state_path.read_text())
             if not isinstance(state, dict):
                 raise ValueError("not an object")
+            if state.get(STATE_MARK) != KEY_VERSION:
+                print(
+                    f"note: state file {state_path} was written with an older resume key "
+                    "(it ignored models and router config); ignoring it and running everything.",
+                    file=sys.stderr,
+                )
+                state = {}
         except ValueError:
             return fail(
                 f"error: state file {state_path} is corrupt; delete it, or run without --resume."
             )
+    state[STATE_MARK] = KEY_VERSION
     out_dir.mkdir(parents=True, exist_ok=True)
     in_a_row, aborted, quota = 0, False, False
     for n, (setup, q) in enumerate(pairs, 1):

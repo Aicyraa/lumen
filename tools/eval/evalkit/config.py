@@ -1,5 +1,6 @@
 """Settings from tools/eval/.env plus the real environment (real variables win). Never prints values."""
 
+import hashlib
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -9,6 +10,7 @@ REQUIRED = [
     "EVAL_BASE_URL", "EVAL_API_KEY", "EVAL_PROVIDER", "EVAL_MODEL_CHEAP", "EVAL_MODEL_EXPENSIVE",
     "EVAL_JUDGE_MODEL", "TENANT_IDS", "RAG_URL", "INTERNAL_SECRET", "EVAL_CONFIDENT_TOP_SCORE",
 ]  # fmt: skip
+DEFAULT_ROUTER_CONFIG = Path(__file__).resolve().parents[3] / "apps/rag-service/app/config.yaml"
 DEFAULT_ENV = Path(__file__).resolve().parents[1] / ".env"
 
 
@@ -50,6 +52,9 @@ class Config:
         900.0  # a provider asking to wait longer than this has hit a daily cap
     )
     max_consecutive_failures: int = 5  # abort after this many unreachable-service failures in a row
+    router_hash: str = (
+        ""  # of the `router:` section of the rag-service config; part of the resume key
+    )
 
     def models_payload(self) -> dict:
         def one(model):
@@ -62,6 +67,20 @@ class Config:
 def _price(env, tier):
     a, b = env.get(f"EVAL_PRICE_{tier}_INPUT", ""), env.get(f"EVAL_PRICE_{tier}_OUTPUT", "")
     return (float(a), float(b)) if a and b else None
+
+
+def _router_hash(path) -> str:
+    """Hash of the top-level `router:` block of the rag-service config ('' when there is none)."""
+    p = Path(path)
+    if not p.exists():
+        return ""
+    block, inside = [], False
+    for line in p.read_text().splitlines():
+        if line and not line[0].isspace() and not line.startswith("#"):
+            inside = line.startswith("router:")
+        if inside:
+            block.append(line)
+    return hashlib.sha256("\n".join(block).encode()).hexdigest()[:16]
 
 
 def load_config(path=DEFAULT_ENV, *, require: bool = True) -> Config:
@@ -101,6 +120,7 @@ def load_config(path=DEFAULT_ENV, *, require: bool = True) -> Config:
             quota_wait_seconds=float(
                 env.get("EVAL_QUOTA_WAIT_SECONDS") or Config.quota_wait_seconds
             ),
+            router_hash=_router_hash(env.get("EVAL_ROUTER_CONFIG") or DEFAULT_ROUTER_CONFIG),
             max_consecutive_failures=int(
                 env.get("EVAL_MAX_CONSECUTIVE_FAILURES") or Config.max_consecutive_failures
             ),

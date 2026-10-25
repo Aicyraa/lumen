@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 RESULT_COLUMNS = [
     "setup", "split", "accuracy", "median_latency_ms", "escalation_rate",
-    "unanswerable_handled", "estimated_cost_per_query_usd",
+    "unanswerable_handled", "estimated_cost_per_query_usd", "errors",
 ]  # fmt: skip
 SETUPS = ("always_cheap", "always_expensive", "rule_router")
 SPLITS = ("train", "held_out")
@@ -22,6 +22,7 @@ class Result:
     top_score: float | None
     cost: float | None  # the tenant's estimated provider cost; None when a used model is unpriced
     query: str = ""
+    errored: bool = False  # the service or the judge failed: counted in `errors`, not in accuracy
 
 
 def cost_of(attempts: list[dict], prices: dict) -> float | None:
@@ -43,9 +44,10 @@ def summarize(results: list[Result]) -> list[dict]:
     rows = []
     for setup in SETUPS:
         for split in SPLITS:
-            rs = [r for r in results if r.setup == setup and r.split == split]
-            if not rs:
+            every = [r for r in results if r.setup == setup and r.split == split]
+            if not every:
                 continue
+            rs = [r for r in every if not r.errored]  # accuracy is over the answered questions
             lat = [r.latency_ms for r in rs if r.latency_ms is not None]
             un = [r for r in rs if r.qtype == "unanswerable"]
             costs = [r.cost for r in rs]
@@ -57,6 +59,7 @@ def summarize(results: list[Result]) -> list[dict]:
                 "escalation_rate": _mean([r.tier == "expensive" for r in rs]),
                 "unanswerable_handled": _mean([r.correct for r in un]),
                 "estimated_cost_per_query_usd": "" if None in costs else _mean(costs),
+                "errors": len(every) - len(rs),
             })  # fmt: skip
     return rows
 
