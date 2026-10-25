@@ -48,6 +48,8 @@ router:
 llm:
   connect_timeout_seconds: 5
   timeout_seconds: 30           # read timeout per call; a slow model counts as a timeout attempt
+  min_quote_chars: 12           # an evidence quote shorter than this is rejected (unless the whole passage is shorter)
+  min_quote_words: 2
   max_output_tokens: 2048
   answer_repair_attempts: 1
   temperature: 0
