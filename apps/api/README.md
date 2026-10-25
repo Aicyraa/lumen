@@ -20,8 +20,8 @@ pnpm --filter @lumen/api dev            # http://localhost:3000 (tsx watch src/s
 | `auth:migrate` | `tsx scripts/migrate.ts` |
 
 The server refuses to start while `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `DASHBOARD_ORIGIN`,
-`INTERNAL_SECRET`, `RAG_SERVICE_URL`, `MODEL_KEY_ENCRYPTION_SECRET` (exactly 64 hex characters; changing it makes stored model keys unreadable), `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE`, `MAX_REQUESTS_PER_MONTH` or `MAX_PROJECTS_PER_USER`
-is missing. With `NODE_ENV=production` it also refuses to start without `SMTP_URL` and `MAIL_FROM`. Google/GitHub sign-in is skipped while its client id/secret are empty; email + password always works.
+`INTERNAL_SECRET`, `RAG_SERVICE_URL`, `MODEL_KEY_ENCRYPTION_SECRET` (exactly 64 hex characters; changing it makes stored model keys unreadable), `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE`, `MAX_REQUESTS_PER_MONTH`, `MAX_PROJECTS_PER_USER` or `NODE_ENV`
+is missing. `NODE_ENV` must be `development`, `test` or `production`: only `development` and `test` get the dev shortcuts (`/dev/*` routes for `development`, `http://localhost` model endpoints), anything else counts as production, and an unset or empty value refuses to start. In production it also refuses to start without `SMTP_URL` and `MAIL_FROM`. Google/GitHub sign-in is skipped while its client id/secret are empty; email + password always works.
 
 Other tunables live in `config.json` (ingest timeout, interrupted-ingest cutoff, global LLM cap per minute, upload
 limit, page sizes). Each can be overridden by an upper-snake env var, for example `INGEST_TIMEOUT_MS`.
@@ -298,7 +298,7 @@ curl -s localhost:3000/dev/api-key -H "x-internal-secret: $INTERNAL_SECRET" \
 # {"tenant_id":"<organization id>","api_key":"..."}   use as: -H "x-api-key: ..."
 ```
 
-The route needs the internal secret and is mounted only when `NODE_ENV=development` (unset or any other value: not mounted). `pnpm dev` does not set it; start with `NODE_ENV=development`.
+The route needs the internal secret and is mounted only when `NODE_ENV=development` (any other value: not mounted). `pnpm dev` sets `NODE_ENV=development` when it is unset; `pnpm start` needs it set explicitly.
 Real keys are made in the dashboard with the API key plugin.
 
 ## Layout

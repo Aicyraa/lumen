@@ -105,7 +105,13 @@ export function loadConfig(
   env: NodeJS.ProcessEnv = process.env,
   overrides: Partial<Config> = {},
 ): Config {
-  const production = env.NODE_ENV === "production";
+  // Fail closed: only an explicit development or test run gets the dev shortcuts (http://localhost endpoints, /dev routes).
+  // An unset or empty NODE_ENV would count as production, which then needs SMTP etc., so say what is wrong instead of guessing.
+  if (!env.NODE_ENV?.trim())
+    throw new Error(
+      "NODE_ENV is not set. Set it to development, test or production (unset counts as production).",
+    );
+  const production = env.NODE_ENV !== "development" && env.NODE_ENV !== "test";
   // Production cannot verify emails without a mail server.
   const schema = production
     ? required.extend({ SMTP_URL: z.string().min(1), MAIL_FROM: z.string().min(1) })
