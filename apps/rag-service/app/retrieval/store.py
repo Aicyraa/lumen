@@ -4,6 +4,14 @@ from app.core.config import load_config
 from app.retrieval.db import connection as _connect
 
 
+class DocumentMissing(LookupError):
+    pass
+
+
+class DocumentNotIngestable(RuntimeError):
+    pass
+
+
 def ensure_tenant(tenant_id: str) -> None:
     """Create the tenants row if missing. Only the local CLI calls this; in production the API inserts it first."""
     with _connect() as conn:

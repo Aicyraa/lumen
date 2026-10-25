@@ -9,6 +9,10 @@ database:
   connect_timeout_seconds: 5
   statement_timeout_ms: 30000    # the server cancels any statement running longer
 
+ingest:
+  embed_batch_size: 32
+  status_check_every_batches: 4   # re-read the document status this often while embedding; stop if it failed
+
 retrieval:
   candidate_limit: 40
   rrf_rank_constant: 60
