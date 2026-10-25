@@ -1,5 +1,9 @@
 # Preliminary evaluation results (eval-run-1, final pass)
 
+Historical first-run report. The 2026-10-25 source and verdict review is in
+[`EVALUATION_REVIEW.md`](EVALUATION_REVIEW.md), including corrections to the judge's award-combination explanations,
+the relative-date question, and the rerun status. The tables below describe the original run, not the revised dataset.
+
 **PRELIMINARY. Do not use these numbers for decisions.** The expected answers are agent-drafted from the PDFs and
 unverified by the human (`DRAFT_ANSWERS_REVIEW.md`); one judge model, one run, free-tier models.
 

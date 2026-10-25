@@ -23,5 +23,6 @@ setup-smoke/
 tools/eval/results.csv
 tools/eval/verdicts.csv
 tools/eval/.eval_state.json
+tools/eval/review-run/
 tools/eval/.pytest_cache/
 tools/eval/.ruff_cache/

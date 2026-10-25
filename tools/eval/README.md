@@ -45,11 +45,18 @@ Options: `--dry-run` (print what would run, make no call, write nothing), `--lim
 `--review-fraction 0.2` (share of verdicts flagged for you, default 20 percent), `--seed`, `--questions`, `--env`, `--out-dir`.
 It refuses to run when no row has an `expected_answer`, when the header is not exact, or when a `tenant` is not in `TENANT_IDS`.
 
+Edited reference answers and queries get new resume keys. A service, retrieval, prompt, model configuration or price
+change does **not** invalidate saved runs: omit `--resume` for a fresh comparison after such a change. Keep the previous
+outputs separately if you need to compare runs. Human reference approval is still required; agent source checks in
+`DRAFT_ANSWERS_REVIEW.md` and the verdict audit in `EVALUATION_REVIEW.md` do not supply that approval.
+
 For each answered question it runs three setups against `POST {RAG_URL}/internal/query` (secret header, models built
 from `.env`): `always_cheap` (`force_tier: "cheap"`), `always_expensive` (`force_tier: "expensive"`) and `rule_router`
 (no `force_tier`). An answer is graded by an LLM judge (OpenAI-compatible `{EVAL_BASE_URL}/chat/completions`,
 temperature 0, strict JSON `{"correct": bool, "reason": str}`; one retry on a malformed reply). `unanswerable` rows are graded
-by rule: correct when the answer is the not-found message. Sources are ignored for correctness (the service returns the retrieved sources even then) but counted: `verdicts.csv` column `unanswerable_with_sources` is `yes` for such rows. The grading rule version is part of the resume key of unanswerable rows. A system error (for example
+by rule: correct when the answer is the not-found message. Sources are ignored for correctness but counted:
+`verdicts.csv` column `unanswerable_with_sources` is `yes` for such rows. The service should return no sources with a
+not-found answer; the counter exposes regressions and preserves comparability with the first run. The grading rule version is part of the resume key of unanswerable rows. A system error (for example
 `provider_error`) counts as wrong. A 429 is waited out using `Retry-After` and the `x-ratelimit-*` headers.
 
 Outputs (both git-ignored):
