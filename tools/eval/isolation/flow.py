@@ -6,7 +6,7 @@ from isolation.report import Outcome
 # (name, functions whose tenant_id predicate is removed); None = both. The combined control is mandatory.
 VARIANTS = [
     ("combined", None),
-    ("vector", ("search",)),  # the dense query; the probe is the same SQL
+    ("vector", ("dense_search",)),  # the dense query; the probe is the same SQL
     ("keyword", ("keyword_search",)),
 ]
 

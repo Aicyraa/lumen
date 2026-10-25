@@ -6,12 +6,13 @@ import shutil
 from pathlib import Path
 
 RETRIEVAL_FUNCTIONS = (
-    "search",
+    "dense_search",
     "keyword_search",
-)  # the dense/fused search and BM25 (the probe uses search)
+    "filenames",
+)  # the dense query (also the probe), BM25, and the filename lookup that fills the sources
 # `tenant_id = %s` or `tenant_id = %(name)s`, any spacing. Replaced by a placeholder test that is always true,
 # so the parameter list and the SQL stay valid and only the filter is gone.
-PREDICATE = re.compile(r"tenant_id\s*=\s*(%\(\w+\)s|%s)")
+PREDICATE = re.compile(r"(?:\w+\.)?tenant_id\s*=\s*(%\(\w+\)s|%s)")
 
 
 class StripError(Exception):
@@ -19,7 +20,7 @@ class StripError(Exception):
 
 
 def strip_tenant_predicates(source: str, which=RETRIEVAL_FUNCTIONS) -> tuple[str, int]:
-    """Strip the predicate of the functions named in `which` (search = dense query and probe, keyword_search = BM25).
+    """Strip the predicate of the functions named in `which` (dense_search = dense query and probe, keyword_search = BM25).
     Returns (new source, number removed). Raises when the code no longer looks as expected."""
     if not set(which) <= set(RETRIEVAL_FUNCTIONS):
         raise StripError(f"unknown retrieval function in {which}")
@@ -45,7 +46,14 @@ def strip_tenant_predicates(source: str, which=RETRIEVAL_FUNCTIONS) -> tuple[str
 def make_leaky_copy(app_dir: Path, dest: Path, which=None) -> int:
     """Copy `app_dir` (apps/rag-service/app) to dest/app and strip the predicates; returns how many."""
     target = dest / "app"
-    shutil.copytree(app_dir, target, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    shutil.copytree(
+        app_dir, target, ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "models")
+    )
+    weights = (
+        app_dir / "models"
+    )  # gitignored weights (175 MB): link, never copy; may itself be a link
+    if weights.exists():
+        (target / "models").symlink_to(weights.resolve())
     store = target / "retrieval" / "store.py"
     original = store.read_text()
     new, n = strip_tenant_predicates(original, which or RETRIEVAL_FUNCTIONS)

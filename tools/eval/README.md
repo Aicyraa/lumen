@@ -89,7 +89,7 @@ the rag-service venv with its model weights cached. It never touches dev data an
    feedback on a foreign request is `404`, an altered key is `401`, a `tenant_id` in the body or header is ignored, and the
    tenant's dashboard (documents, requests, models, models/usage, usage, analytics) shows no foreign row;
 5. **negative control**: copies `apps/rag-service/app` to a temporary directory, removes the `tenant_id` predicates from
-   `store.search` and `store.keyword_search` (`isolation/sqlstrip.py`; it raises if the code no longer looks as expected, so
+   `store.dense_search`, `store.keyword_search` and `store.filenames` (`isolation/sqlstrip.py`; it raises if the code no longer looks as expected, so
    the control cannot silently turn into a no-op), starts that rag-service and a second API instance in front of it and asks
    the same questions. The control passes only when leaks are detected for both tenants. This **combined** control is
    mandatory. Two more controls run one after the other, each with its own leaky copy: only the vector predicate removed

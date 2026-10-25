@@ -43,9 +43,10 @@ def test_other_spellings_are_handled():
     src = (
         "def dense_search(a):\n    q = 'SELECT 1 FROM chunks WHERE tenant_id=%s AND x = 1'\n"
         "def keyword_search(a):\n    q = '''SELECT 1 FROM chunks\n  WHERE x = 1 AND tenant_id   =  %(t)s'''\n"
+        "def filenames(a):\n    q = 'WHERE tenant_id = %s'\n"
     )
     new, n = strip_tenant_predicates(src)
-    assert n == 2 and "tenant_id" not in new
+    assert n == 3 and "tenant_id" not in new
     assert "%s::text IS NOT NULL" in new and "%(t)s::text IS NOT NULL" in new
 
 
@@ -115,7 +116,9 @@ def test_the_copy_links_models_instead_of_copying_or_losing_them(tmp_path):
     real = tmp_path / "weights"
     (real / "embedding").mkdir(parents=True)
     (real / "embedding" / "w.bin").write_text("x")
-    (app / "models").symlink_to(real)  # as in a worktree, where models/ is a link to the main checkout
+    (app / "models").symlink_to(
+        real
+    )  # as in a worktree, where models/ is a link to the main checkout
     make_leaky_copy(app, tmp_path / "leaky")
     link = tmp_path / "leaky" / "app" / "models"
     assert link.is_symlink() and link.resolve() == real.resolve()
