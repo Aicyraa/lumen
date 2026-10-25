@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { api, post } from "../../shared/lib/api";
 import { friendlyError } from "../../shared/lib/errors";
 import { fmtCost, fmtDate, fmtInt, fmtMs } from "../../shared/lib/format";
@@ -94,6 +94,7 @@ export function Models() {
     rows.some((m) => m.input_price_per_1m != null || m.output_price_per_1m != null),
   );
   const byId = new Map<string, ModelUsage>((usage.data?.models ?? []).map((u) => [u.id, u]));
+  useRerenderAfterLimits(usage.data?.models);
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["models", org] });
     qc.invalidateQueries({ queryKey: ["models-usage", org] });
@@ -103,14 +104,18 @@ export function Models() {
   const move = useMutation({
     mutationFn: ({ id, direction }: { id: string; direction: "up" | "down" }) =>
       api(`/api/dashboard/models/${id}`, { method: "PATCH", body: JSON.stringify({ direction }) }),
+    onMutate: () => setRowError(""),
     onSuccess: refresh,
     onError: (e: Error) => setRowError(friendlyError(e)),
   });
   const remove = useMutation({
     mutationFn: (id: string) => api(`/api/dashboard/models/${id}`, { method: "DELETE" }),
+    onMutate: () => setRowError(""),
     onSuccess: refresh,
     onError: (e: Error) => setRowError(friendlyError(e)),
   });
+
+  const rowBusy = move.isPending || remove.isPending;
 
   return (
     <div className="stack">
@@ -209,6 +214,7 @@ export function Models() {
                     u={byId.get(m.id)}
                     usageFailed={usage.isError}
                     rank={i === 0 ? "PRIMARY" : `BACKUP ${i}`}
+                    busy={rowBusy}
                     first={i === 0}
                     last={i === rows.length - 1}
                     onMove={(direction) => move.mutate({ id: m.id, direction })}
@@ -237,6 +243,23 @@ const limitedUntil = (u?: ModelUsage) =>
     ? new Date(u.rate_limited_until)
     : null;
 
+// Renders again just after the nearest rate_limited_until passes, so an expired "Rate limited" chip clears itself.
+function useRerenderAfterLimits(models?: ModelUsage[]) {
+  const [, tick] = useState(0);
+  const now = Date.now();
+  const next = Math.min(
+    ...(models ?? [])
+      .map((u) => (u.rate_limited_until ? Date.parse(u.rate_limited_until) : 0))
+      .filter((t) => t > now),
+  );
+  useEffect(() => {
+    if (!Number.isFinite(next)) return;
+    // setTimeout caps at 2^31 ms; a longer wait is re-checked by the next refetch
+    const t = setTimeout(() => tick((n) => n + 1), Math.min(next - Date.now() + 50, 2 ** 31 - 1));
+    return () => clearTimeout(t);
+  }, [next]);
+}
+
 function remainingText(until: Date) {
   const min = Math.max(1, Math.ceil((until.getTime() - Date.now()) / 60_000));
   if (min >= 90) return `about ${Math.round(min / 60)} hours left`;
@@ -256,6 +279,7 @@ function ModelRow({
   u,
   usageFailed,
   rank,
+  busy,
   first,
   last,
   onMove,
@@ -265,6 +289,7 @@ function ModelRow({
   u?: ModelUsage;
   usageFailed: boolean;
   rank: string;
+  busy: boolean;
   first: boolean;
   last: boolean;
   onMove: (d: "up" | "down") => void;
@@ -340,7 +365,7 @@ function ModelRow({
         <button
           type="button"
           className="circle-btn"
-          disabled={first}
+          disabled={first || busy}
           aria-label={`Move ${m.model_id} up`}
           onClick={() => onMove("up")}
         >
@@ -349,7 +374,7 @@ function ModelRow({
         <button
           type="button"
           className="circle-btn"
-          disabled={last}
+          disabled={last || busy}
           aria-label={`Move ${m.model_id} down`}
           onClick={() => onMove("down")}
         >
@@ -359,6 +384,7 @@ function ModelRow({
           type="button"
           className="link-btn danger-hover"
           aria-label={`Remove ${m.model_id}`}
+          disabled={busy}
           onClick={onRemove}
         >
           Remove
@@ -389,6 +415,7 @@ function AddModel({ onDone, onCancel }: { onDone: () => void; onCancel: () => vo
 
   function submit(e: FormEvent) {
     e.preventDefault();
+    if (save.isPending) return;
     setError("");
     const input = parsePrice(inPrice),
       output = parsePrice(outPrice);
