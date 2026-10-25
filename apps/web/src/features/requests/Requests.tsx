@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "../../shared/lib/api";
 import { fmtCost, fmtMs, fmtScore, fmtTime, RATE_LIMITED, tierTone } from "../../shared/lib/format";
@@ -37,6 +37,8 @@ export function Requests() {
         `/api/dashboard/requests?range=${range}&tier=${tier}${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`,
       ),
     getNextPageParam: (last) => last.next_cursor ?? undefined, // null = last page
+    placeholderData: keepPreviousData, // a new filter keeps the old rows on screen until its own arrive
+    maxPages: 20, // shortcut: the oldest pages drop out after 20 "Load more" clicks (no cursor to page back), raise if needed
   });
   const rows = q.data?.pages.flatMap((p) => p.items ?? []) ?? [];
 
@@ -70,7 +72,11 @@ export function Requests() {
         <StatusMessage state="empty">No requests match this filter.</StatusMessage>
       )}
       {rows.length > 0 && (
-        <div className="scroll-x">
+        <div
+          className="scroll-x"
+          aria-busy={q.isPlaceholderData}
+          style={{ opacity: q.isPlaceholderData ? 0.6 : 1 }}
+        >
           <div className="table" role="table" aria-label="Request log" style={{ minWidth: 760 }}>
             <div className="tr th req-cols" role="row">
               <span role="columnheader">TIME</span>

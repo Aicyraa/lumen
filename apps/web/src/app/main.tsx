@@ -1,15 +1,15 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
+import { authClient } from "../shared/lib/auth-client";
 import { configError } from "../shared/lib/config";
 import { App } from "./App";
 import { ConfigMissing } from "./ConfigMissing";
+import { createQueryClient } from "./queryClient";
 import "../shared/styles/styles.css";
 
-const client = new QueryClient({
-  defaultOptions: { queries: { staleTime: 5000, retry: 1, refetchOnWindowFocus: false } },
-});
+const client = createQueryClient(() => authClient.$store.notify("$sessionSignal"));
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

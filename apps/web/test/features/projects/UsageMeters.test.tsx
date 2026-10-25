@@ -42,7 +42,9 @@ describe("UsageMeters", () => {
       ).toBeTruthy(),
     );
     const query = client.getQueryCache().find({ queryKey: ["usage", "org_1"] })!;
-    const interval = query.options.refetchInterval as (q: typeof query) => number | false;
+    const interval = (query.options as { refetchInterval: unknown }).refetchInterval as (
+      q: typeof query,
+    ) => number | false;
     expect(interval(query)).toBe(false);
   });
 });
