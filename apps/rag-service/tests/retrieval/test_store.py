@@ -102,7 +102,9 @@ def test_chunk_with_other_tenant_than_its_document_is_rejected():
     ensure_tenant(
         "tenant_b"
     )  # so the rejection is the document's tenant, not a missing tenants row
-    with pytest.raises(psycopg.errors.ForeignKeyViolation):
+    with pytest.raises(
+        store.DocumentMissing
+    ):  # tenant_b has no such document; the FK is the backstop
         store.add_chunks("tenant_b", doc, ["x"], np.array([vec(0)]))
 
 
@@ -156,6 +158,18 @@ def test_add_chunks_for_an_existing_document_is_all_or_nothing():
 def test_add_chunks_for_a_missing_document_writes_nothing():
     missing = "00000000-0000-0000-0000-000000000000"
     ensure_tenant("t")
-    with pytest.raises(psycopg.errors.ForeignKeyViolation):
+    with pytest.raises(store.DocumentMissing):
         store.add_chunks("t", missing, ["x"], np.array([vec(0)]))
     assert count_chunks("t", missing) == 0
+
+
+def test_search_reuses_a_given_dense_result_instead_of_querying_again(monkeypatch):
+    add("t", "f.txt", ["alpha beta", "gamma delta", "INT-027 closes"], [0, 1, 2])
+    dense = store.dense_search("t", vec(0), 40)
+    expected = store.search("t", vec(0), k=2, query_text="INT-027 deadline")
+
+    def no_second_dense(*a, **k):
+        raise AssertionError("dense search ran again")
+
+    monkeypatch.setattr(store, "dense_search", no_second_dense)
+    assert store.search("t", vec(0), k=2, query_text="INT-027 deadline", dense=dense) == expected

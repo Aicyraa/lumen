@@ -1,7 +1,7 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { Documents } from "../../../src/features/documents/Documents";
+import { Documents, docPollInterval } from "../../../src/features/documents/Documents";
 import { mockFetch, renderWithProviders, reply } from "../../helpers";
 
 const doc = (over: object) => ({
@@ -61,6 +61,45 @@ describe("Documents", () => {
     expect(calls.length).toBe(n);
   });
 
+  it("polling backs off from the base interval up to five times it, and stops when nothing is processing", () => {
+    const busy = [doc({})] as never;
+    expect(docPollInterval(busy, 2000, 0)).toBe(2000);
+    expect(docPollInterval(busy, 2000, 1)).toBeGreaterThan(2000);
+    expect(docPollInterval(busy, 2000, 2)).toBeGreaterThan(
+      docPollInterval(busy, 2000, 1) as number,
+    );
+    expect(docPollInterval(busy, 2000, 50)).toBe(10000);
+    expect(docPollInterval([doc({ status: "ready" })] as never, 2000, 0)).toBe(false);
+    expect(docPollInterval(undefined, 2000, 0)).toBe(false);
+  });
+
+  it("says what an upload is doing: uploading, then uploaded, in a live region", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const { fn } = mockFetch((url) => (url.endsWith("/usage") ? usage : { documents: [] }));
+    const orig = fn.getMockImplementation()!;
+    fn.mockImplementation(async (input, init) => {
+      if (init?.method === "POST") {
+        await gate;
+        return new Response(JSON.stringify({ document_id: "d9", status: "processing" }), {
+          status: 202,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return orig(input, init);
+    });
+    renderWithProviders(<Documents />);
+    await screen.findByText(/No documents yet/);
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await userEvent.upload(input, new File(["x"], "notes.md", { type: "text/markdown" }));
+    const live = await screen.findByText("Uploading notes.md…");
+    expect(live.closest("[aria-live]")).toBeInTheDocument();
+    release();
+    expect(
+      await screen.findByText("Uploaded notes.md. It is being processed."),
+    ).toBeInTheDocument();
+  });
+
   it("shows the counter with the limit from the API", async () => {
     mockFetch((url) =>
       url.endsWith("/usage") ? usage : { documents: [doc({ status: "ready", chunk_count: 14 })] },
@@ -90,6 +129,40 @@ describe("Documents", () => {
     expect(
       await screen.findByText("Only PDF, .txt and .md files are supported."),
     ).toBeInTheDocument();
+  });
+
+  it.each([
+    ["upload_rate_limited", 7, /uploading too fast.*7 seconds/],
+    ["ingest_limit", 10, /still being processed.*10 seconds/],
+  ])("429 %s tells the user how long to wait", async (code, wait, re) => {
+    mockFetch((url, init) => {
+      if (url.endsWith("/usage")) return usage;
+      if (init?.method === "POST")
+        return reply(
+          429,
+          { error: { code, message: "server text", retry_after_seconds: wait } },
+          {
+            "retry-after": String(wait),
+          },
+        );
+      return { documents: [] };
+    });
+    renderWithProviders(<Documents />);
+    await screen.findByText(/No documents yet/);
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await userEvent.upload(input, new File(["x"], "a.md", { type: "text/markdown" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(re);
+  });
+
+  it("shows the failure reason from the API exactly as sent", async () => {
+    const reason = "unreadable_document: The PDF is encrypted or damaged.";
+    mockFetch((url) =>
+      url.endsWith("/usage")
+        ? usage
+        : { documents: [doc({ filename: "x.pdf", status: "failed", error: reason })] },
+    );
+    renderWithProviders(<Documents />);
+    expect(await screen.findByText(reason)).toBeInTheDocument();
   });
 
   it("sends any file to the server and shows its 415 or 413 message: no type or size decision in the front end", async () => {
@@ -137,7 +210,19 @@ describe("Documents", () => {
       return { documents: docs };
     });
     renderWithProviders(<Documents pollMs={40} />);
-    await userEvent.click(await screen.findByRole("button", { name: "Delete handbook.md" }));
+    const user = userEvent.setup();
+    const isDelete = () => calls.some((c) => c.init?.method === "DELETE");
+    await user.click(await screen.findByRole("button", { name: "Delete handbook.md" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("handbook.md");
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(isDelete()).toBe(false);
+    await user.click(screen.getByRole("button", { name: "Delete handbook.md" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Delete document" }),
+    );
     await waitFor(() => expect(screen.getByText(/No documents yet/)).toBeInTheDocument());
     expect(
       calls.some(

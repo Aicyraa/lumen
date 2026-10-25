@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { isProjectMismatch } from "../../shared/lib/activeProject";
 import { api } from "../../shared/lib/api";
 import { fmtInt, isNearLimit } from "../../shared/lib/format";
 import type { Usage } from "../../shared/lib/types";
@@ -17,7 +18,8 @@ export function UsageMeters() {
     queryKey: ["usage", org],
     enabled: !!org,
     queryFn: () => api<Usage>("/api/dashboard/usage"),
-    refetchInterval: 15000,
+    // a stale tab (409 project_mismatch) stops asking until it is reloaded
+    refetchInterval: (q) => (isProjectMismatch(q.state.error) ? false : 15000),
   });
   return (
     <div className="usage">

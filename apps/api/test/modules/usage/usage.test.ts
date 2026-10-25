@@ -68,7 +68,12 @@ describe("GET /api/dashboard/usage", () => {
 
 describe("rate limiter usage reader", () => {
   it("reports 0 once the window has ended, even if the store still holds the old entry", async () => {
-    const limiters = createLimiters({ ratePerMinute: 5, globalLlmCapPerMinute: 5 });
+    const limiters = createLimiters({
+      ratePerMinute: 5,
+      globalLlmCapPerMinute: 5,
+      modelTestRatePerMinute: 5,
+      uploadRatePerMinute: 5,
+    });
     const app = express();
     app.use((req, _res, next) => {
       req.tenantId = "t";

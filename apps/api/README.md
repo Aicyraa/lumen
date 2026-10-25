@@ -20,8 +20,8 @@ pnpm --filter @lumen/api dev            # http://localhost:3000 (tsx watch src/s
 | `auth:migrate` | `tsx scripts/migrate.ts` |
 
 The server refuses to start while `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `DASHBOARD_ORIGIN`,
-`INTERNAL_SECRET`, `RAG_SERVICE_URL`, `MODEL_KEY_ENCRYPTION_SECRET` (exactly 64 hex characters; changing it makes stored model keys unreadable), `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE`, `MAX_REQUESTS_PER_MONTH` or `MAX_PROJECTS_PER_USER`
-is missing. With `NODE_ENV=production` it also refuses to start without `SMTP_URL` and `MAIL_FROM`. Google/GitHub sign-in is skipped while its client id/secret are empty; email + password always works.
+`INTERNAL_SECRET`, `RAG_SERVICE_URL`, `MODEL_KEY_ENCRYPTION_SECRET` (exactly 64 hex characters; changing it makes stored model keys unreadable), `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE`, `MAX_REQUESTS_PER_MONTH`, `MAX_PROJECTS_PER_USER` or `NODE_ENV`
+is missing. `NODE_ENV` must be `development`, `test` or `production`: only `development` and `test` get the dev shortcuts (`/dev/*` routes for `development`, `http://localhost` model endpoints), anything else counts as production, and an unset or empty value refuses to start. In production it also refuses to start without `SMTP_URL` and `MAIL_FROM`. Google/GitHub sign-in is skipped while its client id/secret are empty; email + password always works.
 
 Other tunables live in `config.json` (ingest timeout, interrupted-ingest cutoff, global LLM cap per minute, upload
 limit, page sizes). Each can be overridden by an upper-snake env var, for example `INGEST_TIMEOUT_MS`.
@@ -298,8 +298,49 @@ curl -s localhost:3000/dev/api-key -H "x-internal-secret: $INTERNAL_SECRET" \
 # {"tenant_id":"<organization id>","api_key":"..."}   use as: -H "x-api-key: ..."
 ```
 
-The route needs the internal secret and is mounted only when `NODE_ENV=development` (unset or any other value: not mounted). `pnpm dev` does not set it; start with `NODE_ENV=development`.
+The route needs the internal secret and is mounted only when `NODE_ENV=development` (any other value: not mounted). `pnpm dev` sets `NODE_ENV=development` when it is unset; `pnpm start` needs it set explicitly.
 Real keys are made in the dashboard with the API key plugin.
+
+## Limits, errors and the project header (polish step)
+
+| Setting (`config.json`, env-overridable) | Default | Effect |
+| --- | --- | --- |
+| `maxModelsPerTier` / `MAX_MODELS_PER_TIER` | 5 | `POST /models` past this many models in the tier: `422 model_limit`, before the provider is called |
+| `modelTestRatePerMinute` / `MODEL_TEST_RATE_PER_MINUTE` | 10 | Test & save attempts per project per minute (they call the provider): `429 rate_limited`. Only `POST /models` counts |
+| `uploadRatePerMinute` / `UPLOAD_RATE_PER_MINUTE` | 20 | Uploads started per project per minute, `/v1/documents` and the dashboard together: `429 upload_rate_limited` with `Retry-After` |
+| `maxConcurrentIngests` / `MAX_CONCURRENT_INGESTS` | 3 | Documents of one project in `processing` at once (rows older than `interruptedIngestAfterSeconds` do not count): `429 ingest_limit` with `Retry-After: ingestLimitRetryAfterSeconds` (10) |
+| `ingestBusyRetries`, `ingestBusyBackoffMs`, `ingestBusyBackoffMaxMs` | 3, 2000, 30000 | When the rag-service answers an ingest with `503 busy`, the API waits (its `Retry-After`, else doubling from the first wait, never longer than the maximum) and retries; after the last retry the document is `failed` |
+
+Both 429s above carry `Retry-After` (seconds) and `retry_after_seconds` in the error body.
+
+**Why a document failed** (`error` on `GET /documents`, `GET /documents/:id`): the background ingest stores a reason a person can read.
+`document_too_large`: "This document is too large to process. Split it into smaller files and upload them again."
+`unreadable_document`: "This file could not be read. Check that it is a valid PDF that is not password-protected, then upload it again."
+`503 busy` that never cleared: "The service is busy. Try again shortly."
+Anything else is `<code>: <message>` (for example `no_text_extracted: ...`), and `ingest interrupted` comes from the startup sweep. A `409 document_not_ingestable`
+from the rag-service (the document was already failed or deleted) is only logged; the row is left as it is.
+
+**`X-Project-Id`.** The dashboard may send the id of the project it is showing on every project route (`/documents`, `/models`, `/requests`, `/analytics`,
+`/usage`, `/feedback`, `/try`, and Better Auth's `/api/auth/api-key/*`). If it is not the session's active project the answer is
+`409 { "error": { "code": "project_mismatch", "message": "The active project changed. Reload the page." } }` and nothing is read or written.
+No header: unchanged. `/workspaces` and `/account` ignore it. The tenant is still the session's active project; the header never selects one.
+
+**`NODE_ENV`** is required: `development`, `test` or `production`. Only the first two get the dev shortcuts; any other value counts as production
+(SMTP required, no `/dev/*`, https model endpoints only), and an unset or empty value stops the API at startup with a message saying so.
+
+## Running more than one API process
+
+Everything durable is in Postgres, but some state is per process, so know these before starting a second instance:
+
+- **Rate limit counters are in memory.** `RATE_LIMIT_PER_MINUTE`, `GLOBAL_LLM_CAP_PER_MINUTE`, `MODEL_TEST_RATE_PER_MINUTE`, `UPLOAD_RATE_PER_MINUTE` and the per-address
+  resend limit are counted per process. With N processes behind a load balancer a tenant can make up to N times the limit, and the "Requests / min" meter shows
+  only the answering process's count. Use sticky routing per tenant, divide the limits by N, or move the store to Redis before relying on them.
+- **The create-project lock is per process** (`KeyedLock`). The cap itself is re-checked against the database, so the worst case is one extra project when two
+  processes create for the same user in the same instant.
+- **Background ingests are per process.** If a process dies, its documents stay `processing` until the next process starts and sweeps them.
+- **The startup sweep is safe to run concurrently:** it takes a Postgres advisory lock (`pg_try_advisory_lock`, name `lumen:sweep-interrupted`); a process that
+  does not get it skips the sweep and logs so.
+- The concurrent-ingest cap and the document limit are counted in Postgres, so they hold across processes.
 
 ## Layout
 

@@ -4,6 +4,12 @@ import { z } from "zod";
 
 interface Tunables {
   ingestTimeoutMs: number;
+  uploadRatePerMinute: number; // uploads a project may start per minute, /v1 and dashboard together
+  maxConcurrentIngests: number; // uploads of one project being ingested at once
+  ingestLimitRetryAfterSeconds: number; // Retry-After when that cap is reached
+  ingestBusyRetries: number; // retries after the rag-service answers 503 busy
+  ingestBusyBackoffMs: number; // first wait, doubled each retry unless the service sent Retry-After
+  ingestBusyBackoffMaxMs: number;
   interruptedIngestAfterSeconds: number;
   globalLlmCapPerMinute: number;
   uploadMaxBytes: number;
@@ -30,6 +36,8 @@ interface Tunables {
   projectSlugMaxChars: number;
   projectSlugRandomBytes: number;
   projectCreateLockMs: number;
+  maxModelsPerTier: number; // cheap and expensive each
+  modelTestRatePerMinute: number; // Test & save attempts per tenant per minute
   modelAttemptsMax: number;
   rateLimitHeadersMax: number;
   modelTestMaxTokens: number;
@@ -102,7 +110,13 @@ export function loadConfig(
   env: NodeJS.ProcessEnv = process.env,
   overrides: Partial<Config> = {},
 ): Config {
-  const production = env.NODE_ENV === "production";
+  // Fail closed: only an explicit development or test run gets the dev shortcuts (http://localhost endpoints, /dev routes).
+  // An unset or empty NODE_ENV would count as production, which then needs SMTP etc., so say what is wrong instead of guessing.
+  if (!env.NODE_ENV?.trim())
+    throw new Error(
+      "NODE_ENV is not set. Set it to development, test or production (unset counts as production).",
+    );
+  const production = env.NODE_ENV !== "development" && env.NODE_ENV !== "test";
   // Production cannot verify emails without a mail server.
   const schema = production
     ? required.extend({ SMTP_URL: z.string().min(1), MAIL_FROM: z.string().min(1) })

@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "../../shared/lib/api";
 import { fmtCost, fmtMs, fmtScore, fmtTime, RATE_LIMITED, tierTone } from "../../shared/lib/format";
@@ -37,6 +37,8 @@ export function Requests() {
         `/api/dashboard/requests?range=${range}&tier=${tier}${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`,
       ),
     getNextPageParam: (last) => last.next_cursor ?? undefined, // null = last page
+    placeholderData: keepPreviousData, // a new filter keeps the old rows on screen until its own arrive
+    maxPages: 20, // shortcut: the oldest pages drop out after 20 "Load more" clicks (no cursor to page back), raise if needed
   });
   const rows = q.data?.pages.flatMap((p) => p.items ?? []) ?? [];
 
@@ -70,7 +72,11 @@ export function Requests() {
         <StatusMessage state="empty">No requests match this filter.</StatusMessage>
       )}
       {rows.length > 0 && (
-        <div className="scroll-x">
+        <div
+          className="scroll-x"
+          aria-busy={q.isPlaceholderData}
+          style={{ opacity: q.isPlaceholderData ? 0.6 : 1 }}
+        >
           <div className="table" role="table" aria-label="Request log" style={{ minWidth: 760 }}>
             <div className="tr th req-cols" role="row">
               <span role="columnheader">TIME</span>
@@ -107,24 +113,29 @@ function Row({ r, onOpen }: { r: RequestRow; onOpen: () => void }) {
   const label = r.tier ?? (r.status === RATE_LIMITED ? "rate limited" : "failed");
   return (
     <div className="tr-wrap" role="row">
-      <button
-        type="button"
-        className="tr req-cols row-btn"
-        onClick={onOpen}
-        aria-haspopup="dialog"
-        aria-label={`${r.query} — open details`}
-      >
-        <span className="mono small muted-3">{fmtTime(r.time)}</span>
-        <span className="ellipsis">{r.query}</span>
-        <StatusDot tone={tierTone(r.tier)}>{label}</StatusDot>
-        <span className="mono muted-2">{r.k ?? "—"}</span>
-        <span className="mono muted-2">
-          {r.tier === "none" || (r.tier === null && r.cost_usd === null)
-            ? "—"
-            : fmtCost(r.cost_usd)}
-        </span>
-        <span className="mono muted-2">{fmtMs(r.latency_ms)}</span>
-      </button>
+      <div role="cell">
+        <button
+          type="button"
+          className="tr req-cols row-btn"
+          onClick={(e) => {
+            e.currentTarget.focus(); // Safari does not focus a clicked button; the drawer returns focus here on close
+            onOpen();
+          }}
+          aria-haspopup="dialog"
+          aria-label={`${r.query} — open details`}
+        >
+          <span className="mono small muted-3">{fmtTime(r.time)}</span>
+          <span className="ellipsis">{r.query}</span>
+          <StatusDot tone={tierTone(r.tier)}>{label}</StatusDot>
+          <span className="mono muted-2">{r.k ?? "—"}</span>
+          <span className="mono muted-2">
+            {r.tier === "none" || (r.tier === null && r.cost_usd === null)
+              ? "—"
+              : fmtCost(r.cost_usd)}
+          </span>
+          <span className="mono muted-2">{fmtMs(r.latency_ms)}</span>
+        </button>
+      </div>
     </div>
   );
 }

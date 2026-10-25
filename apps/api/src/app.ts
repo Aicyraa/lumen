@@ -16,7 +16,11 @@ import { usageHandler } from "./modules/usage/usage.routes.js";
 import { errorHandler, notFoundHandler, sendError } from "./shared/lib/errors.js";
 import { createLimiters } from "./shared/middleware/rateLimit.js";
 import { requireApiKey } from "./shared/middleware/requireApiKey.js";
-import { requireSession, requireTenant } from "./shared/middleware/requireSession.js";
+import {
+  requireProjectMatch,
+  requireSession,
+  requireTenant,
+} from "./shared/middleware/requireSession.js";
 import { loadTenantModels } from "./shared/middleware/tenantModels.js";
 import type { Deps } from "./shared/types/types.js";
 
@@ -46,7 +50,10 @@ export function createApp({
         sendError(res, 429, "rate_limited", "Too many requests. Try again in a minute."),
     }),
   );
-  app.all("/api/auth/*splat", toNodeHandler(auth)); // Express 5 syntax; must come before express.json() (rule 5)
+  app.use("/api/auth/api-key", requireProjectMatch(auth)); // API keys are managed through Better Auth, not /api/dashboard
+  const authHandler = toNodeHandler(auth);
+  // Express 5 syntax; must come before express.json() (rule 5). The scope lets the create hooks release only their own lock.
+  app.all("/api/auth/*splat", (req, res) => auth.projectLockScope(() => authHandler(req, res)));
   app.use(express.json());
   // Public API: every /v1 route needs a valid key, so unknown paths also answer 401 first.
   const deps = { pool, rag, config, log, pending, resolveHost };
@@ -55,7 +62,7 @@ export function createApp({
   app.locals.rateLimitUsed = limiters.used;
   const v1 = express.Router();
   v1.use(requireApiKey(auth));
-  v1.use("/documents", documentsRouter(deps));
+  v1.use("/documents", documentsRouter(deps, limiters.uploads));
   v1.post("/chat", ...llm, chatHandler(deps));
   v1.post("/feedback", feedbackHandler(deps));
   app.use("/v1", v1);
@@ -97,8 +104,8 @@ export function createApp({
   dash.post("/feedback", feedbackHandler(deps)); // same logic as /v1/feedback; the tenant is the session's organization
   dash.use("/analytics", analyticsRouter(deps));
   dash.use("/requests", requestsRouter(deps));
-  dash.use("/documents", documentsRouter(deps));
-  dash.use("/models", modelsRouter(deps));
+  dash.use("/documents", documentsRouter(deps, limiters.uploads));
+  dash.use("/models", modelsRouter(deps, limiters.modelTests));
   dash.post("/try", ...llm, chatHandler(deps, { tryIt: true })); // same limiter instance as /v1/chat: one shared counter
   app.use("/api/dashboard", dash);
 

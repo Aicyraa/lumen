@@ -38,6 +38,7 @@ vi.mock("../../src/shared/lib/auth-client", () => ({
 }));
 
 import { App } from "../../src/app/App";
+import { flagProjectMismatch, setActiveProjectId } from "../../src/shared/lib/activeProject";
 import { mockFetch, reply } from "../helpers";
 
 const P1 = {
@@ -139,6 +140,17 @@ describe("project routes", () => {
     expect(setActive).not.toHaveBeenCalled();
   });
 
+  it("entering a project does not update a subscribed component during render", async () => {
+    setActiveProjectId("stale"); // a different active project whose mismatch flag is set
+    flagProjectMismatch();
+    mockFetch(api());
+    mount("/projects/my-project/documents");
+    expect(await screen.findByText("Drop files to upload")).toBeInTheDocument();
+    const logged = vi.mocked(console.error).mock.calls.flat().join(" ");
+    expect(logged).not.toMatch(/Cannot update a component/);
+    expect(screen.queryByText(/project changed in another tab/)).not.toBeInTheDocument();
+  });
+
   it("an unknown project slug says so and links back to Projects", async () => {
     mockFetch(api());
     mount("/projects/nope/documents");
@@ -166,6 +178,48 @@ describe("project routes", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Projects" })).toBeInTheDocument();
   });
 
+  it("sends X-Project-Id on project calls and not on /workspaces", async () => {
+    const { calls } = mockFetch(api());
+    mount("/projects/my-project/documents");
+    expect(await screen.findByText("Drop files to upload")).toBeInTheDocument();
+    const header = (path: string) =>
+      new Headers(calls.find((c) => c.url.endsWith(path))!.init?.headers).get("x-project-id");
+    expect(header("/api/dashboard/documents")).toBe("p1");
+    expect(header("/api/dashboard/usage")).toBe("p1");
+    expect(header("/api/dashboard/workspaces")).toBeNull();
+  });
+
+  it("409 project_mismatch shows a persistent banner with Reload", async () => {
+    const reload = vi.fn();
+    vi.stubGlobal("location", { ...window.location, reload });
+    mockFetch(
+      api((url) =>
+        url.endsWith("/documents")
+          ? reply(409, {
+              error: { code: "project_mismatch", message: "The active project changed." },
+            })
+          : undefined,
+      ),
+    );
+    mount("/projects/my-project/documents");
+    const banner = await screen.findByText("This tab's project changed in another tab. Reload.");
+    expect(banner.closest("[role=alert]")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Reload" }));
+    expect(reload).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("the tab title follows the page: Requests, then Projects", async () => {
+    mockFetch(api());
+    mount("/projects/my-project/requests");
+    await screen.findByRole("complementary");
+    await waitFor(() => expect(document.title).toBe("Requests · Lumen"));
+    await userEvent.click(
+      within(screen.getByRole("complementary")).getByRole("link", { name: "Projects" }),
+    );
+    await waitFor(() => expect(document.title).toBe("Projects · Lumen"));
+  });
+
   it("the sidebar shows the current project as a plain label and the way to switch is the Projects page", async () => {
     mockFetch(api());
     mount("/projects/my-project/requests");
@@ -191,6 +245,20 @@ describe("project routes", () => {
     expect(within(screen.getByRole("complementary")).getByText("Shop support")).toHaveClass(
       "project-label",
     );
+  });
+});
+
+describe("lazy routes", () => {
+  it("shows an accessible loading status while a page's code loads, then the page", async () => {
+    client = new QueryClient();
+    mockFetch(() => ({}));
+    sess = { data: null, isPending: false, error: null };
+    mount("/docs");
+    expect(screen.getByRole("status")).toHaveTextContent("Loading page…");
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "API reference" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Loading page…")).not.toBeInTheDocument();
   });
 });
 

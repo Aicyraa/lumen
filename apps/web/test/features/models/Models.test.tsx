@@ -117,12 +117,25 @@ describe("Models", () => {
     const patch = calls.find((c) => c.init?.method === "PATCH")!;
     expect(patch.url).toContain("/api/dashboard/models/b");
     expect(JSON.parse(String(patch.init!.body))).toEqual({ direction: "up" });
+    const isDelete = () =>
+      calls.some((c) => c.init?.method === "DELETE" && c.url.endsWith("/api/dashboard/models/b"));
     await user.click(
       within(screen.getByTestId("model-b")).getByRole("button", { name: "Remove model-b" }),
     );
-    expect(
-      calls.some((c) => c.init?.method === "DELETE" && c.url.endsWith("/api/dashboard/models/b")),
-    ).toBe(true);
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("model-b");
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
+    expect(isDelete()).toBe(false);
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(isDelete()).toBe(false);
+    await user.click(
+      within(screen.getByTestId("model-b")).getByRole("button", { name: "Remove model-b" }),
+    );
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Remove model" }),
+    );
+    await waitFor(() => expect(isDelete()).toBe(true));
   });
 
   async function fillForm(
@@ -146,13 +159,12 @@ describe("Models", () => {
       router((_url, init) => (init?.method === "POST" ? undefined : undefined)),
     );
     const orig = fn.getMockImplementation()!;
-    fn.mockImplementation(async (input, init) =>
-      init?.method === "POST"
-        ? (calls.push({ url: String(input), init }),
-          await gate,
-          new Response(JSON.stringify({ model: m("z", "cheap", 2) }), { status: 201 }))
-        : orig(input, init),
-    );
+    fn.mockImplementation(async (input, init) => {
+      if (init?.method !== "POST") return orig(input, init);
+      calls.push({ url: String(input), init });
+      await gate;
+      return new Response(JSON.stringify({ model: m("z", "cheap", 2) }), { status: 201 });
+    });
     renderWithProviders(<Models />);
     const user = userEvent.setup();
     await fillForm(user, { input: "0.1", output: "0.4" });
@@ -200,6 +212,30 @@ describe("Models", () => {
     );
     expect(document.body.innerHTML).not.toContain(SECRET);
     expect(screen.getByLabelText("API key")).toHaveValue("");
+  });
+
+  it("Test & save: 422 model_limit and 429 rate_limited show friendly messages", async () => {
+    let next: ReturnType<typeof reply> = reply(422, {
+      error: { code: "model_limit", message: "You can add at most 5 models to each tier." },
+    });
+    mockFetch(router((_url, init) => (init?.method === "POST" ? next : undefined)));
+    renderWithProviders(<Models />);
+    const user = userEvent.setup();
+    await fillForm(user);
+    await user.click(screen.getByRole("button", { name: "Test & save" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "You can add at most 5 models to each tier. Remove one to add another.",
+    );
+    next = reply(
+      429,
+      { error: { code: "rate_limited", message: "Too many requests. Try again in a minute." } },
+      { "retry-after": "42" },
+    );
+    await user.type(screen.getByLabelText("API key"), SECRET);
+    await user.click(screen.getByRole("button", { name: "Test & save" }));
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(/Too many requests.*42 seconds/),
+    );
   });
 
   it("validates optional prices: negative or non-numeric prices are not sent", async () => {
@@ -553,5 +589,93 @@ describe("Models provider rate limits", () => {
     renderWithProviders(<Models />);
     await screen.findAllByText(/Rate limited until/);
     expect(screen.queryByText(HINT)).not.toBeInTheDocument();
+  });
+
+  describe("row actions", () => {
+    function gated(onPatch: (init: RequestInit) => void, deleteReply?: () => unknown) {
+      let release!: () => void;
+      const gate = new Promise<void>((r) => (release = r));
+      const { fn } = mockFetch(router());
+      const orig = fn.getMockImplementation()!;
+      fn.mockImplementation(async (input, init) => {
+        if (init?.method === "PATCH") {
+          onPatch(init);
+          await gate;
+          return new Response(JSON.stringify(base), {
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (init?.method === "DELETE" && deleteReply) {
+          const r = deleteReply() as ReturnType<typeof reply>;
+          if (r)
+            return new Response(JSON.stringify(r.body), {
+              status: r.status,
+              headers: { "content-type": "application/json" },
+            });
+        }
+        return orig(input, init);
+      });
+      return release;
+    }
+
+    it("disables move and remove while a move is in flight, so a double click sends one request", async () => {
+      let patches = 0;
+      const release = gated(() => patches++);
+      renderWithProviders(<Models />);
+      const user = userEvent.setup();
+      const up = async () =>
+        within(await screen.findByTestId("model-b")).getByRole("button", {
+          name: "Move model-b up",
+        });
+      await user.click(await up());
+      await waitFor(async () => expect(await up()).toBeDisabled());
+      await user.click(await up());
+      expect(patches).toBe(1);
+      expect(
+        within(screen.getByTestId("model-b")).getByRole("button", { name: "Remove model-b" }),
+      ).toBeDisabled();
+      release();
+      await waitFor(async () => expect(await up()).toBeEnabled());
+    });
+
+    it("clears a row error as soon as the user tries again", async () => {
+      let fail = true;
+      const release = gated(
+        () => {},
+        () =>
+          fail ? reply(500, { error: { code: "error", message: "Could not remove." } }) : undefined,
+      );
+      renderWithProviders(<Models />);
+      const user = userEvent.setup();
+      const remove = async () => {
+        await user.click(
+          within(await screen.findByTestId("model-b")).getByRole("button", {
+            name: "Remove model-b",
+          }),
+        );
+        await user.click(
+          within(await screen.findByRole("dialog")).getByRole("button", { name: "Remove model" }),
+        );
+      };
+      await remove();
+      expect(await screen.findByRole("alert")).toHaveTextContent("Could not remove.");
+      fail = false;
+      await user.click(
+        within(screen.getByTestId("model-b")).getByRole("button", { name: "Move model-b up" }),
+      );
+      expect(screen.queryByText("Could not remove.")).not.toBeInTheDocument();
+      release();
+    });
+  });
+
+  it("drops the rate-limited chip by itself once rate_limited_until has passed", async () => {
+    withUsage({ a: { rate_limited_until: new Date(Date.now() + 600).toISOString() } });
+    renderWithProviders(<Models />);
+    const a = await screen.findByTestId("model-a");
+    await within(a).findByText(/Rate limited until/);
+    await waitFor(() => expect(within(a).getByText("Connected")).toBeInTheDocument(), {
+      timeout: 3000,
+    });
+    expect(screen.queryByText(/Rate limited until/)).not.toBeInTheDocument();
   });
 });

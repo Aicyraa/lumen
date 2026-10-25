@@ -81,6 +81,47 @@ describe("ApiKeys", () => {
     expect(await screen.findByText("Prod")).toBeInTheDocument(); // listed by its start only
   });
 
+  describe("copying the new key", () => {
+    async function openKeyDialog(writeText?: () => Promise<void>) {
+      list.mockResolvedValue({ data: { apiKeys: [], total: 0 }, error: null });
+      create.mockResolvedValue({
+        data: { id: "k9", key: FULL_KEY, start: "lum_S", name: "Prod" },
+        error: null,
+      });
+      renderWithProviders(<ApiKeys />);
+      const user = userEvent.setup();
+      // after setup(): user-event installs its own clipboard stub on navigator
+      Object.defineProperty(navigator, "clipboard", {
+        value: writeText ? { writeText } : undefined,
+        configurable: true,
+      });
+      await user.click(await screen.findByRole("button", { name: "Create key" }));
+      await user.click(screen.getByRole("button", { name: "Create" }));
+      const dialog = await screen.findByRole("dialog");
+      return { user, dialog };
+    }
+    it("says Copied only after the clipboard write succeeded", async () => {
+      const { user, dialog } = await openKeyDialog(() => Promise.resolve());
+      await user.click(within(dialog).getByRole("button", { name: "Copy" }));
+      expect(await within(dialog).findByRole("button", { name: "Copied" })).toBeInTheDocument();
+    });
+    it("says to copy by hand when the clipboard write is refused", async () => {
+      const { user, dialog } = await openKeyDialog(() => Promise.reject(new Error("denied")));
+      await user.click(within(dialog).getByRole("button", { name: "Copy" }));
+      expect(
+        await within(dialog).findByText(/Copy failed, select and copy manually/),
+      ).toBeInTheDocument();
+      expect(within(dialog).queryByRole("button", { name: "Copied" })).not.toBeInTheDocument();
+    });
+    it("says to copy by hand when there is no clipboard API", async () => {
+      const { user, dialog } = await openKeyDialog(undefined);
+      await user.click(within(dialog).getByRole("button", { name: "Copy" }));
+      expect(
+        await within(dialog).findByText(/Copy failed, select and copy manually/),
+      ).toBeInTheDocument();
+    });
+  });
+
   it("shows the error when creating fails and no key", async () => {
     list.mockResolvedValue({ data: { apiKeys: [], total: 0 }, error: null });
     create.mockResolvedValue({
@@ -100,7 +141,18 @@ describe("ApiKeys", () => {
       .mockResolvedValue({ data: { apiKeys: [], total: 0 }, error: null });
     del.mockResolvedValue({ data: { success: true }, error: null });
     renderWithProviders(<ApiKeys />);
-    await userEvent.click(await screen.findByRole("button", { name: "Revoke Staging" }));
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Revoke Staging" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Staging");
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(del).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Revoke Staging" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Revoke key" }),
+    );
     expect(del).toHaveBeenCalledWith({ keyId: "k1" });
     expect(await screen.findByText(/No keys/)).toBeInTheDocument();
   });

@@ -73,7 +73,7 @@ def test_invalid_body_uses_the_error_shape(client):
     )
 
 
-@pytest.mark.parametrize("missing", ["INTERNAL_SECRET", "DATABASE_URL"])
+@pytest.mark.parametrize("missing", ["INTERNAL_SECRET", "DATABASE_URL", "NODE_ENV"])
 def test_service_refuses_to_start_without_required_env(monkeypatch, missing):
     monkeypatch.delenv(missing)
     with pytest.raises(RuntimeError) as exc:

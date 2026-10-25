@@ -45,6 +45,7 @@ export class RagError extends Error {
   code: string;
   attempts: RawAttempt[]; // what the service tried before failing (internal)
   retryAfterSeconds?: number; // provider_rate_limited only, already validated
+  busyRetryAfterSeconds?: number; // 503 busy only (a full pool or slot queue), already validated; kept apart so chat never mistakes it for a provider limit
   constructor(
     status: number,
     code: string,
@@ -96,8 +97,8 @@ export function createRagClient(
       error?: { code?: string; message?: string; retry_after_seconds?: unknown };
       attempts?: RawAttempt[];
     } | null;
-    if (!res.ok)
-      throw new RagError(
+    if (!res.ok) {
+      const failure = new RagError(
         res.status,
         body?.error?.code ?? "rag_error",
         body?.error?.message ?? `rag service returned ${res.status}`,
@@ -106,6 +107,10 @@ export function createRagClient(
           ? (validWait(body.error.retry_after_seconds) ?? validWait(res.headers.get("retry-after")))
           : undefined,
       );
+      if (res.status === 503 && body?.error?.code === "busy")
+        failure.busyRetryAfterSeconds = validWait(res.headers.get("retry-after"));
+      throw failure;
+    }
     return body as T;
   }
 

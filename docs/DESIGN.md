@@ -33,7 +33,7 @@ Rules: lime is used sparingly, at most one lime CTA per view. Text on lime or of
 ## 3. Type
 
 - **Geist** (300–600) for everything; **Geist Mono** (400–500) for labels, numbers, code, IDs, keys.
-- Load: `https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap`
+- Self-hosted through `@fontsource/geist` and `@fontsource/geist-mono` (exact versions, imported in the web app); there is no Google Fonts link.
 
 | Role | Spec |
 | --- | --- |

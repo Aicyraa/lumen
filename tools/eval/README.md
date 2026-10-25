@@ -57,14 +57,15 @@ temperature 0, strict JSON `{"correct": bool, "reason": str}`; one retry on a ma
 by rule: correct when the answer is the not-found message. Sources are ignored for correctness but counted:
 `verdicts.csv` column `unanswerable_with_sources` is `yes` for such rows. The service should return no sources with a
 not-found answer; the counter exposes regressions and preserves comparability with the first run. The grading rule version is part of the resume key of unanswerable rows. A system error (for example
-`provider_error`) counts as wrong. A 429 is waited out using `Retry-After` and the `x-ratelimit-*` headers.
+`provider_error`) is counted in `errors`, not as a wrong answer. The resume key also covers the model ids, provider, judge model and a hash of the `router:` block of `apps/rag-service/app/config.yaml` (override the path with `EVAL_ROUTER_CONFIG`); a state file written before that is ignored with a note on stderr. A 429 is waited out using `Retry-After` and the `x-ratelimit-*` headers.
 
 Outputs (both git-ignored):
 
 - `verdicts.csv`: `setup,query,answer_excerpt,verdict,reason,flagged_for_review`. **Spot-check the rows marked `yes`**
   (a random 20 percent, plus every judge failure) and fix `expected_answer` or tell the agent where the judge was wrong.
-- `results.csv`: `setup,split,accuracy,median_latency_ms,escalation_rate,unanswerable_handled,estimated_cost_per_query_usd`,
-  one row per setup and split (`train` = `held_out` false or empty, `held_out`). `escalation_rate` is the share of
+- `results.csv`: `setup,split,accuracy,median_latency_ms,escalation_rate,unanswerable_handled,estimated_cost_per_query_usd,errors`,
+  one row per setup and split. `errors` counts runs where the service or the judge failed (provider errors, 429s); they are left out of
+  `accuracy` and the other columns, which are over the answered questions only (the console prints `accuracy over N answered of M`) (`train` = `held_out` false or empty, `held_out`). `escalation_rate` is the share of
   questions answered by the expensive tier (0 for always-cheap by construction; questions that call no model count as not
   escalated). `unanswerable_handled` is the accuracy over the `unanswerable` rows only. `median_latency_ms` is the
   service's own `usage.latency_ms`. `estimated_cost_per_query_usd` is the tenant's estimated provider cost: provider token
@@ -96,7 +97,7 @@ the rag-service venv with its model weights cached. It never touches dev data an
    feedback on a foreign request is `404`, an altered key is `401`, a `tenant_id` in the body or header is ignored, and the
    tenant's dashboard (documents, requests, models, models/usage, usage, analytics) shows no foreign row;
 5. **negative control**: copies `apps/rag-service/app` to a temporary directory, removes the `tenant_id` predicates from
-   `store.search` and `store.keyword_search` (`isolation/sqlstrip.py`; it raises if the code no longer looks as expected, so
+   `store.dense_search`, `store.keyword_search` and `store.filenames` (`isolation/sqlstrip.py`; it raises if the code no longer looks as expected, so
    the control cannot silently turn into a no-op), starts that rag-service and a second API instance in front of it and asks
    the same questions. The control passes only when leaks are detected for both tenants. This **combined** control is
    mandatory. Two more controls run one after the other, each with its own leaky copy: only the vector predicate removed

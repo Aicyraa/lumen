@@ -59,6 +59,7 @@ def clean(test_db):
 SECRET = "test-secret"
 AUTH = {"X-Internal-Secret": SECRET}
 FAKE_ENV = {
+    "NODE_ENV": "test",  # anything but development/test counts as production
     "INTERNAL_SECRET": SECRET,
     "LLM_BASE_URL": "http://127.0.0.1:9/v1",  # nothing listens here; the real client is replaced anyway
     "LLM_API_KEY": "test-key-not-real",

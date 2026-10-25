@@ -23,10 +23,11 @@ def router_cfg() -> SimpleNamespace:
 
 
 def is_production() -> bool:
-    return os.environ.get("NODE_ENV") == "production"
+    # fail closed: a missing or misspelled NODE_ENV must never open the dev-only shortcuts
+    return os.environ.get("NODE_ENV") not in ("development", "test")
 
 
-REQUIRED_ENV = ["INTERNAL_SECRET", "DATABASE_URL"]
+REQUIRED_ENV = ["INTERNAL_SECRET", "DATABASE_URL", "NODE_ENV"]
 
 
 def missing_env() -> list[str]:

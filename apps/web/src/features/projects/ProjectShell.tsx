@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
+import { setActiveProjectId, useProjectMismatch } from "../../shared/lib/activeProject";
 import { authClient } from "../../shared/lib/auth-client";
 import { Loading } from "../../shared/ui/Loading";
 import { Unreachable } from "../../shared/ui/Unreachable";
@@ -20,7 +21,14 @@ export function ProjectShell() {
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [retry, setRetry] = useState(0);
+  const mismatch = useProjectMismatch();
 
+  // A layout effect runs before the page's query effects (X-Project-Id is set in time) and, unlike render, may emit.
+  useLayoutEffect(() => {
+    if (project && s.orgId === project.id) setActiveProjectId(project.id);
+  }, [project, s.orgId]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `retry` is the Retry button's trigger, not a value the effect reads
   useEffect(() => {
     if (!project) return;
     if (s.orgId === project.id) {
@@ -83,6 +91,18 @@ export function ProjectShell() {
   if (busy || s.orgId !== project.id) return <Loading label="Opening project…" />;
   return (
     <ProjectContext.Provider value={project}>
+      {mismatch && (
+        <div role="alert" className="project-banner">
+          <span>This tab's project changed in another tab. Reload.</span>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            onClick={() => window.location.reload()}
+          >
+            Reload
+          </button>
+        </div>
+      )}
       <Shell />
     </ProjectContext.Provider>
   );

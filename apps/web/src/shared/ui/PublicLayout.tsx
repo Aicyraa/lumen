@@ -1,7 +1,8 @@
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { readSession } from "../../features/auth/sessionShape";
 import { authClient } from "../lib/auth-client";
+import { COPY_FAILED, useCopy } from "../lib/useCopy";
 import { Logo } from "./Logo";
 
 export function PublicLayout({ children, fill = false }: { children: ReactNode; fill?: boolean }) {
@@ -56,12 +57,8 @@ export function CodeBlock({
   testId?: string;
   copyable?: boolean;
 }) {
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    void navigator.clipboard?.writeText(children).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
+  const clip = useCopy(1500);
+  const copied = clip.state === "copied";
   const pre = (
     <pre className="code" data-testid={testId} tabIndex={0}>
       {children}
@@ -75,10 +72,15 @@ export function CodeBlock({
         type="button"
         className="btn btn-outline btn-sm mono copy-btn"
         aria-label={copied ? "Copied" : "Copy code"}
-        onClick={copy}
+        onClick={() => void clip.copy(children)}
       >
         {copied ? "Copied" : "Copy"}
       </button>
+      {clip.state === "failed" && (
+        <p role="alert" className="small red copy-note">
+          {COPY_FAILED}
+        </p>
+      )}
     </div>
   );
 }

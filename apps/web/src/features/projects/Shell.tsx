@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { authClient } from "../../shared/lib/auth-client";
 import { PageFade } from "../../shared/motion/motion";
+import { Loading } from "../../shared/ui/Loading";
 import { LogoMark } from "../../shared/ui/Logo";
 import { readSession } from "../auth/sessionShape";
 import { useSignOut } from "../auth/useSignOut";
@@ -82,7 +84,9 @@ export function Shell() {
       </aside>
       <main className="content">
         <PageFade id={location.pathname}>
-          <Outlet />
+          <Suspense fallback={<Loading label="Loading page…" />}>
+            <Outlet />
+          </Suspense>
         </PageFade>
       </main>
     </div>

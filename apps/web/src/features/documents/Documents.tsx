@@ -1,17 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { ApiError, api } from "../../shared/lib/api";
+import { friendlyError } from "../../shared/lib/errors";
 import { fmtDate, fmtInt } from "../../shared/lib/format";
 import type { Doc, Usage } from "../../shared/lib/types";
+import { ConfirmDialog } from "../../shared/ui/ConfirmDialog";
 import { StatusMessage } from "../../shared/ui/StatusMessage";
 import { ErrorText, PageHead, StatusDot } from "../../shared/ui/ui";
 import { useOrgId } from "../auth/session";
 
 export const DOC_POLL_MS = 2000;
 
-// Refetch while anything is still processing; stop as soon as every document is ready or failed.
-export const docPollInterval = (docs: Doc[] | undefined, ms: number) =>
-  docs?.some((d) => d.status === "processing") ? ms : false;
+// Refetch while anything is still processing, a little slower each time (x1.5, up to 5x the base); stop as soon as
+// every document is ready or failed. `attempt` counts the polls so far.
+export const docPollInterval = (docs: Doc[] | undefined, ms: number, attempt: number) =>
+  docs?.some((d) => d.status === "processing")
+    ? Math.min(ms * 5, Math.round(ms * 1.5 ** attempt))
+    : false;
 
 export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
   const qc = useQueryClient();
@@ -19,12 +24,15 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
   const [drag, setDrag] = useState(false);
+  const [progress, setProgress] = useState("");
+  const polls = useRef(0);
+  const [toDelete, setToDelete] = useState<Doc | null>(null);
 
   const docs = useQuery({
     queryKey: ["documents", org],
     enabled: !!org,
     queryFn: () => api<{ documents: Doc[] }>("/api/dashboard/documents").then((r) => r.documents),
-    refetchInterval: (q) => docPollInterval(q.state.data, pollMs),
+    refetchInterval: (q) => docPollInterval(q.state.data, pollMs, polls.current++),
   });
   const usage = useQuery({
     queryKey: ["usage", org],
@@ -32,6 +40,7 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
     queryFn: () => api<Usage>("/api/dashboard/usage"),
   });
   const refresh = () => {
+    polls.current = 0; // a new or deleted document starts the backoff again
     qc.invalidateQueries({ queryKey: ["documents", org] });
     qc.invalidateQueries({ queryKey: ["usage", org] });
   };
@@ -47,16 +56,21 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
   const remove = useMutation({
     mutationFn: (id: string) => api(`/api/dashboard/documents/${id}`, { method: "DELETE" }),
     onSuccess: refresh,
-    onError: (e: Error) => setError(e.message),
+    onError: (e: Error) => setError(friendlyError(e)),
   });
 
   async function addFiles(list: FileList | null) {
     setError("");
+    setProgress("");
     for (const f of Array.from(list ?? [])) {
+      setProgress(`Uploading ${f.name}…`);
       try {
         await upload.mutateAsync(f);
+        setProgress(`Uploaded ${f.name}. It is being processed.`);
       } catch (e) {
-        setError(e instanceof ApiError ? e.message : "Upload failed.");
+        setProgress("");
+        setError(friendlyError(e, "Upload failed."));
+        if (e instanceof ApiError && e.status === 429) break; // the rest would be refused too
       }
     }
     if (fileRef.current) fileRef.current.value = "";
@@ -105,6 +119,9 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
           />
         </label>
       </div>
+      <div className="small muted-3" aria-live="polite">
+        {progress}
+      </div>
       <ErrorText>{error}</ErrorText>
       {docs.isPending && <StatusMessage state="loading">Loading documents…</StatusMessage>}
       {docs.isError && (
@@ -144,7 +161,7 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
                   type="button"
                   className="link-btn danger-hover"
                   aria-label={`Delete ${d.filename}`}
-                  onClick={() => remove.mutate(d.document_id)}
+                  onClick={() => setToDelete(d)}
                 >
                   Delete
                 </button>
@@ -152,6 +169,20 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
             </div>
           ))}
         </div>
+      )}
+      {toDelete && (
+        <ConfirmDialog
+          title="Delete this document?"
+          confirmLabel="Delete document"
+          pending={remove.isPending}
+          onCancel={() => setToDelete(null)}
+          onConfirm={() => {
+            remove.mutate(toDelete.document_id);
+            setToDelete(null);
+          }}
+        >
+          "{toDelete.filename}" is removed, and its passages are no longer used for answers.
+        </ConfirmDialog>
       )}
     </div>
   );

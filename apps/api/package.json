@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "NODE_ENV=${NODE_ENV:-development} tsx watch src/server.ts",
     "start": "tsx src/server.ts",
     "test": "tsc -b && vitest run",
     "typecheck": "tsc -b",

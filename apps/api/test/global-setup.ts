@@ -2,14 +2,17 @@ import { readdirSync, readFileSync } from "node:fs";
 import "../src/shared/config/env.js";
 import { migrateAuth } from "../scripts/migrate.js";
 import { createPool } from "../src/shared/db/pool.js";
-import { testConfig } from "./helpers/env.js";
+import { testConfig, testDbName } from "./helpers/env.js";
 
-// Tests only ever touch lumen_test: create it if missing, apply the numbered app SQL and Better Auth's tables.
+// Tests only ever touch the test database (lumen_test unless LUMEN_TEST_DB says otherwise): create it if missing, apply the numbered app SQL and Better Auth's tables.
 export default async function setup() {
   const config = testConfig();
-  const admin = createPool(config.databaseUrl.replace(/\/lumen_test$/, "/postgres"));
-  const { rowCount } = await admin.query("SELECT 1 FROM pg_database WHERE datname = 'lumen_test'");
-  if (!rowCount) await admin.query("CREATE DATABASE lumen_test");
+  const db = testDbName();
+  if (!/^[a-z0-9_]+$/.test(db))
+    throw new Error("LUMEN_TEST_DB must be letters, digits and underscores");
+  const admin = createPool(config.databaseUrl.replace(new RegExp(`/${db}$`), "/postgres"));
+  const { rowCount } = await admin.query("SELECT 1 FROM pg_database WHERE datname = $1", [db]);
+  if (!rowCount) await admin.query(`CREATE DATABASE ${db}`);
   await admin.end();
   const pool = createPool(config.databaseUrl);
   // Every numbered migration in order, the same files `pnpm db:migrate` applies. 001 is not re-runnable; the rest are.

@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { apiKey } from "@better-auth/api-key";
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
@@ -36,6 +37,10 @@ export function createAuth({
   if (github.clientId && github.clientSecret)
     socialProviders.github = { clientId: github.clientId, clientSecret: github.clientSecret };
 
+  // Every tenant table points at tenants(id); an organization made without that row (a failed create, a manual insert) is repaired when it is selected.
+  const ensureTenant = (id: string) =>
+    pool.query("INSERT INTO tenants (id) VALUES ($1) ON CONFLICT DO NOTHING", [id]);
+
   // A signed-in user must always have a tenant: create the personal organization once, reuse it afterwards.
   let createOrganization: (body: {
     name: string;
@@ -64,11 +69,22 @@ export function createAuth({
     max: config.verificationResendPerEmailMax,
   });
   const createLock = new KeyedLock();
-  const held = new Map<string, () => void>();
+  // Whoever holds a user's lock is recorded with a token. A release only counts for the token it was made with, so a create
+  // that outlives the lock's TTL cannot release the lock of the one that took over. The token travels from the hook that takes
+  // the lock to the hook (or route) that releases it in an AsyncLocalStorage scope opened per create call (projectLockScope).
+  type Holder = { token: object; release: () => void };
+  const held = new Map<string, Holder>();
+  const scope = new AsyncLocalStorage<{ token?: object }>();
   const releaseProjectLock = (userId: string) => {
-    held.get(userId)?.();
+    const store = scope.getStore();
+    const holder = held.get(userId);
+    if (!holder || (store && holder.token !== store.token)) return; // in a scope: only the lock this call took
+
+    holder.release();
     held.delete(userId);
   };
+  // shortcut: a create call outside a scope (none today) releases whatever the user's current holder is, as before.
+  const projectLockScope = <T>(fn: () => T): T => scope.run({}, fn);
 
   const auth = betterAuth({
     database: pool,
@@ -94,7 +110,15 @@ export function createAuth({
         create: {
           before: async (session) => {
             const activeOrganizationId = await ensurePersonalOrg(session.userId);
+            await ensureTenant(activeOrganizationId);
             return { data: { ...session, activeOrganizationId } };
+          },
+        },
+        // set-active checks membership first, then updates the session: the project being selected must have its tenants row.
+        update: {
+          before: async (data) => {
+            const id = (data as { activeOrganizationId?: string | null }).activeOrganizationId;
+            if (id) await ensureTenant(id);
           },
         },
       },
@@ -127,7 +151,13 @@ export function createAuth({
           // The cap holds for every way of creating a project, including the client's organization.create call.
           beforeCreateOrganization: async ({ user }) => {
             if (!user?.id) return;
-            held.set(user.id, await createLock.acquire(user.id, config.projectCreateLockMs));
+            const token = {};
+            held.set(user.id, {
+              token,
+              release: await createLock.acquire(user.id, config.projectCreateLockMs),
+            });
+            const store = scope.getStore();
+            if (store) store.token = token;
             if (
               (await ownedProjectCount(pool, user.id).catch((err) => {
                 releaseProjectLock(user.id);
@@ -144,9 +174,7 @@ export function createAuth({
           // The tenants row comes first: every tenant table points at it. The organization id is the tenant id.
           afterCreateOrganization: async ({ organization, user }) => {
             try {
-              await pool.query("INSERT INTO tenants (id) VALUES ($1) ON CONFLICT DO NOTHING", [
-                organization.id,
-              ]);
+              await ensureTenant(organization.id);
             } finally {
               if (user?.id) releaseProjectLock(user.id);
             }
@@ -166,5 +194,5 @@ export function createAuth({
     ],
   });
   createOrganization = (body) => auth.api.createOrganization({ body }) as Promise<{ id: string }>;
-  return Object.assign(auth, { releaseProjectLock });
+  return Object.assign(auth, { releaseProjectLock, projectLockScope });
 }

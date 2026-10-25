@@ -10,7 +10,7 @@ from app.core.config import REQUIRED_ENV, load_config, missing_env, model_path
 from app.core.env import load_env
 
 SERVICE_DIR = Path(__file__).resolve().parents[1]
-OPTIONAL_ENV = ["NODE_ENV", "RAG_PORT", "TEST_DATABASE_URL", "LLM_BASE_URL", "LLM_API_KEY",
+OPTIONAL_ENV = ["RAG_PORT", "RAG_HOST", "RAG_WORKERS", "LOG_LEVEL", "TEST_DATABASE_URL", "LLM_BASE_URL", "LLM_API_KEY",
                 "LLM_MODEL_CHEAP", "LLM_MODEL_EXPENSIVE"]  # fmt: skip
 
 
@@ -39,7 +39,23 @@ def download_models(args) -> int:
 def dev(args) -> int:
     import uvicorn  # imported here so other commands stay fast
 
+    if not os.environ.get("NODE_ENV"):  # local dev only; an explicit value wins
+        os.environ["NODE_ENV"] = "development"
     uvicorn.run("app.main:app", port=int(os.environ.get("RAG_PORT") or 8000), reload=True)
+    return 0
+
+
+def serve(args) -> int:
+    """Production start: no reload, localhost by default, NODE_ENV left as the operator set it."""
+    import uvicorn
+
+    uvicorn.run(
+        "app.main:app",
+        host=os.environ.get("RAG_HOST") or "127.0.0.1",
+        port=int(os.environ.get("RAG_PORT") or 8000),
+        workers=int(os.environ.get("RAG_WORKERS") or 1),  # every worker loads both models
+        reload=False,
+    )
     return 0
 
 
@@ -84,6 +100,10 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("dev", help="uvicorn with reload on RAG_PORT (default 8000)").set_defaults(
         run=dev
     )
+    sub.add_parser(
+        "serve",
+        help="uvicorn without reload on RAG_HOST (default 127.0.0.1), RAG_PORT, RAG_WORKERS",
+    ).set_defaults(run=serve)
     sub.add_parser("test", help="pytest; extra arguments are passed through").set_defaults(run=test)
     sub.add_parser("download-models", help="bundle pinned models for offline runtime").set_defaults(
         run=download_models

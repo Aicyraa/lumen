@@ -32,3 +32,35 @@ def test_overlap_must_be_smaller_than_size():
 
     with pytest.raises(ValueError):
         chunk("a b c", size_words=10, overlap_words=10)
+
+
+def est_tokens(text):
+    from math import ceil
+
+    from app.core.config import load_config
+
+    cfg = load_config()["ingest"]
+    return max(len(text.split()), ceil(len(text) / cfg["chars_per_token"]))
+
+
+def test_number_heavy_text_is_split_below_the_token_limit():
+    from app.core.config import load_config
+
+    text = " ".join(str(10**19 + i) for i in range(120))  # 120 long numbers: few words, many tokens
+    parts = chunk(text)
+    assert len(parts) > 1
+    assert all(est_tokens(p) <= load_config()["ingest"]["max_chunk_tokens"] for p in parts)
+    assert " ".join(parts).split().count("10000000000000000000") >= 1  # nothing was dropped
+
+
+def test_text_without_spaces_is_split_below_the_token_limit():
+    from app.core.config import load_config
+
+    parts = chunk("x" * 5000)
+    assert len(parts) > 1
+    assert all(est_tokens(p) <= load_config()["ingest"]["max_chunk_tokens"] for p in parts)
+    assert "".join(parts) == "x" * 5000  # a hard split loses no characters
+
+
+def test_normal_text_is_not_resplit():
+    assert chunk(words(100)) == [words(100)]

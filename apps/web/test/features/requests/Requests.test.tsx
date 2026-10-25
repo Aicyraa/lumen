@@ -52,6 +52,65 @@ const detail = {
 vi.mock("../../../src/features/auth/session", () => ({ useOrgId: () => "org_1" }));
 
 describe("Requests", () => {
+  it("keeps the rows on screen while a new filter loads, and bounds how many pages it holds", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const { fn } = mockFetch(() => ({
+      items: [item(ID1, "When does enrollment close?", "cheap")],
+      next_cursor: null,
+    }));
+    const orig = fn.getMockImplementation()!;
+    fn.mockImplementation(async (input, init) => {
+      if (String(input).includes("tier=none")) await gate;
+      return orig(input, init);
+    });
+    const { client } = renderWithProviders(<Requests />);
+    await screen.findByText("When does enrollment close?");
+    await userEvent.click(screen.getByRole("button", { name: "NO ANSWER" }));
+    expect(screen.getByText("When does enrollment close?")).toBeInTheDocument();
+    expect(screen.queryByText("Loading requests…")).not.toBeInTheDocument();
+    release();
+    const q = client
+      .getQueryCache()
+      .getAll()
+      .find((x) => (x.queryKey as string[])[2] === "none")!;
+    expect(q.options.maxPages).toBe(20);
+  });
+
+  describe("keyboard and screen readers", () => {
+    const rows = () => ({
+      items: [item(ID1, "Compare fall and spring refunds", "expensive")],
+      next_cursor: null,
+    });
+    const route = (url: string) => (url.includes(`/requests/${ID1}`) ? detail : rows());
+
+    it("each log row is a row whose cell holds the button that opens it", async () => {
+      mockFetch(route);
+      renderWithProviders(<Requests />);
+      const open = await screen.findByRole("button", {
+        name: "Compare fall and spring refunds — open details",
+      });
+      expect(open.closest('[role="cell"]')?.closest('[role="row"]')).toBeInTheDocument();
+      expect(open).toHaveAttribute("aria-haspopup", "dialog");
+    });
+
+    it.each(["{Enter}", " "])(
+      "opens with the %j key and returns focus to the row on Escape",
+      async (key) => {
+        mockFetch(route);
+        renderWithProviders(<Requests />);
+        const user = userEvent.setup();
+        const open = await screen.findByRole("button", { name: /open details/ });
+        open.focus();
+        await user.keyboard(key);
+        expect(await screen.findByRole("dialog")).toBeInTheDocument();
+        await user.keyboard("{Escape}");
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+        expect(open).toHaveFocus();
+      },
+    );
+  });
+
   it("filters by tier through the API (all, cheap, expensive, none)", async () => {
     const { calls } = mockFetch(() => ({
       items: [item(ID1, "When does enrollment close?", "cheap")],

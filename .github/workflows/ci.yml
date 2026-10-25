@@ -73,7 +73,7 @@ jobs:
         run: |
           python -m venv apps/rag-service/.venv
           apps/rag-service/.venv/bin/python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
-          apps/rag-service/.venv/bin/python -m pip install -e 'apps/rag-service[dev]'
+          apps/rag-service/.venv/bin/python -m pip install -c apps/rag-service/constraints.txt -e 'apps/rag-service[dev]'
       - name: Build apps and download model weights
         run: pnpm build
       - name: Typecheck, lint, and test all apps

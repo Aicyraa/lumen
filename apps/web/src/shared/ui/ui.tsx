@@ -1,7 +1,9 @@
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
+import { usePageTitle } from "../lib/usePageTitle";
 
 export function PageHead({ title, children }: { title: string; children?: ReactNode }) {
+  usePageTitle(title);
   return (
     <div className="page-head">
       <div>

@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { authClient } from "../../shared/lib/auth-client";
+import { usePageTitle } from "../../shared/lib/usePageTitle";
 import { Mail, MailCheck } from "../../shared/ui/icons";
 import { PublicLayout } from "../../shared/ui/PublicLayout";
 import { ResendNote } from "./ResendNote";
@@ -10,6 +11,7 @@ import { useResend } from "./useResend";
 // The API redirects here after the user clicks the link in the email: ?status=verified on success, and
 // ?status=verified&error=CODE on failure (a present error always wins over status).
 export function VerifyEmail() {
+  usePageTitle("Verify your email");
   const [params] = useSearchParams();
   const signedIn = !!readSession(authClient.useSession()).user;
   const error = params.get("error");

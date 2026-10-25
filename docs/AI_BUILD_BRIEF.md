@@ -101,6 +101,8 @@ lumen/                       # root: tooling and docs only, no application code
 | `RATE_LIMIT_PER_MINUTE` | api | Requests per minute per tenant (shared by `/v1/chat` and `/api/dashboard/try`). Drives `429 rate_limited` and the Requests / min meter |
 | `MAX_REQUESTS_PER_MONTH` | api | Monthly request allowance per tenant. Drives the This month meter |
 | `MAX_PROJECTS_PER_USER` | api | Projects (organizations) one user may own. Drives `422 project_limit` |
+| `MAX_MODELS_PER_TIER`, `MODEL_TEST_RATE_PER_MINUTE`, `UPLOAD_RATE_PER_MINUTE`, `MAX_CONCURRENT_INGESTS`, `INGEST_LIMIT_RETRY_AFTER_SECONDS` | api | Optional (defaults in `apps/api/config.json`: 5, 10, 20, 3, 10). Models per tier (`422 model_limit`), Test & save attempts per tenant per minute, uploads per tenant per minute (`429 upload_rate_limited`), documents of one tenant ingesting at once (`429 ingest_limit`) |
+| `NODE_ENV` | api, rag-service | Required. `development` or `test` get the dev shortcuts; anything else is production, and an unset value stops the API from starting |
 | `SMTP_URL`, `MAIL_FROM` | api | SMTP connection URL and sender for verification emails. Empty in development prints the link in the API log; required in production |
 | `MODEL_KEY_ENCRYPTION_SECRET` | api | 32 bytes (64 hex characters) used to encrypt tenants' provider API keys at rest (AES-256-GCM). Losing or changing it makes stored keys unreadable |
 | `VITE_CALC_PRICE_CHEAP`, `VITE_CALC_PRICE_EXPENSIVE` | web | **Phase 7 only.** Example cost per request used only by the home-page savings calculator (an illustration) |
@@ -301,7 +303,7 @@ All errors use one shape: `{ "error": { "code": "<snake_case>", "message": "<hum
 | Endpoint | Request | Success | Errors |
 | --- | --- | --- | --- |
 | `POST /v1/chat` | JSON `{ query: string (1 to 2000 chars), session_id?: string }` | `200` chat response, below | `401 invalid_api_key`, `422 invalid_request`, `429 rate_limited`, `429 monthly_limit`, `429 provider_rate_limited` (with `Retry-After` and `retry_after_seconds`), `502 provider_error` |
-| `POST /v1/documents` | multipart `file` (PDF, `.txt` or `.md`, at most 10 MB) | `202 { document_id, status: "processing" }` | `401`, `413 file_too_large`, `415 unsupported_type`, `429 document_limit` |
+| `POST /v1/documents` | multipart `file` (PDF, `.txt` or `.md`, at most 10 MB) | `202 { document_id, status: "processing" }` | `401`, `413 file_too_large`, `415 unsupported_type`, `429 document_limit`, `429 upload_rate_limited` and `429 ingest_limit` (both with `Retry-After` and `retry_after_seconds`) |
 | `GET /v1/documents/:id` | none | `200 { document_id, status, chunk_count, error }` | `404 not_found` |
 | `DELETE /v1/documents/:id` | none | `204` | `404 not_found` |
 | `POST /v1/feedback` | JSON `{ request_id, rating: 1 or -1 }` | `204` | `404 not_found` |
@@ -322,7 +324,7 @@ All errors use one shape: `{ "error": { "code": "<snake_case>", "message": "<hum
 
 `model_tier` is `cheap`, `expensive` or `none` (no model was called because nothing matched).
 
-**Dashboard API** (Better Auth session cookie; the tenant is the session's active organization)
+**Dashboard API** (Better Auth session cookie; the tenant is the session's active organization). Project routes accept an optional `X-Project-Id` header: when it is present and is not the session's active organization the call is refused with `409 project_mismatch` before any data is touched (this also applies to the API key routes under `/api/auth/api-key/*`); `/workspaces` and `/account` ignore it. Without the header nothing changes.
 
 | Endpoint | Purpose |
 | --- | --- |
@@ -337,7 +339,7 @@ All errors use one shape: `{ "error": { "code": "<snake_case>", "message": "<hum
 | `GET /api/dashboard/requests/:id` (sources) | Each source carries `filename` and a passage of about 300 characters read live from `chunks` with a tenant-scoped join when the drawer opens. Nothing is stored in `request_logs`. If the document or chunk is gone (deleted or re-ingested), show the filename only, or "deleted document" |
 | `GET /api/dashboard/usage` | `{ documents: { used, max }, requests_per_minute: { used, max }, requests_this_month: { used, max } }`. The `max` values come from `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE` and `MAX_REQUESTS_PER_MONTH`, and `requests_per_minute.used` reads the same counter the rate limiter uses |
 | `GET /api/dashboard/models` | The tenant's models grouped by tier (cheap, expensive), in order, with provider, model id, endpoint, masked key and status. Never the key itself |
-| `POST /api/dashboard/models` | Add a model `{ provider, model_id, endpoint_url, api_key, tier }`. Tests the connection first ("Test & save"); on failure nothing is saved and the error says why. New models go to the end of the tier |
+| `POST /api/dashboard/models` | Add a model `{ provider, model_id, endpoint_url, api_key, tier }`. Tests the connection first ("Test & save"); on failure nothing is saved and the error says why. New models go to the end of the tier. `422 model_limit` past `MAX_MODELS_PER_TIER` models in that tier (default 5); `429 rate_limited` past `MODEL_TEST_RATE_PER_MINUTE` attempts per tenant per minute (default 10), because each attempt calls the tenant's provider |
 | `GET /api/dashboard/models/usage?range=7d` | Per model (both tiers): requests, tokens in and out, failures by outcome, how often it served as a backup (an earlier model in its tier failed), median latency, current status, and the provider-reported limits last seen (`rate_limits`, `rate_limits_seen_at`, or null when the provider reports none). Computed from `model_calls`, always filtered by `tenant_id`. Includes the tenant's estimated provider cost per model and in total (null for unpriced models) |
 | `PATCH /api/dashboard/models/:id` | Move up or down within its tier (`{ direction: "up" \| "down" }`) |
 | `DELETE /api/dashboard/models/:id` | Remove a model and close the gap in the order |
@@ -360,11 +362,13 @@ Ingest is synchronous in Python. Express calls it in the background after answer
 **Flow inside `POST /internal/query`** (updated 2026-10-24 from the `codex_rag` work)
 
 1. Embed the question.
-2. Run a probe search (top 1, filtered by `tenant_id`) to get `best_score` (cosine similarity). If the tenant has no chunks at all, return a clear "no documents uploaded" answer with `model_tier: "none"`.
+2. Run one dense (vector) search, filtered by `tenant_id` and deep enough for the later fusion; its top hit gives `best_score` (cosine similarity) and the same result is reused for the fusion in step 5 (no separate probe query). If the tenant has no chunks at all, return a clear "no documents uploaded" answer with `model_tier: "none"`.
 3. If `best_score < no_answer_score` and a tenant-local keyword (BM25) search finds no match either, skip the model, return the not-found message, and log `model_tier: "none"`. A positive BM25 match rescues a question the vector score alone would reject.
 4. Otherwise call `decide(...)` below to get the tier and `k`.
-5. Retrieve candidates: tenant-local BM25 (term frequency, document length and inverse document frequency; `k1` and `b` from config, computed from the tenant's own chunks only) and vector search, fused by reciprocal rank fusion, up to `retrieval.candidate_limit`. When the reranker is enabled, a local cross-encoder (model and pinned revision from config, weights prefetched, loaded from cache only) reranks `reranker.candidate_limit` candidates and the top `k` are kept; if its weights are missing or its scores are invalid the fused order is used and a warning is logged. The public `score` of a source stays the cosine similarity.
-6. Build the prompt and call the tenant's models as described in Tenant models below. The model returns claims with passage ids and exact evidence quotes (JSON); the service validates every passage id and quote against the retrieved passages (whitespace and equivalent PDF typography tolerated, a unique wrong passage number corrected), then renders the answer text and the ASCII `[n]` citations itself. If validation fails, one repair attempt is made (`llm.answer_repair_attempts`); if it still fails the request returns `502 provider_error`. Empty claims mean the not-found message. Every attempt, including the repair, is counted in `attempts`, and `usage` tokens are the sum over all attempts of the request.
+5. Retrieve candidates: tenant-local BM25 (term frequency, document length and inverse document frequency; `k1` and `b` from config, computed from the tenant's own chunks only, over the stored `chunks.tsv` tsvector column with a GIN index from `infra/sql/011_chunks_tsvector.sql`) and vector search, fused by reciprocal rank fusion, up to `retrieval.candidate_limit`. When the reranker is enabled, a local cross-encoder (model and pinned revision from config, weights prefetched, loaded from cache only) reranks `reranker.candidate_limit` candidates and the top `k` are kept; the reranker loads at startup together with the embedder; if its weights are missing or its scores are invalid the fused order is used and a warning naming the exception class (never the text) is logged. Embedding and reranking run behind bounded semaphores (`concurrency.embed_max`, `concurrency.rerank_max`). The public `score` of a source stays the cosine similarity.
+6. Build the prompt and call the tenant's models as described in Tenant models below. The model returns claims with passage ids and exact evidence quotes (JSON); the service validates every passage id and quote against the retrieved passages (whitespace and equivalent PDF typography tolerated, a unique wrong passage number corrected; a quote shorter than `llm.min_quote_chars` or `llm.min_quote_words` is rejected unless the whole passage is shorter), then renders the answer text and the ASCII `[n]` citations itself. If validation fails, one repair attempt is made (`llm.answer_repair_attempts`); if it still fails the request returns `502 provider_error`. Empty claims mean the not-found message. Every attempt, including the repair, is counted in `attempts`, and `usage` tokens are the sum over all attempts of the request.
+
+**Ingest** (`POST /internal/ingest`, updated 2026-10-25). The document row is locked (`FOR SHARE`) in the same transaction as the chunk insert, and its status is re-read between embedding batches (`ingest.status_check_every_batches`): a document Express already marked `failed` (ingest timeout) gets no chunks and the call returns `409 document_not_ingestable` (`404 not_found` when the row is missing). Other errors: `422 document_too_large` (pages or chunks over the limit, checked before embedding), `422 unreadable_document` (corrupt or encrypted PDF), `422 no_text_extracted`, `415 unsupported_type`, `503 busy` with `Retry-After` (upload slot not free within `concurrency.ingest_wait_seconds`; also when no database connection is free). `GET /internal/ready` (needs `X-Internal-Secret`, like every internal route except health) checks a database connection and that the models are loaded; `GET /internal/health` stays a plain liveness check. `NODE_ENV` must be `development` or `test` for the dev shortcuts (LLM_* default model, http://localhost endpoints); anything else, including unset, is production.
 
 **Tenant models** (from docs/WEBSITE_GUIDE.md, Models tab). Each tenant supplies its own provider keys; Lumen supplies only the embedding model. Express loads the tenant's `tenant_models`, decrypts the keys for this one request and passes them in `models`. Step 6 of the flow then works like this:
 
@@ -400,9 +404,17 @@ router:
   no_answer_score: 0.15   # below this (and no BM25 match), do not call any model
   escalate_at: 0.25       # low on purpose: a missed escalation costs more than an extra one
   hard_at: 0.50           # at or above this the question is clearly hard
+ingest:
+  max_pages: 200        # 422 document_too_large above this (also max_chunks); max_chunk_tokens splits over-long chunks
+concurrency:
+  embed_max: 2          # also rerank_max, ingest_max; an upload over its limit waits, then 503 busy
+database:
+  pool_max_size: 10     # one psycopg_pool per process (also pool_min_size, timeouts, statement_timeout_ms)
 llm:
   max_output_tokens: 2048
   answer_repair_attempts: 1
+  min_quote_chars: 12
+  min_quote_words: 2
   # plus connect and read timeouts, temperature and the retry wait (see the file)
 # No prices anywhere in this file. Tenants enter prices per model; the service never computes cost.
 ```

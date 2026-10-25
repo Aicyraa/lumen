@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+export const ROOT = process.env.LUMEN_ROOT || join(dirname(fileURLToPath(import.meta.url)), ".."); // LUMEN_ROOT: tests only
 export const ENV_DIRS = ["apps/api", "apps/rag-service", "apps/web", "infra"];
 
 export function parseEnv(path) {

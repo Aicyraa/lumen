@@ -162,3 +162,48 @@ def test_known_negative_policy_is_not_mistaken_for_missing_information():
     text = "Housing is not provided."
     raw = json.dumps({"claims": [{"text": text, "evidence": [{"passage": 1, "quote": text}]}]})
     assert render_answer(raw, [text], "Not found") == "Housing is not provided. [1]"
+
+
+def raw_claim(quote, passage=1):
+    return json.dumps(
+        {"claims": [{"text": "A claim.", "evidence": [{"passage": passage, "quote": quote}]}]}
+    )
+
+
+PASSAGE = "The library opens at nine and closes at five on weekdays."
+
+
+def test_one_word_quote_is_rejected_even_though_it_is_in_the_passage():
+    from app.llm.prompt import render_answer
+
+    with pytest.raises(ValueError):
+        render_answer(raw_claim("The"), [PASSAGE], "Not found")
+
+
+def test_short_quote_under_min_chars_is_rejected():
+    from app.llm.prompt import render_answer
+
+    with pytest.raises(ValueError):
+        render_answer(raw_claim("at nine"), [PASSAGE], "Not found")  # 2 words but 7 characters
+
+
+def test_a_real_quote_passes():
+    from app.llm.prompt import render_answer
+
+    answer = render_answer(raw_claim("opens at nine and closes at five"), [PASSAGE], "Not found")
+    assert answer == "A claim. [1]"
+
+
+def test_a_short_whole_passage_may_be_quoted_whole():
+    from app.llm.prompt import render_answer
+
+    assert render_answer(raw_claim("Closed"), ["Closed"], "Not found") == "A claim. [1]"
+
+
+def test_quote_limits_come_from_config(monkeypatch):
+    from app.core.config import load_config
+    from app.llm.prompt import render_answer
+
+    monkeypatch.setitem(load_config()["llm"], "min_quote_chars", 1)
+    monkeypatch.setitem(load_config()["llm"], "min_quote_words", 1)
+    assert render_answer(raw_claim("nine"), [PASSAGE], "Not found") == "A claim. [1]"

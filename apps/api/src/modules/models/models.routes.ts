@@ -1,5 +1,6 @@
-import { Router } from "express";
+import { type RequestHandler, Router } from "express";
 import { z } from "zod";
+import type { Pool } from "../../shared/db/pool.js";
 import { encryptSecret, maskKey } from "../../shared/lib/crypto.js";
 import { assertEndpoint, EndpointError } from "../../shared/lib/endpointGuard.js";
 import { ApiError } from "../../shared/lib/errors.js";
@@ -15,7 +16,7 @@ const PUBLIC =
   "id, tier, position, provider, model_id, endpoint_url, key_hint, status, input_price_per_1m::float8 AS input_price_per_1m, output_price_per_1m::float8 AS output_price_per_1m";
 
 // Dashboard Models tab. Every statement filters by tenant_id; another tenant's id is a 404.
-export function modelsRouter({ pool, config, resolveHost }: Deps) {
+export function modelsRouter({ pool, config, resolveHost }: Deps, testLimiter: RequestHandler) {
   const r = Router();
   // tenant-entered price per 1M tokens (their own provider's rate, used only for the estimated provider cost); NUMERIC(12, 6)
   const price = z.number().min(0).max(config.maxPricePerMillion);
@@ -46,7 +47,21 @@ export function modelsRouter({ pool, config, resolveHost }: Deps) {
     res.json({ range, ...(await modelUsage(pool, req.tenantId, rangeStart(days))) });
   });
 
-  r.post("/", async (req, res) => {
+  const full = () =>
+    new ApiError(
+      422,
+      "model_limit",
+      `You can add at most ${config.maxModelsPerTier} models to each tier.`,
+    );
+  const tierCount = async (q: Pick<Pool, "query">, tenantId: string, tier: string) =>
+    (
+      await q.query(
+        "SELECT count(*)::int AS n FROM tenant_models WHERE tenant_id = $1 AND tier = $2",
+        [tenantId, tier],
+      )
+    ).rows[0].n as number;
+
+  r.post("/", testLimiter, async (req, res) => {
     const parsed = addBody.safeParse(req.body);
     if (!parsed.success)
       throw new ApiError(
@@ -61,12 +76,14 @@ export function modelsRouter({ pool, config, resolveHost }: Deps) {
       if (e instanceof EndpointError) throw new ApiError(422, "invalid_endpoint", e.message);
       throw e;
     }
+    if ((await tierCount(pool, req.tenantId, m.tier)) >= config.maxModelsPerTier) throw full(); // cheap check before calling the provider
     await testCompletion(m, config, resolveHost); // nothing is saved unless this succeeds
 
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
       await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["models:" + req.tenantId]); // serialise position assignment
+      if ((await tierCount(client, req.tenantId, m.tier)) >= config.maxModelsPerTier) throw full(); // the real check: adds run one at a time here
       const { rows } = await client.query(
         `INSERT INTO tenant_models (tenant_id, tier, position, provider, model_id, endpoint_url, api_key_encrypted, key_hint, input_price_per_1m, output_price_per_1m)
          VALUES ($1, $2, (SELECT COALESCE(max(position) + 1, 0) FROM tenant_models WHERE tenant_id = $1 AND tier = $2), $3, $4, $5, $6, $7, $8, $9)

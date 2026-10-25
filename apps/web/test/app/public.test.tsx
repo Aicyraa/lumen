@@ -91,6 +91,16 @@ describe("Home", () => {
     expect(writeText).toHaveBeenCalledWith(within(qs).getByTestId("code").textContent);
     expect(within(qs).getByRole("button", { name: "Copied" })).toBeInTheDocument();
   });
+
+  it("quickstart does not say Copied when the clipboard write is refused", async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    view(<Home />);
+    const qs = screen.getByRole("region", { name: "Quickstart" });
+    await userEvent.click(within(qs).getByRole("button", { name: "Copy" }));
+    expect(await within(qs).findByText(/Copy failed, select and copy manually/)).toBeVisible();
+    expect(within(qs).queryByRole("button", { name: "Copied" })).not.toBeInTheDocument();
+  });
 });
 
 describe("claims the product can back up", () => {

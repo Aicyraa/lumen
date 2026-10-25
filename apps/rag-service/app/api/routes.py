@@ -6,19 +6,20 @@ from pathlib import Path
 from typing import Annotated
 from uuid import UUID, uuid4
 
-import psycopg
+import numpy as np
 from fastapi import APIRouter, Depends, Form, UploadFile
-from pypdf.errors import PyPdfError
+from fastapi.responses import JSONResponse
 
 from app.api.deps import get_caller, require_secret
 from app.api.schemas import QueryRequest, TenantModels
+from app.core import limits
 from app.core.config import is_production, load_config, router_cfg
 from app.core.errors import ApiError
 from app.core.logging import log
 from app.ingest.chunking import chunk
-from app.ingest.extract import extract_text
+from app.ingest.extract import DocumentTooLarge, UnreadableDocument, extract_text
 from app.llm.prompt import build_prompt, render_answer
-from app.retrieval import store
+from app.retrieval import db, embeddings, reranker, store
 from app.retrieval.embeddings import (
     embed,  # loads the model at import, before the server starts listening
 )
@@ -32,6 +33,47 @@ internal = APIRouter(prefix="/internal", dependencies=[Depends(require_secret)])
 @public.get("/internal/health")  # no secret; async because it does no blocking work
 async def health():
     return {"status": "ok"}
+
+
+def too_large() -> ApiError:
+    return ApiError(422, "document_too_large", "The document is too large to ingest.")
+
+
+def not_ingestable() -> ApiError:
+    return ApiError(409, "document_not_ingestable", "The document was already marked as failed.")
+
+
+def embed_checked(tenant_id: str, document_id: str, chunks: list[str]) -> np.ndarray:
+    """Embed in batches; re-read the document status every few batches so abandoned work stops early."""
+    cfg = load_config()["ingest"]
+    size, every = cfg["embed_batch_size"], cfg["status_check_every_batches"]
+    parts = []
+    for n, start in enumerate(range(0, len(chunks), size)):
+        if n % every == 0:  # n == 0 also rejects a missing or failed document before any embedding
+            status = store.document_status(tenant_id, document_id)
+            if status is None:
+                raise ApiError(404, "not_found", "Document not found.")
+            if status == "failed":
+                raise not_ingestable()
+        parts.append(embed(chunks[start : start + size]))
+    return np.vstack(parts)
+
+
+@internal.get("/ready")  # secret required, only health is public; plain def: it uses the database
+def ready():
+    checks = {"database": False, "embedder": embeddings.is_loaded(), "reranker": True}
+    try:
+        with db.connection(timeout=load_config()["database"]["ready_timeout_seconds"]) as conn:
+            conn.execute("SELECT 1")
+        checks["database"] = True
+    except Exception:  # any failure means not ready; the reason stays out of the response
+        pass
+    if load_config()["reranker"]["enabled"]:
+        checks["reranker"] = reranker.is_loaded()
+    ok = all(checks.values())
+    return JSONResponse(
+        {"status": "ready" if ok else "not_ready", "checks": checks}, status_code=200 if ok else 503
+    )
 
 
 @internal.post("/ingest")
@@ -49,11 +91,12 @@ def ingest(
         tmp.flush()
         try:
             text = extract_text(tmp.name)
-        except (
-            UnicodeDecodeError,
-            PyPdfError,
-        ):  # UnicodeDecodeError is a ValueError, so catch it first
+        except UnicodeDecodeError:  # a ValueError subclass, so catch it first
             text = ""
+        except UnreadableDocument:
+            raise ApiError(422, "unreadable_document", "The PDF could not be read.")
+        except DocumentTooLarge:
+            raise too_large()
         except ValueError:
             raise ApiError(415, "unsupported_type", "Only PDF, .txt and .md files are supported.")
     if "\x00" in text:  # Postgres text cannot hold NUL; treat the file as unreadable text
@@ -61,11 +104,25 @@ def ingest(
     chunks = chunk(text) if text.strip() else []
     if not chunks:
         raise ApiError(422, "no_text_extracted", "No text could be extracted from the file.")
-    vectors = embed(chunks)
+    if len(chunks) > load_config()["ingest"]["max_chunks"]:  # before any embedding work
+        raise too_large()
+    cfg = load_config()
+    try:  # uploads queue for a slot; over the wait the caller gets 503 and may retry
+        with limits.slot("ingest", wait=cfg["concurrency"]["ingest_wait_seconds"]):
+            vectors = embed_checked(tenant_id, str(document_id), chunks)
+    except limits.Busy:
+        raise ApiError(
+            503,
+            "busy",
+            "The service is busy. Try again shortly.",
+            headers={"Retry-After": str(cfg["concurrency"]["retry_after_seconds"])},
+        )
     try:  # one transaction: a failure leaves no chunks
         store.add_chunks(tenant_id, str(document_id), chunks, vectors)
-    except psycopg.errors.ForeignKeyViolation:  # no such document for this tenant
+    except store.DocumentMissing:
         raise ApiError(404, "not_found", "Document not found.")
+    except store.DocumentNotIngestable:
+        raise not_ingestable()
     log.info("ingested tenant=%s document=%s chunks=%d", tenant_id, document_id, len(chunks))
     return {"chunk_count": len(chunks)}
 
@@ -155,11 +212,16 @@ def query(req: QueryRequest, caller=Depends(get_caller)):
         "top_score": None,
     }
     qvec = embed([req.query])[0]
-    probe = store.search(req.tenant_id, qvec, 1)  # best match only, to learn best_score
-    if not probe:  # this tenant has no chunks at all
-        return query_response(started, messages["no_documents"], [], none_route)
-    best_score = probe[0][3]
     cfg = router_cfg()
+    reranker_cfg = load_config()["reranker"]
+    # one dense search serves best_score and the fusion later; deep enough for the largest k or candidate list
+    depth = max(cfg.k_expensive, load_config()["retrieval"]["candidate_limit"])
+    if reranker_cfg["enabled"]:
+        depth = max(depth, reranker_cfg["candidate_limit"])
+    dense = store.dense_search(req.tenant_id, qvec, depth)
+    if not dense:  # this tenant has no chunks at all
+        return query_response(started, messages["no_documents"], [], none_route)
+    best_score = dense[0][3]
     if best_score < cfg.no_answer_score and not store.keyword_search(
         req.tenant_id, qvec, req.query, 1
     ):  # allow BM25 evidence to rescue an exact match before rejecting the question
@@ -175,11 +237,10 @@ def query(req: QueryRequest, caller=Depends(get_caller)):
         raise ApiError(
             422, "no_models_configured", "No models are configured. Add a model in the Models tab."
         )
-    reranker_cfg = load_config()["reranker"]
     candidate_k = (
         max(route["k"], reranker_cfg["candidate_limit"]) if reranker_cfg["enabled"] else route["k"]
     )
-    hits = store.search(req.tenant_id, qvec, candidate_k, query_text=req.query)
+    hits = store.search(req.tenant_id, qvec, candidate_k, query_text=req.query, dense=dense)
     hits = rerank(req.query, hits, route["k"]) if reranker_cfg["enabled"] else hits
     system, user = build_prompt(req.query, [content for _, _, content, _ in hits])
     attempts = []

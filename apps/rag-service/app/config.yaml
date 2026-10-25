@@ -2,6 +2,31 @@ embedding:
   model: all-MiniLM-L6-v2   # 384 numbers; changing it means changing VECTOR(384) and re-embedding
   revision: 1110a243fdf4706b3f48f1d95db1a4f5529b4d41
 
+concurrency:
+  embed_max: 2              # simultaneous embedding calls per process (CPU bound)
+  rerank_max: 2             # simultaneous reranker calls per process
+  ingest_max: 1             # simultaneous uploads being embedded; smaller than embed_max so queries are not starved
+  ingest_wait_seconds: 10   # an upload waits this long for a slot, then gets 503 busy
+  retry_after_seconds: 5    # Retry-After on 503 busy
+
+database:
+  ready_timeout_seconds: 2   # /internal/ready waits this long for a database connection
+  pool_min_size: 1
+  pool_max_size: 10
+  pool_timeout_seconds: 10       # wait for a free connection; then the request fails with 503 busy
+  connect_timeout_seconds: 5
+  statement_timeout_ms: 30000    # the server cancels any statement running longer
+
+ingest:
+  embed_batch_size: 32
+  max_pages: 200                  # a PDF with more pages is 422 document_too_large
+  max_chunks: 2000                # more chunks than this is 422 document_too_large, checked before embedding
+  # The embedding model silently truncates input past its window (256 word pieces). Approximation, not a
+  # tokenizer: a chunk counts as max(words, characters / chars_per_token) tokens; longer chunks are split.
+  max_chunk_tokens: 200
+  chars_per_token: 3
+  status_check_every_batches: 4   # re-read the document status this often while embedding; stop if it failed
+
 retrieval:
   candidate_limit: 40
   rrf_rank_constant: 60
@@ -31,6 +56,8 @@ router:
 llm:
   connect_timeout_seconds: 5
   timeout_seconds: 30           # read timeout per call; a slow model counts as a timeout attempt
+  min_quote_chars: 12           # an evidence quote shorter than this is rejected (unless the whole passage is shorter)
+  min_quote_words: 2
   max_output_tokens: 2048
   answer_repair_attempts: 1
   temperature: 0

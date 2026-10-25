@@ -64,18 +64,25 @@ export function workspacesRouter({ pool, config, log }: Deps, auth: Auth) {
     if ((await ownedProjectCount(pool, req.userId!)) >= config.maxProjectsPerUser) throw limit();
     let id: string;
     try {
-      const org = await auth.api.createOrganization({
-        body: {
-          name: n,
-          slug: projectSlug(n, config),
-          metadata: d ? { description: d } : undefined,
-          keepCurrentActiveOrganization: true,
-        },
-        headers: fromNodeHeaders(req.headers), // the session decides the owner; a userId in our body is never read
+      // The scope is per request, so the catch below releases only the lock this request took (if it took one).
+      const org = await auth.projectLockScope(async () => {
+        try {
+          return await auth.api.createOrganization({
+            body: {
+              name: n,
+              slug: projectSlug(n, config),
+              metadata: d ? { description: d } : undefined,
+              keepCurrentActiveOrganization: true,
+            },
+            headers: fromNodeHeaders(req.headers), // the session decides the owner; a userId in our body is never read
+          });
+        } catch (err) {
+          auth.releaseProjectLock(req.userId!); // a failure before the insert must not hold the next create up
+          throw err;
+        }
       });
       id = (org as { id: string }).id;
     } catch (err) {
-      auth.releaseProjectLock(req.userId!); // a failure before the insert must not hold the next create up
       if ((err as { body?: { code?: string } }).body?.code === "PROJECT_LIMIT") throw limit();
       throw err;
     }

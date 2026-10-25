@@ -168,6 +168,15 @@ describe("Docs content", () => {
     expect(await screen.findByRole("button", { name: "Copied" })).toBeInTheDocument();
   });
 
+  it("a refused clipboard write shows a manual-copy message, not Copied", async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    view(<Docs />);
+    await userEvent.click(screen.getAllByRole("button", { name: "Copy code" })[0]);
+    expect(await screen.findByText(/Copy failed, select and copy manually/)).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Copied" })).not.toBeInTheDocument();
+  });
+
   it("has an error-code table, a Limits section that quotes no numbers of its own, and a readable content column", async () => {
     view(<Docs />, "/docs#limits");
     const limits = document.getElementById("limits")!;

@@ -15,4 +15,26 @@ describe("createPool", () => {
       await pool.end();
     }
   });
+
+  it("logs an error on an idle client instead of crashing the process", async () => {
+    const errors: unknown[][] = [];
+    const pool = createPool(testConfig().databaseUrl, 200, {
+      error: (...a: unknown[]) => errors.push(a),
+    });
+    try {
+      expect(() => pool.emit("error", new Error("terminating connection"))).not.toThrow();
+      expect(JSON.stringify(errors)).toContain("terminating connection");
+    } finally {
+      await pool.end();
+    }
+  });
+
+  it("does not crash without a logger either", async () => {
+    const pool = createPool(testConfig().databaseUrl);
+    try {
+      expect(() => pool.emit("error", new Error("idle client error"))).not.toThrow();
+    } finally {
+      await pool.end();
+    }
+  });
 });

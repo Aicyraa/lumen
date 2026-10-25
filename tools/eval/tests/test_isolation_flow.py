@@ -175,6 +175,6 @@ def test_cleanup_does_not_drop_what_was_never_created(tmp_path):
 def test_control_variants_are_the_documented_three():
     assert (
         VARIANTS[0] == ("combined", None)
-        and VARIANTS[1][1] == ("search",)
+        and VARIANTS[1][1] == ("dense_search",)
         and VARIANTS[2][1] == ("keyword_search",)
     )
