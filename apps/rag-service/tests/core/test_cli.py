@@ -10,7 +10,11 @@ from app.ingest.service import ingest_file
 from app.retrieval.ask import ask_chunks
 
 SERVICE_DIR = Path(__file__).resolve().parents[2]
-SECRETS = {"INTERNAL_SECRET": "s3cret-value-123", "DATABASE_URL": "postgresql://u:pw-value-456@h/d"}
+SECRETS = {
+    "INTERNAL_SECRET": "s3cret-value-123",
+    "DATABASE_URL": "postgresql://u:pw-value-456@h/d",
+    "NODE_ENV": "test",
+}
 
 
 @pytest.fixture
