@@ -45,18 +45,23 @@ export function requestsRouter({ pool, config }: Deps) {
     }
     const cursor = req.query.cursor === undefined ? null : decodeCursor(String(req.query.cursor));
 
-    // Tokens and cost come from the request_usage view; LATERAL looks it up only for the rows of this page.
+    // The page is picked first, then tokens and cost are summed from model_calls for those rows only. Joining the request_usage
+    // view here made Postgres total every request of the tenant before it applied LIMIT (about 135 ms vs 1 ms at 50k requests).
     const { rows } = await pool.query(
-      `SELECT r.id, ${TSR} AS ts, r.query, r.model_tier AS tier, r.k, r.escalated, r.latency_ms,
-              u.tokens_in, u.tokens_out, u.cost_usd::float8 AS cost_usd, r.status
-       FROM request_logs r
-       LEFT JOIN LATERAL (SELECT tokens_in, tokens_out, cost_usd FROM request_usage
-                          WHERE request_id = r.id AND tenant_id = r.tenant_id) u ON true
-       WHERE r.tenant_id = $1 AND r.created_at >= $2
-         AND ($3::text = 'all' OR r.model_tier = $3)
-         AND ($4::timestamptz IS NULL OR (r.created_at, r.id) < ($4::timestamptz, $5::uuid))
-       ORDER BY r.created_at DESC, r.id DESC
-       LIMIT $6`,
+      `WITH page AS (
+         SELECT r.id, r.tenant_id, ${TSR} AS ts, r.created_at, r.query, r.model_tier AS tier, r.k, r.escalated, r.latency_ms, r.status
+         FROM request_logs r
+         WHERE r.tenant_id = $1 AND r.created_at >= $2
+           AND ($3::text = 'all' OR r.model_tier = $3)
+           AND ($4::timestamptz IS NULL OR (r.created_at, r.id) < ($4::timestamptz, $5::uuid))
+         ORDER BY r.created_at DESC, r.id DESC
+         LIMIT $6)
+       SELECT p.id, p.ts, p.query, p.tier, p.k, p.escalated, p.latency_ms,
+              u.tokens_in, u.tokens_out, u.cost_usd::float8 AS cost_usd, p.status
+       FROM page p
+       LEFT JOIN LATERAL (SELECT sum(m.tokens_in)::int AS tokens_in, sum(m.tokens_out)::int AS tokens_out, sum(m.cost_usd) AS cost_usd
+                          FROM model_calls m WHERE m.request_id = p.id AND m.tenant_id = p.tenant_id) u ON true
+       ORDER BY p.created_at DESC, p.id DESC`,
       [req.tenantId, rangeStart(days), tier, cursor?.ts ?? null, cursor?.id ?? null, limit + 1],
     );
     const page = rows.slice(0, limit);
