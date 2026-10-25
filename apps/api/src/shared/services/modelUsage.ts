@@ -1,5 +1,14 @@
 import type { Pool } from "../db/pool.js";
 
+// When the provider said to wait (stored retry-after header, in seconds) and that moment is still ahead; else null.
+// shortcut: only the seconds form of retry-after is read, an HTTP-date value gives null.
+function rateLimitedUntil(limits: Record<string, string | number> | null, seen: Date | null) {
+  const wait = limits?.["retry-after"];
+  if (!seen || !/^\d{1,9}(\.\d+)?$/.test(String(wait ?? ""))) return null;
+  const until = new Date(seen.getTime() + Number(wait) * 1000);
+  return until.getTime() > Date.now() ? until : null;
+}
+
 // Per-model figures from model_calls for the Models tab and Analytics "By model". Every table is filtered
 // by tenant_id, including the subquery that finds earlier attempts of the same request.
 export async function modelUsage(pool: Pool, tenantId: string, since: Date) {
@@ -31,6 +40,7 @@ export async function modelUsage(pool: Pool, tenantId: string, since: Date) {
     total_cost_usd: total as number | null, // estimated provider cost; null when nothing was priced
     models: rows.map(({ f_error, f_timeout, f_rate_limited, ...m }) => ({
       ...m,
+      rate_limited_until: rateLimitedUntil(m.rate_limits, m.rate_limits_seen_at),
       failures: { error: f_error, timeout: f_timeout, rate_limited: f_rate_limited },
     })),
   };

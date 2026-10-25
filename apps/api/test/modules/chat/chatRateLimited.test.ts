@@ -21,7 +21,8 @@ afterEach(async () => {
   await ctx.pool.query("DELETE FROM request_logs WHERE tenant_id = $1", [a.tenantId]);
 });
 
-const chat = () => request(ctx.app).post("/v1/chat").set("x-api-key", a.apiKey).send({ query: "q" });
+const chat = () =>
+  request(ctx.app).post("/v1/chat").set("x-api-key", a.apiKey).send({ query: "q" });
 const tryIt = () =>
   request(ctx.app).post("/api/dashboard/try").set("cookie", a.cookie).send({ query: "q" });
 const attempt = (id: string, over: object = {}) => ({
@@ -135,10 +136,9 @@ describe.each([
       "provider_error",
       undefined,
     ]);
-    const { rows } = await ctx.pool.query(
-      "SELECT status FROM request_logs WHERE tenant_id = $1",
-      [a.tenantId],
-    );
+    const { rows } = await ctx.pool.query("SELECT status FROM request_logs WHERE tenant_id = $1", [
+      a.tenantId,
+    ]);
     expect(rows[0].status).toBe("provider_error");
   });
 });
@@ -174,7 +174,7 @@ describe("rate_limited_until on GET /api/dashboard/models/usage", () => {
     const future = await ctx.seedModel(a, "cheap", "future");
     const past = await ctx.seedModel(a, "cheap", "past");
     const none = await ctx.seedModel(a, "cheap", "none");
-    const noHeader = await ctx.seedModel(a, "cheap", "noheader");
+    const noHeader = await ctx.seedModel(a, "cheap", "noHeader");
     const junk = await ctx.seedModel(a, "cheap", "junk");
     await set(future, { "retry-after": "120" }, "20 seconds");
     await set(past, { "retry-after": "10" }, "60 seconds");

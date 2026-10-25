@@ -93,7 +93,10 @@ export async function startRagStub(secret: string) {
     };
     calls.push(call);
     const out = await handlers[name](call);
-    res.status(out.status).set(out.headers ?? {}).json(out.body);
+    res
+      .status(out.status)
+      .set(out.headers ?? {})
+      .json(out.body);
   };
   app.post("/internal/ingest", multer().single("file"), run("ingest"));
   app.post("/internal/query", express.json(), run("query"));
