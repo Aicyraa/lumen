@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
+import { setActiveProjectId, useProjectMismatch } from "../../shared/lib/activeProject";
 import { authClient } from "../../shared/lib/auth-client";
 import { Loading } from "../../shared/ui/Loading";
 import { Unreachable } from "../../shared/ui/Unreachable";
@@ -20,6 +21,7 @@ export function ProjectShell() {
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [retry, setRetry] = useState(0);
+  const mismatch = useProjectMismatch();
 
   useEffect(() => {
     if (!project) return;
@@ -81,8 +83,21 @@ export function ProjectShell() {
       </div>
     );
   if (busy || s.orgId !== project.id) return <Loading label="Opening project…" />;
+  setActiveProjectId(project.id); // before the page's queries run (they start in effects, after this render)
   return (
     <ProjectContext.Provider value={project}>
+      {mismatch && (
+        <div role="alert" className="project-banner">
+          <span>This tab's project changed in another tab. Reload.</span>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            onClick={() => window.location.reload()}
+          >
+            Reload
+          </button>
+        </div>
+      )}
       <Shell />
     </ProjectContext.Provider>
   );

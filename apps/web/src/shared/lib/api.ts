@@ -10,6 +10,7 @@ export class ApiError extends Error {
   }
 }
 
+import { flagProjectMismatch, withProjectId } from "./activeProject";
 import { apiBase } from "./config";
 
 // Whole seconds only (an HTTP-date Retry-After is ignored).
@@ -19,7 +20,7 @@ const wholeSeconds = (v: unknown) => {
 };
 
 export async function api<T = void>(path: string, init: RequestInit = {}): Promise<T> {
-  const headers = new Headers(init.headers);
+  const headers = withProjectId(path, new Headers(init.headers));
   if (typeof init.body === "string") headers.set("content-type", "application/json");
   let res: Response;
   try {
@@ -32,6 +33,7 @@ export async function api<T = void>(path: string, init: RequestInit = {}): Promi
   if (!(res.headers.get("content-type") ?? "").includes("json"))
     throw new ApiError(0, "network_error", "Cannot reach the server.");
   const body = await res.json().catch(() => null);
+  if (res.status === 409 && body?.error?.code === "project_mismatch") flagProjectMismatch();
   if (!res.ok)
     throw new ApiError(
       res.status,
