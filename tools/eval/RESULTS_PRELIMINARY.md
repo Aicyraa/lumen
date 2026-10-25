@@ -1,88 +1,97 @@
-# Preliminary evaluation results (eval-run-1)
+# Preliminary evaluation results (eval-run-1, second pass)
 
 **PRELIMINARY. Do not use these numbers for decisions.** The expected answers are agent-drafted from the PDFs and
-unverified by the human (`DRAFT_ANSWERS_REVIEW.md`); one judge model, one run, and only 27 of the 43 questions finished.
+unverified by the human (`DRAFT_ANSWERS_REVIEW.md`); one judge model, one run, free-tier models.
 
 ## What ran
 
-- Rag-service from this worktree (c_v1 + `force_tier`), tenant `Lumen` (8 campus PDFs, read-only use of the dev database).
-- Models under test: cheap `openai/gpt-oss-20b`, expensive `openai/gpt-oss-120b`, both on Groq's free tier. Judge:
-  `qwen/qwen3.8-27b` (a different family; it returned strict JSON in a smoke test). Prices as set by the human, per 1M tokens:
-  cheap 0.075 in / 0.30 out, expensive 0.15 / 0.60. Cost below is the estimated provider cost from provider token counts.
-- Held-out rule and seed: see `README.md` (seed 20261024, 3 easy, 3 hard, 2 multi-document, 2 unanswerable, fixed before any run).
+- Rag-service from this worktree (c_v1 + `force_tier`), tenant `Lumen` (the 8 campus PDFs; dev database read-only).
+- Under test: cheap `openai/gpt-oss-20b`, expensive `openai/gpt-oss-120b` (Groq free tier). Judge: `qwen/qwen3.8-27b`
+  (a different family; strict JSON verified). Prices as set by the human per 1M tokens: cheap 0.075 in / 0.30 out,
+  expensive 0.15 / 0.60. Cost is the estimated provider cost from provider token counts.
+- All 43 questions x 3 setups = 129 runs were attempted. Held-out rule and seed: `README.md` (seed 20261024; 10 held-out rows:
+  3 easy, 3 hard, 2 multi-document, 2 unanswerable). Splits: **train 33 questions, held_out 10**.
+- **Grading of unanswerable rows (lead decision):** correct when the answer is exactly the not-found sentence; sources are
+  ignored for correctness and counted instead (`unanswerable_with_sources` in `verdicts.csv`).
 
-## Completed and not completed
+## Completion
 
-- **Complete for all three setups: the first 27 questions of `questions.csv`** (13 easy, 12 hard, 2 multi-document) = 81 runs.
-  Split: **train 21 questions** (10 easy, 9 hard, 2 multi-document), **held_out 6 questions** (3 easy, 3 hard).
-- **Not run: 16 questions** (7 multi-document and all 9 unanswerable; 2 of the 3 held-out multi-document/unanswerable
-  quotas are therefore empty). Reason: Groq's free-tier limit on `openai/gpt-oss-20b` (the cheap model) was exhausted
-  (rate-limited with a `retry-after` of several hundred seconds that kept renewing; about one request per 10 minutes got through),
-  and the third `resume` chunk confirmed it. I stopped cleanly. Resume later with
-  `python tools/eval/run_eval.py --resume` (the state file `.eval_state.json` keeps the 81 completed runs; the
-  remaining pairs run on resume).
-- Two incidental runs outside the 27 (always-cheap and always-expensive on "tuition for graduate programs", an unanswerable
-  question) are in the state file but not in the tables. Both answered "I could not find that in the documents." and were
-  graded **wrong** by the harness's rule because the response still listed sources (see the read below).
-- System errors: **0**. Judge errors: **0**. (Two provider rate-limit errors early in the run were retried and replaced.)
+- **118 of 129 runs produced an answer. 11 runs failed with `provider_error` (system errors) and are counted wrong in
+  `results.csv`:** the Groq daily token quota ran out partway through the last chunk and was exhausted again when I retried
+  (the retry stopped cleanly on a long retry-after). Affected: always_expensive 3 (one multi-document, two unanswerable),
+  always_cheap 3 (one multi-document, two unanswerable), rule_router 5 (two multi-document, three unanswerable).
+  They are all train rows; no held-out run failed. Resume later with `python tools/eval/run_eval.py --resume`; only
+  those 11 pairs will run.
+- Because of this, the `results.csv` accuracies for train are **lower bounds** (failed runs counted as wrong). The tables
+  below also give accuracy over answered runs.
 
-## results.csv (27 questions x 3 setups)
+## results.csv (counts: train 33 questions, held_out 10, per setup)
 
-| setup | split | n | accuracy | median latency ms | escalation rate | est. cost per query (USD) |
-|---|---|---|---|---|---|---|
-| always_cheap | train | 21 | 0.810 (17/21) | 2483 | 0.00 | 0.000272 |
-| always_cheap | held_out | 6 | 1.000 (6/6) | 2236 | 0.00 | 0.000242 |
-| always_expensive | train | 21 | 0.810 (17/21) | 3001 | 1.00 | 0.000605 |
-| always_expensive | held_out | 6 | 1.000 (6/6) | 2634 | 1.00 | 0.000504 |
-| rule_router | train | 21 | 0.857 (18/21) | 2683 | 0.095 (2/21) | 0.000313 |
-| rule_router | held_out | 6 | 1.000 (6/6) | 2983 | 0.167 (1/6) | 0.000332 |
+| setup | split | accuracy (failures counted wrong) | accuracy over answered runs | median latency ms | escalation rate | unanswerable_handled | est. cost per query (USD) |
+|---|---|---|---|---|---|---|---|
+| always_cheap | train | 0.727 (24/33) | 0.800 (24/30) | 2718 | 0.00 | 0.571 (4/7) | empty in csv (a failed run has no cost); 0.000296 mean over the 40 priced runs, all splits |
+| always_cheap | held_out | 0.900 (9/10) | 0.900 (9/10) | 2449 | 0.00 | 1.000 (2/2) | 0.000280 |
+| always_expensive | train | 0.727 (24/33) | 0.800 (24/30) | 2956 | 0.91 (30/33) | 0.571 (4/7) | empty in csv; 0.000613 mean over the 40 priced runs |
+| always_expensive | held_out | 0.900 (9/10) | 0.900 (9/10) | 2634 | 1.00 | 1.000 (2/2) | 0.000516 |
+| rule_router | train | 0.697 (23/33) | 0.821 (23/28) | 2681 | 0.091 (3/33) | 0.429 (3/7) | empty in csv; 0.000334 mean over the 38 priced runs |
+| rule_router | held_out | 0.900 (9/10) | 0.900 (9/10) | 2605 | 0.100 (1/10) | 1.000 (2/2) | 0.000334 |
 
-`unanswerable_handled` is empty everywhere: no unanswerable question completed. Router: 24 of 27 questions stayed on the
-cheap tier, 3 escalated (the Merit Excellence vs Mobility comparison, the Applied AI lab closure, the AOG laboratory budget).
+(`unanswerable_handled` denominators include failed runs: 7 train and 2 held-out unanswerable questions.
+Always-expensive escalation is 0.91 on train, not 1.0, because 3 failed runs report no tier; the questions answered
+with no model call, the not-found shortcut, count as not escalated.) The router escalated 4 questions in total: the Merit
+Excellence vs Mobility comparison, the Applied AI lab closure, the AOG laboratory budget and the 3D-printer serial number.
 
-## Wrong answers (all 11 are judged omissions of a qualifier, none a wrong fact)
+By type, correct / answered (failed runs excluded): easy cheap 9/13, expensive 10/13, router 10/13; hard 12/12, 11/12,
+12/12; multi-document 6/8, 6/8, 5/7; unanswerable 6/7, 6/7, 5/6.
 
-| setup(s) | question | judge reason (short) |
-|---|---|---|
-| cheap, expensive, router | standard tuition per semester | omits "for 18 units" |
-| cheap, expensive, router | library hours on Saturdays | omits "during teaching weeks" |
-| cheap, expensive, router | one-time emergency assistance grant | omits "up to", "per academic year" / "subject to need and funds" |
-| cheap | documents a first-year applicant submits | omits "an interim report card may be submitted initially" |
-| expensive | 54 units, IT, average 89, INT-027 | answered "does not meet the unit requirement", omits the 60 units and PILOT-48 exception |
+## Not-found answers that still listed sources
 
-## Confident and wrong (top_score >= 0.5): 10 cases
+**20 of the 20 correctly graded not-found answers listed sources** (always_cheap 7, always_expensive 7, rule_router 6),
+so the service returns retrieved sources even when it says it could not find the answer. Under the old brief rule every one
+of these would have been wrong.
 
-All are the rows above: tuition (3 setups, top 0.66), library Saturdays (3, 0.56), emergency grant (3, 0.63) and the
-54-unit INT-027 question on always_expensive (0.56). The remaining wrong answer (cheap, first-year documents) had a lower
-score. All ten are high-confidence retrievals whose answer is factually right but less complete than the drafted answer.
+## Wrong answers (answered runs)
 
-## Rows flagged for human review (`verdicts.csv`, 17 of 81, column `flagged_for_review`)
+- Omitted qualifier, main fact right: tuition ("for 18 units"), library Saturdays ("during teaching weeks"), emergency grant
+  ("up to / per academic year / subject to need"), first-year documents on always_cheap (interim report card), and several
+  multi-document questions (mobility grant amounts, booking rules, cancellation rules).
+- Possible real errors: always_cheap on the exchange-pathways question says "AOP can be added to AOG and cannot be combined with
+  MES" in a way the judge found contradictory to the question asked; always_cheap on "semester exchange tuition and travel
+  costs" implied the mobility award covers more than the documents state.
+- **Likely a defective drafted question:** "What maintenance closures are planned for the Applied AI and Digital Inclusion Lab
+  next year?" The system (all three setups) answered with the November 8-12, 2027 closure from the manual; I had
+  classified it unanswerable because the manual says it does not list "next year's maintenance closures". "Next year" is
+  ambiguous relative to a 2027 document, so this is a drafting problem as much as a system one. I did not change it
+  after seeing the output; the human should decide.
 
-A seeded random 20 percent; no judge failures. Beyond those, read every wrong verdict above: all 11 depend on whether the
-drafted answer demanded too much detail.
+## Confident and wrong (answer judged wrong, top_score >= 0.5): 18 cases
+
+Tuition (3 setups, 0.66), library Saturdays (3, 0.56), emergency grant (3, 0.63), semester-exchange tuition and travel
+costs (3, 0.63), maintenance closures next year (3, 0.61), INT-027 54-unit on always_expensive (0.56), Global Mobility
+Grants on always_expensive (0.59), booking rules on rule_router (0.72). Most are right-on-the-main-fact answers that omit a
+drafted qualifier (see the read).
+
+## Rows flagged for human review
+
+`verdicts.csv`: 35 of 129 rows flagged (a seeded random 20 percent plus none from judge failure; 12 unanswerable, 8 easy,
+8 hard, 7 multi-document). Also read every wrong verdict and the 11 system errors' questions.
 
 ## Honest read
 
-- **The numbers do not separate the setups.** Differences are one or two questions out of 21 (and 6 held-out
-  questions, all correct everywhere). The router's 0.857 against 0.810 is a single question: the 54-unit question where
-  the expensive model gave a shorter answer, a judge call that could go either way. Nothing here shows the router beats
-  or loses to always-expensive on accuracy.
-- **What does look consistent:** always-expensive costs about 2.2 times the cheap tier per query (0.000605 vs 0.000272 on
-  train) and is about 0.5 s slower at the median; the rule router sat in between (0.000313) while escalating 11 percent.
-  That is weak evidence for the cost-saving idea, not proof.
-- **The judge is strict about qualifiers.** Most "wrong" answers are correct on the main fact and omit a drafted
-  qualifier ("for 18 units", "during teaching weeks"). My drafted answers may be more detailed than a fair reference; this
-  is the first thing for the human to check. I did not edit any answer after seeing system output.
-- **The easy and hard rows only.** No unanswerable and only two multi-document questions finished, so the most
-  interesting router cases (weak retrieval, cross-document) are untested. The held-out split is 6 questions and
-  contains no multi-document or unanswerable row.
-- **A harness finding:** for an unanswerable question the service can return the exact not-found sentence while still
-  listing sources (the model returned empty claims, but sources of the retrieved passages stay in the response). The
-  harness rule from the brief ("not-found message and no sources") grades that as wrong. Either the rule or the
-  service behavior needs a decision before the unanswerable column means anything.
-- Limits: 43 questions at most, one judge model from a different family but still an LLM, answers drafted by an agent,
-  a single run (the models are not deterministic), free-tier models, the same corpus the thresholds were calibrated on.
+- **Still no evidence that any setup is better on accuracy.** On the 43 questions the three setups are within one or two
+  questions of each other on train and identical on the 10 held-out rows (9/10 each). The held-out set is 10 questions; one
+  question is 10 points.
+- **Cost and speed are the consistent differences:** always-expensive costs about 2.1 times the cheap tier per query and
+  is slower at the median; the rule router costs about 13 percent more than always-cheap, escalating 4 of 43 questions. That
+  fits the cost-saving idea, but the accuracy data cannot show the router is not losing quality on harder questions,
+  because the 11 failed runs fall on exactly the multi-document and unanswerable rows where a difference would show.
+- **The judge is strict about qualifiers**, and my drafted answers include many of them; some "wrong" answers are a
+  judge-and-draft artifact. Human verification of the drafts (and of the judge on the flagged rows) is the next step.
+- **The unanswerable set is small (9) and one of its questions looks defective**; the not-found behaviour of the service
+  (sources listed with a not-found answer) is a service question, not an evaluation result.
+- Limits: 43 questions, drafted answers, one LLM judge, one run (models are not deterministic), free-tier models, the corpus
+  the router thresholds were calibrated on.
 
 ## Files
 
-`tools/eval/results.csv`, `tools/eval/verdicts.csv`, `tools/eval/.eval_state.json` (git-ignored, in the worktree).
+`tools/eval/results.csv`, `verdicts.csv` and `.eval_state.json` (git-ignored, in the worktree).
