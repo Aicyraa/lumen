@@ -108,21 +108,10 @@ def keyword_search(
     return [(r[0], str(r[1]), r[2], float(r[3]), float(r[4])) for r in rows]
 
 
-def search(
-    tenant_id: str, query_vector: np.ndarray, k: int, *, query_text: str = ""
+def dense_search(
+    tenant_id: str, query_vector: np.ndarray, k: int
 ) -> list[tuple[int, str, str, float]]:
-    """Top-k tenant chunks; BM25/vector rank fusion preserves exposed cosine scores."""
-    if query_text.strip():
-        cfg = load_config()["retrieval"]
-        limit = max(k, cfg["candidate_limit"])
-        dense = search(tenant_id, query_vector, limit)
-        sparse = keyword_search(tenant_id, query_vector, query_text, limit)
-        hits, ranks = {}, {}
-        for ranking in (dense, sparse):
-            for rank, hit in enumerate(ranking, 1):
-                hits[hit[0]] = hit[:4]
-                ranks[hit[0]] = ranks.get(hit[0], 0) + 1 / (cfg["rrf_rank_constant"] + rank)
-        return sorted(hits.values(), key=lambda h: (-ranks[h[0]], -h[3], h[0]))[:k]
+    """Top-k tenant chunks by cosine similarity (id, document_id, content, score)."""
     with _connect() as conn:
         rows = conn.execute(
             "SELECT id, document_id, content, 1 - (embedding <=> %s) AS score FROM chunks"
@@ -130,6 +119,25 @@ def search(
             (query_vector, tenant_id, query_vector, k),
         ).fetchall()
     return [(r[0], str(r[1]), r[2], float(r[3])) for r in rows]
+
+
+def search(
+    tenant_id: str, query_vector: np.ndarray, k: int, *, query_text: str = "", dense=None
+) -> list[tuple[int, str, str, float]]:
+    """Top-k tenant chunks; BM25/vector rank fusion preserves exposed cosine scores.
+    `dense` is an earlier dense_search result for the same query (at least candidate_limit long); it is reused."""
+    if not query_text.strip():
+        return dense_search(tenant_id, query_vector, k)
+    cfg = load_config()["retrieval"]
+    limit = max(k, cfg["candidate_limit"])
+    dense = dense_search(tenant_id, query_vector, limit) if dense is None else dense[:limit]
+    sparse = keyword_search(tenant_id, query_vector, query_text, limit)
+    hits, ranks = {}, {}
+    for ranking in (dense, sparse):
+        for rank, hit in enumerate(ranking, 1):
+            hits[hit[0]] = hit[:4]
+            ranks[hit[0]] = ranks.get(hit[0], 0) + 1 / (cfg["rrf_rank_constant"] + rank)
+    return sorted(hits.values(), key=lambda h: (-ranks[h[0]], -h[3], h[0]))[:k]
 
 
 def delete_document(tenant_id: str, document_id: str) -> int:

@@ -257,3 +257,16 @@ def test_provider_failure_is_502_provider_error(client, llm, best_score):
 def test_invalid_request_is_422(client, payload):
     resp = client.post("/internal/query", headers=AUTH, json=payload)
     assert resp.status_code == 422 and resp.json()["error"]["code"] == "invalid_request"
+
+
+def test_one_query_runs_the_dense_search_once(client, llm, best_score, monkeypatch):
+    # best_score comes from the same dense result the fusion uses: no extra probe query
+    best_score(0.9)
+    doc = add_document("tenant_a", "d.txt")
+    store.add_chunks("tenant_a", doc, ["Opening hours are nine to five."], np.array([axis0(1.0)]))
+    real, calls = store.dense_search, []
+    monkeypatch.setattr(store, "dense_search", lambda *a, **k: calls.append(a) or real(*a, **k))
+    resp = client.post(
+        "/internal/query", headers=AUTH, json={"tenant_id": "tenant_a", "query": SHORT}
+    )
+    assert resp.status_code == 200 and len(calls) == 1
