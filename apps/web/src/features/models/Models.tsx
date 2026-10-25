@@ -139,7 +139,7 @@ export function Models() {
         </div>
       )}
       {open && (
-        <Dialog title="Add model" label="NEW MODEL" onClose={() => setOpen(false)}>
+        <Dialog title="Add model" label="NEW MODEL" wide onClose={() => setOpen(false)}>
           <AddModel
             onDone={() => {
               setOpen(false);
@@ -200,7 +200,7 @@ export function Models() {
                 </div>
                 {rows.length > 0 && (
                   <div className="model-row model-head" role="row">
-                    {["MODEL", "ENDPOINT", "STATUS", "USAGE", "LIMITS", "COST", ""].map((h) => (
+                    {["MODEL", "ENDPOINT", "STATUS", "COST", ""].map((h) => (
                       <span key={h || "actions"} role="columnheader">
                         {h}
                       </span>
@@ -323,25 +323,6 @@ function ModelRow({
         )}
       </div>
       <div className="model-cell small muted-3" role="cell">
-        {u ? (
-          <>
-            {fmtInt(u.requests)} {u.requests === 1 ? "request" : "requests"} · {fmtInt(u.tokens_in)}{" "}
-            in / {fmtInt(u.tokens_out)} out tokens · {fails} failures
-            {fails
-              ? ` (${u.failures.error} error, ${u.failures.timeout} timeout, ${u.failures.rate_limited} rate limited)`
-              : ""}
-            · {u.backup_uses} as backup · median {fmtMs(u.median_latency_ms)}
-          </>
-        ) : usageFailed ? (
-          "usage unavailable"
-        ) : (
-          "usage loading…"
-        )}
-      </div>
-      <div className="model-cell small muted-3" role="cell">
-        {limitsText(u)}
-      </div>
-      <div className="model-cell small muted-3" role="cell">
         <span>
           estimated provider cost{" "}
           <InfoTip label="About estimated provider cost">
@@ -390,6 +371,27 @@ function ModelRow({
           Remove
         </button>
       </div>
+      <div className="model-cell model-usage small muted-3" role="cell">
+        <span className="label-sm">USAGE</span>
+        {u ? (
+          <>
+            {fmtInt(u.requests)} {u.requests === 1 ? "request" : "requests"} · {fmtInt(u.tokens_in)}{" "}
+            in / {fmtInt(u.tokens_out)} out tokens · {fails} failures
+            {fails
+              ? ` (${u.failures.error} error, ${u.failures.timeout} timeout, ${u.failures.rate_limited} rate limited)`
+              : ""}
+            · {u.backup_uses} as backup · median {fmtMs(u.median_latency_ms)}
+          </>
+        ) : usageFailed ? (
+          "usage unavailable"
+        ) : (
+          "usage loading…"
+        )}
+      </div>
+      <div className="model-cell model-limits small muted-3" role="cell">
+        <span className="label-sm">LIMITS</span>
+        {limitsText(u)}
+      </div>
     </div>
   );
 }
@@ -437,73 +439,83 @@ function AddModel({ onDone, onCancel }: { onDone: () => void; onCancel: () => vo
   }
 
   return (
-    <form className="stack-sm" onSubmit={submit} autoComplete="off">
-      <div className="field">
-        <span>Provider</span>
-        <Segmented
-          label="Provider"
-          options={PROVIDERS}
-          value={provider}
-          onChange={(p) => {
-            setProvider(p);
-            setEndpoint(ENDPOINTS[p]);
-          }}
-          pills
-        />
-      </div>
-      <div className="grid-2">
-        <label className="field">
-          <span>Model ID</span>
-          <input value={modelId} onChange={(e) => setModelId(e.target.value)} className="mono" />
-        </label>
-        <label className="field">
-          <span>Endpoint URL</span>
-          <input value={endpoint} onChange={(e) => setEndpoint(e.target.value)} className="mono" />
-        </label>
-        <label className="field span-2">
-          <span>API key</span>
-          <input
-            type="password"
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-            className="mono"
-            autoComplete="new-password"
-            placeholder="Stored encrypted, never shown again"
+    <form className="stack-sm add-model" onSubmit={submit} autoComplete="off">
+      <section className="am-sec">
+        <div className="label-sm">CONNECTION</div>
+        <div className="field">
+          <span>Provider</span>
+          <Segmented
+            label="Provider"
+            options={PROVIDERS}
+            value={provider}
+            onChange={(p) => {
+              setProvider(p);
+              setEndpoint(ENDPOINTS[p]);
+            }}
+            pills
           />
-        </label>
-      </div>
-      <div className="grid-2">
-        <label className="field">
-          <span>Input price per 1M tokens (optional)</span>
-          <input
-            inputMode="decimal"
-            value={inPrice}
-            onChange={(e) => setInPrice(e.target.value)}
-            className="mono"
-            placeholder="e.g. 0.10"
-          />
-        </label>
-        <label className="field">
-          <span>Output price per 1M tokens (optional)</span>
-          <input
-            inputMode="decimal"
-            value={outPrice}
-            onChange={(e) => setOutPrice(e.target.value)}
-            className="mono"
-            placeholder="e.g. 0.40"
-          />
-        </label>
-        <p className="small muted-3 span-2">
-          Used only to estimate your provider cost. Leave empty to show "no price set".
-        </p>
-      </div>
-      <div className="field">
-        <span>Use as</span>
+        </div>
+        <div className="grid-2">
+          <label className="field">
+            <span>Model ID</span>
+            <input value={modelId} onChange={(e) => setModelId(e.target.value)} className="mono" />
+          </label>
+          <label className="field">
+            <span>Endpoint URL</span>
+            <input
+              value={endpoint}
+              onChange={(e) => setEndpoint(e.target.value)}
+              className="mono"
+            />
+          </label>
+          <label className="field span-2">
+            <span>API key</span>
+            <input
+              type="password"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              className="mono"
+              autoComplete="new-password"
+              placeholder="Stored encrypted, never shown again"
+            />
+          </label>
+        </div>
+      </section>
+      <section className="am-sec">
+        <div className="label-sm">PRICES · OPTIONAL</div>
+        <div className="grid-2">
+          <label className="field">
+            <span>Input price per 1M tokens (optional)</span>
+            <input
+              inputMode="decimal"
+              value={inPrice}
+              onChange={(e) => setInPrice(e.target.value)}
+              className="mono"
+              placeholder="e.g. 0.10"
+            />
+          </label>
+          <label className="field">
+            <span>Output price per 1M tokens (optional)</span>
+            <input
+              inputMode="decimal"
+              value={outPrice}
+              onChange={(e) => setOutPrice(e.target.value)}
+              className="mono"
+              placeholder="e.g. 0.40"
+            />
+          </label>
+          <p className="small muted-3 span-2">
+            Used only to estimate your provider cost. Leave empty to show "no price set".
+          </p>
+        </div>
+      </section>
+      <section className="am-sec">
+        <div className="label-sm">USE AS</div>
         <div className="row-gap">
           <Segmented label="Use as" options={TIERS} value={tier} onChange={setTier} />
           <span className="small muted-3">Added to the end of the tier. Reorder it below.</span>
         </div>
-      </div>
+      </section>
       <ErrorText>{error}</ErrorText>
       <div className="row-end form-foot">
         <button type="button" className="btn btn-outline" onClick={onCancel}>

@@ -314,12 +314,32 @@ describe("Models", () => {
       within(cheap)
         .getAllByRole("columnheader")
         .map((h) => h.textContent),
-    ).toEqual(["MODEL", "ENDPOINT", "STATUS", "USAGE", "LIMITS", "COST", ""]);
+    ).toEqual(["MODEL", "ENDPOINT", "STATUS", "COST", ""]);
     expect(
       within(screen.getByTestId("model-a")).getByText("OpenAI-compatible"),
     ).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Expensive" })).toHaveClass("card");
     expect(screen.queryByRole("region", { name: "Fallback" })).toBeNull();
+  });
+
+  it("puts usage and limits on their own labelled line under the model, and opens Add model in the wide dialog", async () => {
+    mockFetch(router());
+    renderWithProviders(<Models />);
+    await screen.findByText("model-a");
+    const a = screen.getByTestId("model-a");
+    expect(
+      within(a)
+        .getByText(/12 requests/)
+        .closest(".model-usage"),
+    ).not.toBeNull();
+    expect(
+      within(a)
+        .getByText(/limit-requests 30/)
+        .closest(".model-limits"),
+    ).not.toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Add model" }));
+    expect(screen.getByRole("dialog")).toHaveClass("modal", "modal-wide");
+    expect(within(screen.getByRole("dialog")).getByText("CONNECTION")).toBeInTheDocument();
   });
 
   it("shows centred loading and error (with Retry) states", async () => {

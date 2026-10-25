@@ -12,6 +12,7 @@ export function Dialog({
   onClose,
   dismissable = true,
   variant = "modal",
+  wide = false,
   children,
 }: {
   title: string;
@@ -19,6 +20,7 @@ export function Dialog({
   onClose: () => void;
   dismissable?: boolean;
   variant?: "modal" | "drawer";
+  wide?: boolean;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -78,7 +80,7 @@ export function Dialog({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={variant === "drawer" ? "drawer" : "modal"}
+        className={variant === "drawer" ? "drawer" : `modal${wide ? " modal-wide" : ""}`}
         initial={variant === "drawer" ? { x: 32, opacity: 0 } : { y: 12, scale: 0.98, opacity: 0 }}
         animate={{ x: 0, y: 0, scale: 1, opacity: 1 }}
         transition={{ duration: 0.22, ease: [0.2, 0.7, 0.1, 1] }}
