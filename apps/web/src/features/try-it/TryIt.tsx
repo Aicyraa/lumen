@@ -10,6 +10,7 @@ import { StatusMessage } from "../../shared/ui/StatusMessage";
 import { UsageCard } from "../../shared/ui/UsageCard";
 import { ErrorText, PageHead } from "../../shared/ui/ui";
 import { useOrgId } from "../auth/session";
+import { useProject } from "../projects/projectsContext";
 
 // Marks [1]-style citations in the lime accent.
 function Answer({ text }: { text: string }) {
@@ -44,6 +45,7 @@ function RateLimitNotice({ message, seconds }: { message: string; seconds: numbe
 export function TryIt() {
   const qc = useQueryClient();
   const org = useOrgId();
+  const project = useProject();
   const [query, setQuery] = useState("");
   const [rating, setRating] = useState<1 | -1 | 0>(0);
   const [feedbackError, setFeedbackError] = useState("");
@@ -110,7 +112,7 @@ export function TryIt() {
               {err instanceof ApiError && err.code === "no_models_configured" ? (
                 <>
                   No models are configured. Add a model in the{" "}
-                  <Link to="/dashboard/models">Models tab</Link>.
+                  <Link to={`/projects/${project.slug}/models`}>Models tab</Link>.
                 </>
               ) : (
                 err.message
