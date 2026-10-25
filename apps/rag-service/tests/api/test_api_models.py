@@ -236,3 +236,57 @@ def test_filenames_are_looked_up_for_one_tenant_only():
     doc_a, doc_b = add_doc("tenant_a", ["a"], "a.txt"), add_doc("tenant_b", ["b"], "b.txt")
     assert store.filenames("tenant_a", [doc_a, doc_b]) == {doc_a: "a.txt"}
     assert store.filenames("tenant_a", []) == {}
+
+
+# ---- provider rate limits ----
+
+
+def limit(*ids, after=None):
+    """Make these models fail with a 429 (retry_after seconds per model id in `after`)."""
+    return {i: "rate_limited" for i in ids}, {i: {"retry_after_seconds": (after or {}).get(i)} for i in ids}
+
+
+def test_a_backup_model_answers_right_after_a_long_rate_limit(client, llm, docs):
+    llm.outcomes, llm.extra = limit("c1", after={"c1": 855})
+    resp = ask(client, models=models(cheap=["c1", "c2"]))
+    assert resp.status_code == 200 and tried(llm) == ["c1", "c2"]
+    first = resp.json()["attempts"][0]
+    assert first["outcome"] == "rate_limited" and first["retry_after_seconds"] == 855
+
+
+def test_every_model_rate_limited_is_429_with_the_smallest_wait(client, llm, docs):
+    llm.outcomes, llm.extra = limit("c1", "c2", after={"c1": 855, "c2": 120})
+    resp = ask(client, models=models(cheap=["c1", "c2"]))
+    assert resp.status_code == 429 and resp.headers["retry-after"] == "120"
+    body = resp.json()
+    assert body["error"] == {
+        "code": "provider_rate_limited",
+        "message": "The model provider is rate limiting this workspace. Try again in about 2 minutes.",
+        "retry_after_seconds": 120,
+    }
+    assert [(a["model_id"], a["outcome"], a["retry_after_seconds"]) for a in body["attempts"]] == [
+        ("c1", "rate_limited", 855),
+        ("c2", "rate_limited", 120),
+    ]
+    assert KEY not in resp.text
+
+
+@pytest.mark.parametrize(
+    "seconds,wording",
+    [(45, "45 seconds"), (1, "1 second"), (60, "1 minute"), (855, "15 minutes"), (None, "2 seconds")],
+)
+def test_the_429_message_says_seconds_or_minutes(client, llm, docs, seconds, wording):
+    llm.outcomes, llm.extra = limit("c1", after={"c1": seconds})
+    resp = ask(client, models=models(cheap=["c1"]))
+    assert resp.status_code == 429
+    assert resp.json()["error"]["message"].endswith(f"Try again in about {wording}.")
+    if seconds is None:  # no wait known: the configured fallback wait is reported
+        assert resp.json()["error"]["retry_after_seconds"] == 2 and resp.headers["retry-after"] == "2"
+
+
+def test_a_mix_of_failures_stays_502(client, llm, docs):
+    llm.outcomes = {"c1": "rate_limited", "c2": "error"}
+    llm.extra = {"c1": {"retry_after_seconds": 855}}
+    resp = ask(client, models=models(cheap=["c1", "c2"]))
+    assert resp.status_code == 502 and resp.json()["error"]["code"] == "provider_error"
+    assert "retry-after" not in resp.headers and len(resp.json()["attempts"]) == 2
