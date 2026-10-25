@@ -550,11 +550,15 @@ button:disabled {
   gap: 12px;
   align-items: center;
   padding: 16px 0;
-  border-bottom: 1px solid var(--line-soft);
   font-size: 14px;
 }
 .th {
   padding: 0 0 12px;
+/* lines only between rows: none above the first or below the last */
+.tr:not(.th) + .tr,
+.tr-wrap + .tr-wrap {
+  border-top: 1px solid var(--line-soft);
+}
   font: 500 11px var(--mono);
   letter-spacing: 0.1em;
   color: var(--text-4);
@@ -562,6 +566,10 @@ button:disabled {
 }
 .docs-cols {
   grid-template-columns: minmax(0, 2fr) 1fr 1fr 1fr 70px;
+.table-card {
+  padding: 24px 28px 8px;
+  gap: 0;
+}
 }
 .keys-cols {
   grid-template-columns: 1.5fr 1.5fr 1fr 1fr 90px;
@@ -572,9 +580,6 @@ button:disabled {
 }
 .cell-min {
   min-width: 0;
-}
-.tr-wrap {
-  border-bottom: 1px solid var(--line-soft);
 }
 .row-btn {
   width: 100%;
@@ -607,26 +612,26 @@ table.data td {
 }
 .source {
   display: grid;
+table.data tbody tr:last-child td {
+  border-bottom: 0;
+}
   grid-template-columns: 40px minmax(0, 1fr) auto;
   gap: 16px;
   align-items: start;
   padding: 14px 0;
   border-bottom: 1px solid var(--line-soft);
-table.data tbody tr:last-child td {
-  border-bottom: 0;
-}
   font-size: 14px;
 }
 .card .source {
   grid-template-columns: 30px minmax(0, 1fr) auto;
+.source:last-child {
+  border-bottom: 0;
+}
   font-size: 13px;
   border: 0;
   padding: 4px 0;
 }
 .score {
-.source:last-child {
-  border-bottom: 0;
-}
   display: flex;
   align-items: center;
   gap: 10px;
@@ -782,6 +787,14 @@ table.data tbody tr:last-child td {
 label.btn:focus-within {
   outline: 2px solid var(--lime);
   outline-offset: 2px;
+.dz-wrap {
+  display: flex;
+  flex-direction: column;
+}
+.dz-wrap > .dz-live:not(:empty),
+.dz-wrap > .error-text {
+  margin-top: 12px;
+}
 }
 .askbar {
   display: flex;
@@ -937,6 +950,9 @@ label.btn:focus-within {
   border-bottom: 1px solid var(--line);
 }
 .group-title {
+.list li:last-child {
+  border-bottom: 0;
+}
   font-size: 20px;
   font-weight: 500;
   letter-spacing: -0.02em;
@@ -949,9 +965,6 @@ label.btn:focus-within {
   padding: 16px 0;
   border-bottom: 1px solid var(--line-soft);
   font-size: 14px;
-}
-.list li:last-child {
-  border-bottom: 0;
 }
 .rank {
   flex: 0 0 80px;
@@ -1875,6 +1888,7 @@ html.snap-home {
 .doc-content ol.doc-list {
   list-style: decimal;
   padding-left: 22px;
+/* biome-ignore lint/style/noDescendingSpecificity: sets animation only; the earlier row-line rule sets border-top */
 }
 .doc-content ul.doc-list {
   list-style: disc;
@@ -1888,7 +1902,6 @@ html.snap-home {
 }
 .doc-content .codewrap pre.code {
   padding-right: 88px;
-/* biome-ignore lint/style/noDescendingSpecificity: sets animation only; the earlier row-line rule sets border-top */
 }
 .doc-content .endpoint {
   color: var(--text-2);

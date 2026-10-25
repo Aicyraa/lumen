@@ -89,40 +89,42 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
           {summary}
         </div>
       </PageHead>
-      <div
-        className={`dropzone${drag ? " drag" : ""}`}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDrag(true);
-        }}
-        onDragLeave={() => setDrag(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDrag(false);
-          void addFiles(e.dataTransfer.files);
-        }}
-      >
-        <div>
-          <div className="dz-title">Drop files to upload</div>
-          <div className="small muted-3">PDF, .txt or .md · the server checks type and size</div>
+      <div className="dz-wrap">
+        <div
+          className={`dropzone${drag ? " drag" : ""}`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDrag(true);
+          }}
+          onDragLeave={() => setDrag(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDrag(false);
+            void addFiles(e.dataTransfer.files);
+          }}
+        >
+          <div>
+            <div className="dz-title">Drop files to upload</div>
+            <div className="small muted-3">PDF, .txt or .md · the server checks type and size</div>
+          </div>
+          <label className="btn btn-primary">
+            Choose files
+            <input
+              ref={fileRef}
+              type="file"
+              multiple
+              accept=".pdf,.txt,.md"
+              className="visually-hidden"
+              aria-label="Choose files"
+              onChange={(e) => void addFiles(e.target.files)}
+            />
+          </label>
         </div>
-        <label className="btn btn-primary">
-          Choose files
-          <input
-            ref={fileRef}
-            type="file"
-            multiple
-            accept=".pdf,.txt,.md"
-            className="visually-hidden"
-            aria-label="Choose files"
-            onChange={(e) => void addFiles(e.target.files)}
-          />
-        </label>
+        <div className="small muted-3 dz-live" aria-live="polite">
+          {progress}
+        </div>
+        <ErrorText>{error}</ErrorText>
       </div>
-      <div className="small muted-3" aria-live="polite">
-        {progress}
-      </div>
-      <ErrorText>{error}</ErrorText>
       {docs.isPending && <StatusMessage state="loading">Loading documents…</StatusMessage>}
       {docs.isError && (
         <StatusMessage state="error" onRetry={() => docs.refetch()}>
@@ -133,7 +135,7 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
         <StatusMessage state="empty">No documents yet. Upload one to start.</StatusMessage>
       )}
       {list.length > 0 && (
-        <div className="table" role="table" aria-label="Documents">
+        <div className="card table-card" role="table" aria-label="Documents">
           <div className="tr th docs-cols" role="row">
             <span role="columnheader">FILE</span>
             <span role="columnheader">STATUS</span>

@@ -22,6 +22,19 @@ const usage = {
 vi.mock("../../../src/features/auth/session", () => ({ useOrgId: () => "org_1" }));
 
 describe("Documents", () => {
+  it("lists the documents in a padded card, and the live regions sit with the drop zone so they add no gap", async () => {
+    mockFetch((url) =>
+      url.endsWith("/usage") ? usage : { documents: [doc({ status: "ready", chunk_count: 2 })] },
+    );
+    renderWithProviders(<Documents pollMs={40} />);
+    const table = await screen.findByRole("table", { name: "Documents" });
+    expect(table).toHaveClass("card", "table-card");
+    const wrap = document.querySelector(".dz-wrap")!;
+    expect(wrap.querySelector(".dropzone")).not.toBeNull();
+    expect(wrap.querySelector(".dz-live")).toBeEmptyDOMElement();
+    expect(table.previousElementSibling).toBe(wrap);
+  });
+
   it("polls while a document is processing, shows ready, then stops polling", async () => {
     let polls = 0;
     const { calls } = mockFetch((url) => {
