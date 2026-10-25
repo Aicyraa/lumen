@@ -197,6 +197,17 @@ describe("project routes", () => {
     vi.unstubAllGlobals();
   });
 
+  it("the tab title follows the page: Requests, then Projects", async () => {
+    mockFetch(api());
+    mount("/projects/my-project/requests");
+    await screen.findByRole("complementary");
+    await waitFor(() => expect(document.title).toBe("Requests · Lumen"));
+    await userEvent.click(
+      within(screen.getByRole("complementary")).getByRole("link", { name: "Projects" }),
+    );
+    await waitFor(() => expect(document.title).toBe("Projects · Lumen"));
+  });
+
   it("the sidebar shows the current project as a plain label and the way to switch is the Projects page", async () => {
     mockFetch(api());
     mount("/projects/my-project/requests");
