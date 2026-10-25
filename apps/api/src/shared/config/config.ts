@@ -4,6 +4,9 @@ import { z } from "zod";
 
 interface Tunables {
   ingestTimeoutMs: number;
+  ingestBusyRetries: number; // retries after the rag-service answers 503 busy
+  ingestBusyBackoffMs: number; // first wait, doubled each retry unless the service sent Retry-After
+  ingestBusyBackoffMaxMs: number;
   interruptedIngestAfterSeconds: number;
   globalLlmCapPerMinute: number;
   uploadMaxBytes: number;

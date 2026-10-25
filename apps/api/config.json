@@ -1,5 +1,8 @@
 {
   "ingestTimeoutMs": 120000,
+  "ingestBusyRetries": 3,
+  "ingestBusyBackoffMs": 2000,
+  "ingestBusyBackoffMaxMs": 30000,
   "interruptedIngestAfterSeconds": 600,
   "globalLlmCapPerMinute": 8,
   "uploadMaxBytes": 10485760,
