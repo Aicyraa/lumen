@@ -300,7 +300,7 @@ All errors use one shape: `{ "error": { "code": "<snake_case>", "message": "<hum
 
 | Endpoint | Request | Success | Errors |
 | --- | --- | --- | --- |
-| `POST /v1/chat` | JSON `{ query: string (1 to 2000 chars), session_id?: string }` | `200` chat response, below | `401 invalid_api_key`, `422 invalid_request`, `429 rate_limited`, `429 monthly_limit`, `502 provider_error` |
+| `POST /v1/chat` | JSON `{ query: string (1 to 2000 chars), session_id?: string }` | `200` chat response, below | `401 invalid_api_key`, `422 invalid_request`, `429 rate_limited`, `429 monthly_limit`, `429 provider_rate_limited` (with `Retry-After` and `retry_after_seconds`), `502 provider_error` |
 | `POST /v1/documents` | multipart `file` (PDF, `.txt` or `.md`, at most 10 MB) | `202 { document_id, status: "processing" }` | `401`, `413 file_too_large`, `415 unsupported_type`, `429 document_limit` |
 | `GET /v1/documents/:id` | none | `200 { document_id, status, chunk_count, error }` | `404 not_found` |
 | `DELETE /v1/documents/:id` | none | `204` | `404 not_found` |
