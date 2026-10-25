@@ -66,35 +66,40 @@ def keyword_search(
     """Tenant-local BM25 hits, with cosine and BM25 scores kept separate."""
     cfg = load_config()["retrieval"]
     with _connect() as conn:
-        # shortcut: BM25 scans this tenant's chunks, persist postings when measured latency grows.
+        # shortcut: lengths and corpus size still scan the tenant's tsv column (ids and term stats only, no
+        # content or embeddings); term frequencies come from the chunks the GIN index says match the query.
         rows = conn.execute(
             """
-            WITH corpus AS MATERIALIZED (
-                SELECT id, document_id, content, embedding, to_tsvector('english', content) AS terms
-                FROM chunks WHERE tenant_id = %(tenant)s
-            ), terms AS MATERIALIZED (
-                SELECT c.id, t.lexeme, cardinality(t.positions)::double precision AS tf
-                FROM corpus c CROSS JOIN LATERAL unnest(c.terms) t
-            ), lengths AS (
-                SELECT c.id, coalesce(sum(t.tf), 0)::double precision AS length
-                FROM corpus c LEFT JOIN terms t ON t.id = c.id GROUP BY c.id
+            WITH q AS (
+                SELECT tsvector_to_array(to_tsvector('english', %(query)s)) AS lexemes
+            ), qt AS (  -- lexemes are already stemmed, so 'simple' only builds the OR query
+                SELECT to_tsquery('simple', string_agg(quote_literal(l), ' | ')) AS tsq
+                FROM q CROSS JOIN LATERAL unnest(q.lexemes) l
             ), stats AS (
-                SELECT count(*)::double precision AS n, avg(length) AS avg_length FROM lengths
+                SELECT count(*)::double precision AS n, avg(len) AS avg_length FROM (
+                    SELECT coalesce((SELECT sum(cardinality(t.positions)) FROM unnest(c.tsv) t), 0) AS len
+                    FROM chunks c WHERE c.tenant_id = %(tenant)s
+                ) x
+            ), terms AS MATERIALIZED (
+                SELECT id, lexeme, tf, length FROM (
+                    SELECT c.id, t.lexeme, cardinality(t.positions)::double precision AS tf,
+                           sum(cardinality(t.positions)) OVER (PARTITION BY c.id)::double precision AS length
+                    FROM chunks c CROSS JOIN LATERAL unnest(c.tsv) t
+                    WHERE c.tenant_id = %(tenant)s AND c.tsv @@ (SELECT tsq FROM qt)
+                ) m WHERE lexeme = ANY(tsvector_to_array(to_tsvector('english', %(query)s)))
             ), frequencies AS (
-                SELECT lexeme, count(*)::double precision AS n FROM terms
-                WHERE lexeme = ANY(tsvector_to_array(to_tsvector('english', %(query)s)))
-                GROUP BY lexeme
+                SELECT lexeme, count(*)::double precision AS n FROM terms GROUP BY lexeme
             ), ranked AS (
                 SELECT t.id, sum(
                     ln(1 + (s.n - f.n + 0.5) / (f.n + 0.5)) *
                     (t.tf * (%(k1)s + 1)) /
-                    (t.tf + %(k1)s * (1 - %(b)s + %(b)s * l.length / nullif(s.avg_length, 0)))
+                    (t.tf + %(k1)s * (1 - %(b)s + %(b)s * t.length / nullif(s.avg_length, 0)))
                 ) AS bm25
-                FROM terms t JOIN frequencies f ON f.lexeme = t.lexeme
-                JOIN lengths l ON l.id = t.id CROSS JOIN stats s GROUP BY t.id
+                FROM terms t JOIN frequencies f ON f.lexeme = t.lexeme CROSS JOIN stats s GROUP BY t.id
             )
             SELECT c.id, c.document_id, c.content, 1 - (c.embedding <=> %(vector)s), r.bm25
-            FROM ranked r JOIN corpus c ON c.id = r.id ORDER BY r.bm25 DESC, c.id LIMIT %(k)s
+            FROM ranked r JOIN chunks c ON c.id = r.id AND c.tenant_id = %(tenant)s
+            ORDER BY r.bm25 DESC, c.id LIMIT %(k)s
             """,
             {
                 "tenant": tenant_id,

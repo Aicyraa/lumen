@@ -183,11 +183,16 @@ def query(req: QueryRequest, caller=Depends(get_caller)):
         "top_score": None,
     }
     qvec = embed([req.query])[0]
-    probe = store.search(req.tenant_id, qvec, 1)  # best match only, to learn best_score
-    if not probe:  # this tenant has no chunks at all
-        return query_response(started, messages["no_documents"], [], none_route)
-    best_score = probe[0][3]
     cfg = router_cfg()
+    reranker_cfg = load_config()["reranker"]
+    # one dense search serves best_score and the fusion later; deep enough for the largest k or candidate list
+    depth = max(cfg.k_expensive, load_config()["retrieval"]["candidate_limit"])
+    if reranker_cfg["enabled"]:
+        depth = max(depth, reranker_cfg["candidate_limit"])
+    dense = store.dense_search(req.tenant_id, qvec, depth)
+    if not dense:  # this tenant has no chunks at all
+        return query_response(started, messages["no_documents"], [], none_route)
+    best_score = dense[0][3]
     if best_score < cfg.no_answer_score and not store.keyword_search(
         req.tenant_id, qvec, req.query, 1
     ):  # allow BM25 evidence to rescue an exact match before rejecting the question
@@ -203,11 +208,10 @@ def query(req: QueryRequest, caller=Depends(get_caller)):
         raise ApiError(
             422, "no_models_configured", "No models are configured. Add a model in the Models tab."
         )
-    reranker_cfg = load_config()["reranker"]
     candidate_k = (
         max(route["k"], reranker_cfg["candidate_limit"]) if reranker_cfg["enabled"] else route["k"]
     )
-    hits = store.search(req.tenant_id, qvec, candidate_k, query_text=req.query)
+    hits = store.search(req.tenant_id, qvec, candidate_k, query_text=req.query, dense=dense)
     hits = rerank(req.query, hits, route["k"]) if reranker_cfg["enabled"] else hits
     system, user = build_prompt(req.query, [content for _, _, content, _ in hits])
     attempts = []
