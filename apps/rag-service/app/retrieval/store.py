@@ -1,17 +1,7 @@
-import os
-
 import numpy as np
-import psycopg
-from pgvector.psycopg import register_vector
 
 from app.core.config import load_config
-
-
-def _connect() -> psycopg.Connection:
-    # DATABASE_URL is read on each call so tests can point it at the test database
-    conn = psycopg.connect(os.environ["DATABASE_URL"])
-    register_vector(conn)
-    return conn
+from app.retrieval.db import connection as _connect
 
 
 def ensure_tenant(tenant_id: str) -> None:
