@@ -42,6 +42,11 @@ Environment files live with their app: `apps/api/.env`, `apps/rag-service/.env`,
 
 Tests need a test database once: `pnpm db:psql` then `CREATE DATABASE lumen_test;`. Apps document their own scripts in `apps/*/README.md`. Python commands go through `python -m app.cli` (see `apps/rag-service/README.md`).
 
+GitHub Actions runs typechecking, lint, app and evaluation tests, tenant isolation
+with its negative control, and the web build on every push and pull request. See
+[CI and deployment gates](.github/CI.md) for the required hosting and branch settings
+that block releases until **Code checks** passes.
+
 ## Dashboard (apps/web)
 
 `pnpm dev:web` serves the dashboard at http://localhost:5173. It talks to the API at `VITE_API_URL`. Vite reads variables only from `apps/web/.env`, and only `VITE_` ones reach the browser. In development `VITE_API_URL` defaults to `http://localhost:3000`, so the file is optional; a production build has no default and shows a "Missing VITE_API_URL" screen if it is unset. The API's `DASHBOARD_ORIGIN` must be the dashboard's origin for sign-in cookies and CORS.

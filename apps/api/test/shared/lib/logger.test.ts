@@ -31,7 +31,16 @@ describe("createLogger redaction", () => {
       "d",
     );
     const out = lines.join("");
-    for (const secret of ["zqone", "zqtwo", "zqthree", "zqfour", "zqfive", "zqsix", "zqseven", "zqeight"])
+    for (const secret of [
+      "zqone",
+      "zqtwo",
+      "zqthree",
+      "zqfour",
+      "zqfive",
+      "zqsix",
+      "zqseven",
+      "zqeight",
+    ])
       expect(out).not.toContain(secret);
     expect(out).toContain('"model_id":"m"');
   });
