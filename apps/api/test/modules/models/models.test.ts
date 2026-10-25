@@ -12,6 +12,7 @@ beforeAll(async () => {
     globalLlmCapPerMinute: 1000,
     maxRequestsPerMonth: 1000,
     modelTestTimeoutMs: 400,
+    modelTestRatePerMinute: 1000,
   });
   a = await ctx.createTenant("a");
   b = await ctx.createTenant("b");

@@ -33,6 +33,8 @@ interface Tunables {
   projectSlugMaxChars: number;
   projectSlugRandomBytes: number;
   projectCreateLockMs: number;
+  maxModelsPerTier: number; // cheap and expensive each
+  modelTestRatePerMinute: number; // Test & save attempts per tenant per minute
   modelAttemptsMax: number;
   rateLimitHeadersMax: number;
   modelTestMaxTokens: number;

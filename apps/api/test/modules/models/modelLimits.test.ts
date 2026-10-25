@@ -11,7 +11,7 @@ beforeAll(async () => {
     ratePerMinute: 1000,
     globalLlmCapPerMinute: 1000,
     maxModelsPerTier: 2,
-    modelTestRatePerMinute: 4,
+    modelTestRatePerMinute: 100,
   });
   a = await ctx.createTenant("a");
   b = await ctx.createTenant("b");
@@ -94,7 +94,7 @@ describe("Test & save rate limit", () => {
       const limited = await post(t);
       expect(limited.status).toBe(429);
       expect(limited.body.error.code).toBe("rate_limited");
-      expect(limited.headers["retry-after"] ?? limited.headers["ratelimit"]).toBeDefined();
+      expect(limited.headers["retry-after"] ?? limited.headers.ratelimit).toBeDefined();
       expect(provider.calls).toHaveLength(3);
       expect((await post(other)).status).toBe(201); // another tenant has its own counter
       const list = await request(fresh.app).get("/api/dashboard/models").set("cookie", t.cookie);

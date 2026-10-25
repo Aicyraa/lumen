@@ -10,7 +10,9 @@ const handler = (_req: Request, res: Response) =>
 // One limiter instance (so one counter) is mounted on both /v1/chat and /api/dashboard/try.
 // The global cap must run after loadTenantModels (it needs to know whose key the call will use).
 // shortcut: counters live in this process's memory, so run one API instance or move to a shared store.
-export function createLimiters(config: Pick<Config, "ratePerMinute" | "globalLlmCapPerMinute">) {
+export function createLimiters(
+  config: Pick<Config, "ratePerMinute" | "globalLlmCapPerMinute" | "modelTestRatePerMinute">,
+) {
   const store = new MemoryStore();
   const perTenant = rateLimit({
     windowMs: 60_000,
@@ -30,11 +32,20 @@ export function createLimiters(config: Pick<Config, "ratePerMinute" | "globalLlm
     keyGenerator: () => "all-tenants",
     skip: (req) => !!req.tenantModels, // the cap protects the shared default key; a tenant's own keys are never throttled by it
   });
+  // Test & save calls the tenant's own provider with the tenant's key: its own, much tighter counter.
+  const modelTests = rateLimit({
+    windowMs: 60_000,
+    limit: config.modelTestRatePerMinute,
+    handler,
+    legacyHeaders: false,
+    standardHeaders: "draft-7",
+    keyGenerator: (req) => req.tenantId,
+  });
   // The usage meter reads the same store the limiter writes.
   // The store keeps an entry after its window ends until a sweep, so an ended window counts as 0.
   const used = async (tenantId: string) => {
     const hit = await store.get(tenantId);
     return hit?.resetTime && hit.resetTime.getTime() > Date.now() ? hit.totalHits : 0;
   };
-  return { perTenant, globalCap, used };
+  return { perTenant, globalCap, modelTests, used };
 }

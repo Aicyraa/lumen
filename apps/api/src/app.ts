@@ -98,7 +98,7 @@ export function createApp({
   dash.use("/analytics", analyticsRouter(deps));
   dash.use("/requests", requestsRouter(deps));
   dash.use("/documents", documentsRouter(deps));
-  dash.use("/models", modelsRouter(deps));
+  dash.use("/models", modelsRouter(deps, limiters.modelTests));
   dash.post("/try", ...llm, chatHandler(deps, { tryIt: true })); // same limiter instance as /v1/chat: one shared counter
   app.use("/api/dashboard", dash);
 
