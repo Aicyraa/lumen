@@ -1,18 +1,10 @@
 import { motion } from "motion/react";
 
 export { AnimateIcon } from "@animate-ui/react/icons";
-export { BookOpen } from "../motion/animate-ui/icons/book-open";
-export { Check } from "../motion/animate-ui/icons/check";
-export { Copy } from "../motion/animate-ui/icons/copy";
-export { FolderOpen } from "../motion/animate-ui/icons/folder-open";
 export { Link as LinkIcon } from "../motion/animate-ui/icons/link";
-export { LogOut } from "../motion/animate-ui/icons/log-out";
 export { Mail } from "../motion/animate-ui/icons/mail";
 export { MailCheck } from "../motion/animate-ui/icons/mail-check";
 export { Plus } from "../motion/animate-ui/icons/plus";
-export { Settings } from "../motion/animate-ui/icons/settings";
-export { Trash2 } from "../motion/animate-ui/icons/trash-2";
-export { User } from "../motion/animate-ui/icons/user";
 
 // Animate UI has no brand marks (and brand logos are not part of Lucide), so these two are plain SVG paths
 // (GitHub's Octicon mark, MIT; Google's G from Simple Icons, CC0) given the same hover motion by `motion`.
