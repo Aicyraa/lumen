@@ -3,6 +3,7 @@ import { type FormEvent, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router";
 import { authClient } from "../../shared/lib/auth-client";
 import { isDev } from "../../shared/lib/config";
+import { usePageTitle } from "../../shared/lib/usePageTitle";
 import { AnimateIcon, GithubMark, GoogleMark, Mail, MailCheck } from "../../shared/ui/icons";
 import { Logo } from "../../shared/ui/Logo";
 import { ErrorText } from "../../shared/ui/ui";
@@ -20,6 +21,7 @@ const failure = (e: { status?: number; message?: string }) =>
   e.status ? (e.message ?? "Something went wrong. Try again.") : UNREACHABLE;
 
 export function SignIn() {
+  usePageTitle("Sign in");
   const session = readSession(authClient.useSession()).user;
   const navigate = useNavigate();
   const qc = useQueryClient();

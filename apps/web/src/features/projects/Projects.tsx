@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { api, post } from "../../shared/lib/api";
 import { authClient } from "../../shared/lib/auth-client";
 import { fmtDate, fmtInt } from "../../shared/lib/format";
+import { usePageTitle } from "../../shared/lib/usePageTitle";
 import { Reveal } from "../../shared/motion/motion";
 import { Dialog } from "../../shared/ui/Dialog";
 import { Plus } from "../../shared/ui/icons";
@@ -14,6 +15,7 @@ import { readSession } from "../auth/sessionShape";
 import { useWorkspaces } from "./projectsContext";
 
 export function Projects() {
+  usePageTitle("Projects");
   const ws = useWorkspaces();
   const qc = useQueryClient();
   const [creating, setCreating] = useState(false);

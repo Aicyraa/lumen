@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { useLocation, useNavigate } from "react-router";
+import { usePageTitle } from "../../shared/lib/usePageTitle";
 import { PublicLayout, SectionLabel } from "../../shared/ui/PublicLayout";
 
 export interface TocItem {
@@ -104,9 +105,7 @@ export function DocTabs({
   const hash = useLocation().hash.slice(1);
   const navigate = useNavigate();
   const active = toc.some((t) => t.id === hash) ? hash : toc[0].id;
-  useEffect(() => {
-    document.title = `${title} · Lumen`;
-  }, [title]);
+  usePageTitle(title);
   const select = (id: string) => navigate({ hash: `#${id}` });
 
   function onKeyDown(e: KeyboardEvent, i: number) {
