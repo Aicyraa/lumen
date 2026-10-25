@@ -13,6 +13,7 @@ const good = {
   MAX_REQUESTS_PER_MONTH: "99",
   MAX_PROJECTS_PER_USER: "4",
   MODEL_KEY_ENCRYPTION_SECRET: "ab".repeat(32),
+  NODE_ENV: "test",
 };
 
 describe("loadConfig", () => {
@@ -66,13 +67,25 @@ describe("loadConfig", () => {
     },
   );
 
-  it("treats NODE_ENV=production as production and anything else as not", () => {
-    expect(
-      loadConfig({ ...good, NODE_ENV: "production", SMTP_URL: "smtp://x", MAIL_FROM: "a@b.test" })
-        .production,
-    ).toBe(true);
-    expect(loadConfig({ ...good, NODE_ENV: "test" }).production).toBe(false);
+  it("is production unless NODE_ENV is development or test", () => {
+    const mail = { SMTP_URL: "smtp://x", MAIL_FROM: "a@b.test" };
+    for (const v of ["production", "staging", "prod", "Production"])
+      expect(loadConfig({ ...good, ...mail, NODE_ENV: v }).production, v).toBe(true);
+    for (const v of ["development", "test"])
+      expect(loadConfig({ ...good, NODE_ENV: v }).production, v).toBe(false);
   });
+
+  it("a production-like NODE_ENV needs the mail settings, whatever it is spelled", () => {
+    expect(() => loadConfig({ ...good, NODE_ENV: "staging" })).toThrow("SMTP_URL");
+  });
+
+  it.each([undefined, "", "  "])(
+    "refuses to start when NODE_ENV is %j, saying what to set and never opening dev shortcuts",
+    (value) => {
+      const env: Record<string, string | undefined> = { ...good, NODE_ENV: value };
+      expect(() => loadConfig(env)).toThrow(/NODE_ENV is not set.*development, test or production/);
+    },
+  );
 
   it("defaults the global LLM cap to 8 per minute and lets GLOBAL_LLM_CAP_PER_MINUTE override it", () => {
     expect(loadConfig(good).globalLlmCapPerMinute).toBe(8);

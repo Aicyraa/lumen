@@ -17,6 +17,7 @@ const good = {
   MAX_REQUESTS_PER_MONTH: "99",
   MAX_PROJECTS_PER_USER: "5",
   MODEL_KEY_ENCRYPTION_SECRET: "ab".repeat(32),
+  NODE_ENV: "test",
 };
 const TUNABLES: [string, string][] = [
   ["modelAttemptsMax", "MODEL_ATTEMPTS_MAX"],
