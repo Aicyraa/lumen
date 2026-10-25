@@ -16,7 +16,11 @@ import { usageHandler } from "./modules/usage/usage.routes.js";
 import { errorHandler, notFoundHandler, sendError } from "./shared/lib/errors.js";
 import { createLimiters } from "./shared/middleware/rateLimit.js";
 import { requireApiKey } from "./shared/middleware/requireApiKey.js";
-import { requireSession, requireTenant } from "./shared/middleware/requireSession.js";
+import {
+  requireProjectMatch,
+  requireSession,
+  requireTenant,
+} from "./shared/middleware/requireSession.js";
 import { loadTenantModels } from "./shared/middleware/tenantModels.js";
 import type { Deps } from "./shared/types/types.js";
 
@@ -46,6 +50,7 @@ export function createApp({
         sendError(res, 429, "rate_limited", "Too many requests. Try again in a minute."),
     }),
   );
+  app.use("/api/auth/api-key", requireProjectMatch(auth)); // API keys are managed through Better Auth, not /api/dashboard
   const authHandler = toNodeHandler(auth);
   // Express 5 syntax; must come before express.json() (rule 5). The scope lets the create hooks release only their own lock.
   app.all("/api/auth/*splat", (req, res) => auth.projectLockScope(() => authHandler(req, res)));
