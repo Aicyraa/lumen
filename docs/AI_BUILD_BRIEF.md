@@ -101,6 +101,8 @@ lumen/                       # root: tooling and docs only, no application code
 | `RATE_LIMIT_PER_MINUTE` | api | Requests per minute per tenant (shared by `/v1/chat` and `/api/dashboard/try`). Drives `429 rate_limited` and the Requests / min meter |
 | `MAX_REQUESTS_PER_MONTH` | api | Monthly request allowance per tenant. Drives the This month meter |
 | `MAX_PROJECTS_PER_USER` | api | Projects (organizations) one user may own. Drives `422 project_limit` |
+| `MAX_MODELS_PER_TIER`, `MODEL_TEST_RATE_PER_MINUTE`, `UPLOAD_RATE_PER_MINUTE`, `MAX_CONCURRENT_INGESTS`, `INGEST_LIMIT_RETRY_AFTER_SECONDS` | api | Optional (defaults in `apps/api/config.json`: 5, 10, 20, 3, 10). Models per tier (`422 model_limit`), Test & save attempts per tenant per minute, uploads per tenant per minute (`429 upload_rate_limited`), documents of one tenant ingesting at once (`429 ingest_limit`) |
+| `NODE_ENV` | api, rag-service | Required. `development` or `test` get the dev shortcuts; anything else is production, and an unset value stops the API from starting |
 | `SMTP_URL`, `MAIL_FROM` | api | SMTP connection URL and sender for verification emails. Empty in development prints the link in the API log; required in production |
 | `MODEL_KEY_ENCRYPTION_SECRET` | api | 32 bytes (64 hex characters) used to encrypt tenants' provider API keys at rest (AES-256-GCM). Losing or changing it makes stored keys unreadable |
 | `VITE_CALC_PRICE_CHEAP`, `VITE_CALC_PRICE_EXPENSIVE` | web | **Phase 7 only.** Example cost per request used only by the home-page savings calculator (an illustration) |
@@ -301,7 +303,7 @@ All errors use one shape: `{ "error": { "code": "<snake_case>", "message": "<hum
 | Endpoint | Request | Success | Errors |
 | --- | --- | --- | --- |
 | `POST /v1/chat` | JSON `{ query: string (1 to 2000 chars), session_id?: string }` | `200` chat response, below | `401 invalid_api_key`, `422 invalid_request`, `429 rate_limited`, `429 monthly_limit`, `429 provider_rate_limited` (with `Retry-After` and `retry_after_seconds`), `502 provider_error` |
-| `POST /v1/documents` | multipart `file` (PDF, `.txt` or `.md`, at most 10 MB) | `202 { document_id, status: "processing" }` | `401`, `413 file_too_large`, `415 unsupported_type`, `429 document_limit` |
+| `POST /v1/documents` | multipart `file` (PDF, `.txt` or `.md`, at most 10 MB) | `202 { document_id, status: "processing" }` | `401`, `413 file_too_large`, `415 unsupported_type`, `429 document_limit`, `429 upload_rate_limited` and `429 ingest_limit` (both with `Retry-After` and `retry_after_seconds`) |
 | `GET /v1/documents/:id` | none | `200 { document_id, status, chunk_count, error }` | `404 not_found` |
 | `DELETE /v1/documents/:id` | none | `204` | `404 not_found` |
 | `POST /v1/feedback` | JSON `{ request_id, rating: 1 or -1 }` | `204` | `404 not_found` |
@@ -322,7 +324,7 @@ All errors use one shape: `{ "error": { "code": "<snake_case>", "message": "<hum
 
 `model_tier` is `cheap`, `expensive` or `none` (no model was called because nothing matched).
 
-**Dashboard API** (Better Auth session cookie; the tenant is the session's active organization)
+**Dashboard API** (Better Auth session cookie; the tenant is the session's active organization). Project routes accept an optional `X-Project-Id` header: when it is present and is not the session's active organization the call is refused with `409 project_mismatch` before any data is touched (this also applies to the API key routes under `/api/auth/api-key/*`); `/workspaces` and `/account` ignore it. Without the header nothing changes.
 
 | Endpoint | Purpose |
 | --- | --- |
@@ -337,7 +339,7 @@ All errors use one shape: `{ "error": { "code": "<snake_case>", "message": "<hum
 | `GET /api/dashboard/requests/:id` (sources) | Each source carries `filename` and a passage of about 300 characters read live from `chunks` with a tenant-scoped join when the drawer opens. Nothing is stored in `request_logs`. If the document or chunk is gone (deleted or re-ingested), show the filename only, or "deleted document" |
 | `GET /api/dashboard/usage` | `{ documents: { used, max }, requests_per_minute: { used, max }, requests_this_month: { used, max } }`. The `max` values come from `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE` and `MAX_REQUESTS_PER_MONTH`, and `requests_per_minute.used` reads the same counter the rate limiter uses |
 | `GET /api/dashboard/models` | The tenant's models grouped by tier (cheap, expensive), in order, with provider, model id, endpoint, masked key and status. Never the key itself |
-| `POST /api/dashboard/models` | Add a model `{ provider, model_id, endpoint_url, api_key, tier }`. Tests the connection first ("Test & save"); on failure nothing is saved and the error says why. New models go to the end of the tier |
+| `POST /api/dashboard/models` | Add a model `{ provider, model_id, endpoint_url, api_key, tier }`. Tests the connection first ("Test & save"); on failure nothing is saved and the error says why. New models go to the end of the tier. `422 model_limit` past `MAX_MODELS_PER_TIER` models in that tier (default 5); `429 rate_limited` past `MODEL_TEST_RATE_PER_MINUTE` attempts per tenant per minute (default 10), because each attempt calls the tenant's provider |
 | `GET /api/dashboard/models/usage?range=7d` | Per model (both tiers): requests, tokens in and out, failures by outcome, how often it served as a backup (an earlier model in its tier failed), median latency, current status, and the provider-reported limits last seen (`rate_limits`, `rate_limits_seen_at`, or null when the provider reports none). Computed from `model_calls`, always filtered by `tenant_id`. Includes the tenant's estimated provider cost per model and in total (null for unpriced models) |
 | `PATCH /api/dashboard/models/:id` | Move up or down within its tier (`{ direction: "up" \| "down" }`) |
 | `DELETE /api/dashboard/models/:id` | Remove a model and close the gap in the order |
