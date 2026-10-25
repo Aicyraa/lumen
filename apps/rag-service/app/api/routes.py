@@ -1,3 +1,4 @@
+import math
 import os
 import tempfile
 import time
@@ -121,6 +122,26 @@ def plan_models(tier: str, models: TenantModels | None) -> list[tuple[str, dict]
     return [(group, m.model_dump()) for m in getattr(models, group)]
 
 
+def rate_limited_error(attempts: list) -> ApiError:
+    """429 for a tier where every model was rate limited; waits are the soonest any model reports."""
+    llm_cfg = load_config()["llm"]
+    known = [a.retry_after_seconds for a in attempts if a.retry_after_seconds is not None]
+    seconds = min(known) if known else llm_cfg["rate_limit_retry_seconds"]
+    if seconds < 60:
+        wait = f"{seconds} second{'s' if seconds != 1 else ''}"
+    else:
+        minutes = math.ceil(seconds / 60)
+        wait = f"{minutes} minute{'s' if minutes != 1 else ''}"
+    return ApiError(
+        429,
+        "provider_rate_limited",
+        f"The model provider is rate limiting this workspace. Try again in about {wait}.",
+        {"attempts": [a.public() for a in attempts]},
+        {"retry_after_seconds": seconds},
+        {"Retry-After": str(seconds)},
+    )
+
+
 @internal.post("/query")
 def query(req: QueryRequest, caller=Depends(get_caller)):
     # plain def: embedding and database calls block, so FastAPI runs this in its thread pool
@@ -168,6 +189,8 @@ def query(req: QueryRequest, caller=Depends(get_caller)):
             break
     won = attempts[-1]
     if won.outcome != "ok":
+        if all(a.outcome == "rate_limited" for a in attempts):
+            raise rate_limited_error(attempts)
         raise ApiError(
             502,
             "provider_error",

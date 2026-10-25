@@ -244,11 +244,11 @@ def test_query_only_sees_the_callers_tenant(client, llm, best_score):
 def test_provider_failure_is_502_provider_error(client, llm, best_score):
     add_doc("tenant_a", ["x"])
     best_score(0.6)
-    llm.outcomes = {"cheap-model": "rate_limited"}
+    llm.outcomes = {"cheap-model": "error"}  # a pure rate limit is a 429 now (test_api_models)
     resp = ask(client)
     assert resp.status_code == 502
     assert resp.json()["error"]["code"] == "provider_error"
-    assert [a["outcome"] for a in resp.json()["attempts"]] == ["rate_limited"]
+    assert [a["outcome"] for a in resp.json()["attempts"]] == ["error"]
 
 
 @pytest.mark.parametrize(

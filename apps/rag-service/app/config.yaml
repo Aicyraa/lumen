@@ -35,7 +35,8 @@ llm:
   answer_repair_attempts: 1
   temperature: 0
   omit_temperature_providers: [openai, anthropic]   # their newer models reject a fixed temperature
-  rate_limit_retry_seconds: 2   # wait before the single retry after a provider 429
+  rate_limit_retry_seconds: 2   # wait before the single retry after a provider 429 that names no wait
+  rate_limit_max_wait_seconds: 10   # a 429 asking for longer is not retried; the next model is tried at once
   max_rate_limit_headers: 30    # rate-limit response headers kept per attempt
   max_header_value_chars: 200
   snippet_chars: 200            # Try it only: length of the passage excerpt on a source

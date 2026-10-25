@@ -243,7 +243,9 @@ def test_filenames_are_looked_up_for_one_tenant_only():
 
 def limit(*ids, after=None):
     """Make these models fail with a 429 (retry_after seconds per model id in `after`)."""
-    return {i: "rate_limited" for i in ids}, {i: {"retry_after_seconds": (after or {}).get(i)} for i in ids}
+    return {i: "rate_limited" for i in ids}, {
+        i: {"retry_after_seconds": (after or {}).get(i)} for i in ids
+    }
 
 
 def test_a_backup_model_answers_right_after_a_long_rate_limit(client, llm, docs):
@@ -273,7 +275,13 @@ def test_every_model_rate_limited_is_429_with_the_smallest_wait(client, llm, doc
 
 @pytest.mark.parametrize(
     "seconds,wording",
-    [(45, "45 seconds"), (1, "1 second"), (60, "1 minute"), (855, "15 minutes"), (None, "2 seconds")],
+    [
+        (45, "45 seconds"),
+        (1, "1 second"),
+        (60, "1 minute"),
+        (855, "15 minutes"),
+        (None, "2 seconds"),
+    ],
 )
 def test_the_429_message_says_seconds_or_minutes(client, llm, docs, seconds, wording):
     llm.outcomes, llm.extra = limit("c1", after={"c1": seconds})
@@ -281,7 +289,9 @@ def test_the_429_message_says_seconds_or_minutes(client, llm, docs, seconds, wor
     assert resp.status_code == 429
     assert resp.json()["error"]["message"].endswith(f"Try again in about {wording}.")
     if seconds is None:  # no wait known: the configured fallback wait is reported
-        assert resp.json()["error"]["retry_after_seconds"] == 2 and resp.headers["retry-after"] == "2"
+        assert (
+            resp.json()["error"]["retry_after_seconds"] == 2 and resp.headers["retry-after"] == "2"
+        )
 
 
 def test_a_mix_of_failures_stays_502(client, llm, docs):
