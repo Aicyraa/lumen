@@ -75,11 +75,12 @@ def keyword_search(
             ), qt AS (  -- lexemes are already stemmed, so 'simple' only builds the OR query
                 SELECT to_tsquery('simple', string_agg(quote_literal(l), ' | ')) AS tsq
                 FROM q CROSS JOIN LATERAL unnest(q.lexemes) l
-            ), stats AS (
-                SELECT count(*)::double precision AS n, avg(len) AS avg_length FROM (
-                    SELECT coalesce((SELECT sum(cardinality(t.positions)) FROM unnest(c.tsv) t), 0) AS len
-                    FROM chunks c WHERE c.tenant_id = %(tenant)s
-                ) x
+            ), stats AS (  -- average length = all term occurrences / chunk count, in one pass over the tsv column
+                SELECT count(*)::double precision AS n,
+                       (SELECT coalesce(sum(cardinality(t.positions)), 0)
+                        FROM chunks c2 CROSS JOIN LATERAL unnest(c2.tsv) t
+                        WHERE c2.tenant_id = %(tenant)s)::double precision / nullif(count(*), 0) AS avg_length
+                FROM chunks WHERE tenant_id = %(tenant)s
             ), terms AS MATERIALIZED (
                 SELECT id, lexeme, tf, length FROM (
                     SELECT c.id, t.lexeme, cardinality(t.positions)::double precision AS tf,
