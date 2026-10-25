@@ -102,6 +102,7 @@ Subtle and functional; all under ~600ms except the typewriter.
 - Demo response: typewriter.
 - Stats: count-up; chart bars grow from the baseline.
 - Accordions / expanded rows: `opacity 0→1` over 250–300ms.
+- Dashboard pages: each block rises in turn; rows, cards and buttons fade or lift on mount and hover. Docs and Privacy reveal each section as it scrolls in (scroll-driven, where the browser supports it). Active indicators (sidebar, docs contents) slide between entries.
 - Respect `prefers-reduced-motion` by disabling all of the above.
 
 ## 7. Copy

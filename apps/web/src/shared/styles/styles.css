@@ -29,6 +29,10 @@
 }
 html,
 body {
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
   margin: 0;
   background: var(--bg);
   color: var(--text);
@@ -608,6 +612,9 @@ table.data td {
   align-items: start;
   padding: 14px 0;
   border-bottom: 1px solid var(--line-soft);
+table.data tbody tr:last-child td {
+  border-bottom: 0;
+}
   font-size: 14px;
 }
 .card .source {
@@ -617,6 +624,9 @@ table.data td {
   padding: 4px 0;
 }
 .score {
+.source:last-child {
+  border-bottom: 0;
+}
   display: flex;
   align-items: center;
   gap: 10px;
@@ -913,7 +923,7 @@ label.btn:focus-within {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  padding: 12px 0;
+  padding: 14px 0;
   border-bottom: 1px solid var(--line-soft);
   font-size: 14px;
 }
@@ -939,6 +949,9 @@ label.btn:focus-within {
   padding: 16px 0;
   border-bottom: 1px solid var(--line-soft);
   font-size: 14px;
+}
+.list li:last-child {
+  border-bottom: 0;
 }
 .rank {
   flex: 0 0 80px;
@@ -1423,7 +1436,8 @@ html {
   scroll-padding-top: calc(var(--nav-h) + 24px);
 }
 @media (prefers-reduced-motion: no-preference) {
-  html {
+  html,
+  .doc-scroll {
     scroll-behavior: smooth;
   }
 }
@@ -1874,6 +1888,7 @@ html.snap-home {
 }
 .doc-content .codewrap pre.code {
   padding-right: 88px;
+/* biome-ignore lint/style/noDescendingSpecificity: sets animation only; the earlier row-line rule sets border-top */
 }
 .doc-content .endpoint {
   color: var(--text-2);

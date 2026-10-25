@@ -86,12 +86,97 @@ describe("sticky nav offsets and dead CSS", () => {
 
 describe("Home section 02 proportions", () => {
   const css = readFileSync("src/shared/styles/styles.css", "utf8");
-  it("the stat cards are scaled down and the left column gets the wider track and larger text", () => {
-    const num = /\.fact-num\s*\{[^}]*font-size:\s*clamp\((\d+)px,\s*[^,]+,\s*(\d+)px\)/.exec(css)!;
-    expect(Number(num[2])).toBeLessThanOrEqual(68);
+  it("the audience box is narrower than its column, keeps larger text, and the three steps run in a horizontal line", () => {
+    expect(css).toMatch(/\.audience\s*\{[^}]*max-width:\s*[1-5]\d\dpx/);
+    expect(css).toMatch(/\.audience li\s*\{[^}]*font-size:\s*clamp\((?:1[789]|2\d)px/);
+    expect(css).toMatch(/\.mini-steps\s*\{[^}]*grid-template-columns:\s*repeat\(3,/);
+    expect(css).toMatch(/\.mini-steps\s*\{[^}]*border-top:\s*1px solid/);
+  });
+  it("the two columns, the routing diagram and its list are centred on each other; each step's dot and number sit at the centre of its text", () => {
+    const rule = (sel: string) =>
+      css.match(new RegExp(`(?:^|\\n)${sel.replace(/[.]/g, "\\.")}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
+    expect(rule(".what-grid")).toMatch(/align-items:\s*center/);
+    expect(rule(".route-explorer")).toMatch(/align-items:\s*center/);
+    expect(rule(".mini-steps li")).toMatch(/align-items:\s*center/);
+    expect(rule(".mini-steps li")).toMatch(/text-align:\s*center/);
+    expect(rule(".mini-steps li::before")).toMatch(/left:\s*50%/);
+  });
+});
+
+describe("Models and Documents lists", () => {
+  const css = readFileSync("src/shared/styles/styles.css", "utf8");
+  it("the move buttons and Remove are centred on each other", () => {
+    expect(css).toMatch(/\.model-actions\s*\{[^}]*justify-content:\s*center/);
     expect(css).toMatch(
-      /\.what-grid\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1\.[5-9]fr\)\s*minmax\(0,\s*1fr\)/,
+      /\.model-actions \.link-btn\s*\{[^}]*flex-basis:\s*100%;[^}]*text-align:\s*center/,
     );
-    expect(css).toMatch(/\.audience li\s*\{[^}]*font-size:\s*clamp\((?:1[89]|2\d)px/);
+  });
+  it("model rows have lines only between them: no top or bottom line of their own", () => {
+    for (const m of css.matchAll(/(?:^|\n)\.model-row\s*\{([^}]*)\}/g))
+      expect(m[1]).not.toMatch(/border-(?:top|bottom)/);
+    expect(css).toMatch(
+      /\.model-row:not\(\.model-head\) \+ \.model-row\s*\{[^}]*border-top:\s*1px solid/,
+    );
+  });
+  it("the documents list sits in a padded card whose last row has no line", () => {
+    expect(css).toMatch(/\.table-card\s*\{[^}]*padding:\s*\d+px\s+\d+px/);
+    expect(css).toMatch(
+      /\.tr:not\(\.th\) \+ \.tr,\s*\.tr-wrap \+ \.tr-wrap\s*\{[^}]*border-top:\s*1px solid/,
+    );
+    expect(css).toMatch(/(?:^|\n)\.tr\s*\{(?![^}]*border-bottom)/);
+  });
+});
+
+describe("Home sections 02, 03 and 05 are not rows of square cards", () => {
+  const css = readFileSync("src/shared/styles/styles.css", "utf8");
+  const rule = (sel: string) =>
+    css.match(new RegExp(`(?:^|\\n)${sel.replace(/[.]/g, "\\.")}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
+  it("feature rows, steps and routing items have no box of their own", () => {
+    for (const sel of [".feature-card", ".route-item", ".mini-steps li"]) {
+      expect(rule(sel), sel).not.toMatch(/border:\s*[1-9]|background:\s*var\(--surface\)/);
+    }
+  });
+  it("the routing diagram sits beside the list of scenarios and is capped in width", () => {
+    expect(rule(".route-explorer")).toMatch(
+      /grid-template-columns:\s*minmax\(0,\s*\d+px\)\s+minmax/,
+    );
+    expect(rule(".route-items")).toMatch(/flex-direction:\s*column/);
+  });
+});
+
+describe("the same scroll, lines and motion on every screen", () => {
+  const css = readFileSync("src/shared/styles/styles.css", "utf8");
+  const rule = (sel: string) =>
+    css.match(
+      new RegExp(`(?:^|\\n)${sel.replace(/[.[\]()+>:*]/g, "\\$&")}\\s*\\{([^}]*)\\}`),
+    )?.[1] ?? "";
+  it("every scroller gets the thin scrollbar", () => {
+    expect(rule("*")).toMatch(/scrollbar-width:\s*thin/);
+    expect(rule("*")).toMatch(/scrollbar-color:\s*var\(--line-strong\)/);
+  });
+  it("lists draw lines only between items: none under the last row, list item or source", () => {
+    expect(rule("table.data tbody tr:last-child td")).toMatch(/border-bottom:\s*0/);
+    expect(rule(".list li:last-child")).toMatch(/border-bottom:\s*0/);
+    expect(rule(".source:last-child")).toMatch(/border-bottom:\s*0/);
+  });
+  it("the routing list is square wherever an edge meets a divider and rounded only on its free outer edges", () => {
+    expect(rule(".route-item")).toMatch(/border-radius:\s*0;/);
+    expect(rule(".route-items li:first-child .route-item")).toMatch(
+      /border-radius:\s*10px 10px 0 0/,
+    );
+    expect(rule(".route-items li:last-child .route-item")).toMatch(
+      /border-radius:\s*0 0 10px 10px/,
+    );
+  });
+  it("code uses the syntax colours, which exist only for code, and a fixed height when asked", () => {
+    expect(css).toMatch(/--syn-blue:/);
+    expect(css).toMatch(/\.code-fixed\s*\{[^}]*height:\s*calc\(var\(--min-lines\)/);
+    expect(css).toMatch(/\.tk-str\s*\{[^}]*color:\s*var\(--lime-soft\)/);
+  });
+  it("dashboard blocks rise in turn and long pages reveal sections as they scroll in, all within 0.5 s", () => {
+    expect(rule(".content .stack > *")).toMatch(/animation:\s*fade 0\.[1-5]\d*s/);
+    expect(css).toMatch(
+      /@supports \(animation-timeline: view\(\)\)\s*\{\s*\.doc-content section\s*\{[^}]*animation-timeline:\s*view\(\)/,
+    );
   });
 });
