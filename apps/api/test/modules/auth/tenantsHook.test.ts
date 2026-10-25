@@ -64,4 +64,49 @@ describe("tenants row for every organization", () => {
       .send({ name: "Fine" });
     expect(ok.status).toBe(201);
   });
+
+  describe("an organization that has no tenants row (a failed create, or one made outside the API)", () => {
+    const orphan = async (label: string) => {
+      const t = await ctx.createTenant(label);
+      await ctx.pool.query("DELETE FROM tenants WHERE id = $1", [t.tenantId]);
+      expect(await registered(t.tenantId)).toBe(0);
+      return t;
+    };
+    const setActive = (cookie: string, organizationId: string) =>
+      request(ctx.app)
+        .post("/api/auth/organization/set-active")
+        .set("origin", ctx.config.dashboardOrigin)
+        .set("cookie", cookie)
+        .send({ organizationId });
+
+    it("gets one when the user selects it (set-active), so documents can be added", async () => {
+      const t = await orphan("setactive");
+      expect((await setActive(t.cookie, t.tenantId)).status).toBe(200);
+      expect(await registered(t.tenantId)).toBe(1);
+      const up = await request(ctx.app)
+        .post("/api/dashboard/documents")
+        .set("cookie", t.cookie)
+        .attach("file", Buffer.from("hello"), "a.md");
+      expect(up.status).toBe(202);
+      await ctx.app.locals.idle();
+    });
+
+    it("gets one at sign-in too, so keys and models can be added", async () => {
+      const t = await orphan("signin");
+      const res = await ctx.auth.api.signInEmail({
+        body: { email: t.email, password: "correct-horse-battery" },
+        asResponse: true,
+      });
+      expect(res.status).toBe(200);
+      expect(await registered(t.tenantId)).toBe(1);
+    });
+
+    it("set-active of an organization the user is not in still fails and creates no tenants row", async () => {
+      const t = await ctx.createTenant("mine");
+      const other = await ctx.createTenant("theirs");
+      await ctx.pool.query("DELETE FROM tenants WHERE id = $1", [other.tenantId]);
+      expect((await setActive(t.cookie, other.tenantId)).status).toBe(403);
+      expect(await registered(other.tenantId)).toBe(0);
+    });
+  });
 });
