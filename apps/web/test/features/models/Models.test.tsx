@@ -159,13 +159,12 @@ describe("Models", () => {
       router((_url, init) => (init?.method === "POST" ? undefined : undefined)),
     );
     const orig = fn.getMockImplementation()!;
-    fn.mockImplementation(async (input, init) =>
-      init?.method === "POST"
-        ? (calls.push({ url: String(input), init }),
-          await gate,
-          new Response(JSON.stringify({ model: m("z", "cheap", 2) }), { status: 201 }))
-        : orig(input, init),
-    );
+    fn.mockImplementation(async (input, init) => {
+      if (init?.method !== "POST") return orig(input, init);
+      calls.push({ url: String(input), init });
+      await gate;
+      return new Response(JSON.stringify({ model: m("z", "cheap", 2) }), { status: 201 });
+    });
     renderWithProviders(<Models />);
     const user = userEvent.setup();
     await fillForm(user, { input: "0.1", output: "0.4" });

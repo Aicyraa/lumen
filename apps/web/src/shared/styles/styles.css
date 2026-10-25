@@ -244,7 +244,9 @@ button:disabled {
   *,
   *::before,
   *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: the reduced-motion reset has to beat every other rule */
     animation: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: same reset */
     transition: none !important;
   }
 }
@@ -1226,6 +1228,7 @@ label.btn:focus-within {
   letter-spacing: -0.02em;
   grid-column: 2;
 }
+/* biome-ignore lint/style/noDescendingSpecificity: sets grid-row only; the earlier rule sets color */
 .priv-row .mono {
   grid-row: 1;
 }
@@ -1774,13 +1777,16 @@ html.snap-home {
 .btn:active:not(:disabled) {
   transform: scale(0.98);
 }
+/* biome-ignore lint/style/noDescendingSpecificity: sets transition only; the earlier .drawer .card sets background */
 .card {
   transition: border-color 0.2s;
 }
+/* biome-ignore lint/style/noDescendingSpecificity: sets position/isolation only; the earlier .pills rule sets border/padding */
 .segmented button {
   position: relative;
   isolation: isolate;
 }
+/* biome-ignore lint/style/noDescendingSpecificity: sets background only; the earlier .pills rule sets border-color */
 .segmented button.on {
   background: transparent;
 }
@@ -1796,6 +1802,7 @@ html.snap-home {
 }
 .model-row,
 .tr,
+/* biome-ignore lint/style/noDescendingSpecificity: sets animation only; the earlier .card .source sets grid and font size */
 .source,
 .list li {
   animation: fade 0.3s ease both;
@@ -2328,11 +2335,13 @@ table.data.compact td {
   position: absolute;
   pointer-events: none;
 }
+/* biome-ignore lint/style/noDescendingSpecificity: sets offsets and opacity only; the earlier rule sets position */
 .dot-grid {
   top: 32px;
   right: var(--pad);
   opacity: 0.8;
 }
+/* biome-ignore lint/style/noDescendingSpecificity: sets offsets and size only; the earlier rule sets position */
 .cta-mark {
   right: var(--pad);
   top: 50%;
@@ -2453,7 +2462,11 @@ table.data.compact td {
 .route-flow .rf-node.rf-error.rf-on rect {
   stroke: var(--red);
 }
-.route-flow .rf-node:focus-visible rect,
+/* biome-ignore lint/style/noDescendingSpecificity: the earlier error rule has higher specificity and wins in either order */
+.route-flow .rf-node:focus-visible rect {
+  stroke: var(--text);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: the earlier error rule has higher specificity and wins in either order */
 .route-flow .rf-node:hover rect {
   stroke: var(--text);
 }

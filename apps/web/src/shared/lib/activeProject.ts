@@ -5,7 +5,9 @@ import { useSyncExternalStore } from "react";
 let activeId = "";
 let mismatched = false;
 const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((l) => l());
+const emit = () => {
+  for (const l of listeners) l();
+};
 
 export function setActiveProjectId(id: string) {
   if (id === activeId) return;
