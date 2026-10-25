@@ -31,6 +31,11 @@ const ERRORS = [
     "document_limit",
     "Your workspace has reached its document limit. Delete a document before uploading another.",
   ],
+  [
+    "429",
+    "provider_rate_limited",
+    "The model provider is rate limiting your workspace; the Retry-After header and retry_after_seconds say how long to wait.",
+  ],
   ["502", "provider_error", "Every model of the chosen tier failed. Retry shortly."],
 ];
 
@@ -210,7 +215,10 @@ export function Docs() {
           <span className="mono">rate_limited</span>, <span className="mono">monthly_limit</span> or{" "}
           <span className="mono">document_limit</span> (see the error table). Upload size is limited
           by the server, which answers <span className="mono">413 file_too_large</span> for a larger
-          file.
+          file. When the model provider itself is rate limiting your workspace, chat answers{" "}
+          <span className="mono">429 provider_rate_limited</span> with a{" "}
+          <span className="mono">Retry-After</span> header (whole seconds) and the same number as{" "}
+          <span className="mono">retry_after_seconds</span> in the body.
         </p>
       </section>
     </DocTabs>
