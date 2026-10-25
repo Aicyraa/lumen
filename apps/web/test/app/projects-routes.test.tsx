@@ -225,6 +225,20 @@ describe("project routes", () => {
   });
 });
 
+describe("lazy routes", () => {
+  it("shows an accessible loading status while a page's code loads, then the page", async () => {
+    client = new QueryClient();
+    mockFetch(() => ({}));
+    sess = { data: null, isPending: false, error: null };
+    mount("/docs");
+    expect(screen.getByRole("status")).toHaveTextContent("Loading page…");
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "API reference" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Loading page…")).not.toBeInTheDocument();
+  });
+});
+
 describe("docs and nav, signed in and out", () => {
   beforeEach(() => {
     client = new QueryClient();
