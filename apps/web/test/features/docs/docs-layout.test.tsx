@@ -60,83 +60,45 @@ const NAMES = [
   "Limits",
 ];
 
-describe("Docs tabs", () => {
-  it("has one tab per section, in order, with the first selected and exactly one panel visible", () => {
+describe("Docs page", () => {
+  it("is one scrolling page like Privacy: a table of contents with one link per section, in order, and every section on the page", () => {
     view(<Docs />);
-    const tabs = screen.getAllByRole("tab");
-    expect(tabs.map((t) => t.textContent)).toEqual(NAMES);
-    expect(tabs[0]).toHaveAttribute("aria-selected", "true");
-    expect(tabs.slice(1).every((t) => t.getAttribute("aria-selected") === "false")).toBe(true);
-    const panels = screen.getAllByRole("tabpanel");
-    expect(panels).toHaveLength(1);
-    expect(panels[0]).toHaveAccessibleName("Getting started");
-    expect(tabs[0]).toHaveAttribute("aria-controls", panels[0].id);
-    expect(screen.getByRole("tablist")).toBeInTheDocument();
+    const toc = screen.getByRole("navigation", { name: "On this page" });
+    const links = within(toc).getAllByRole("link");
+    expect(links.map((l) => l.textContent)).toEqual(NAMES);
+    for (const l of links) expect(document.getElementById(l.getAttribute("href")!.slice(1))).toBeVisible();
+    expect(links[0]).toHaveAttribute("aria-current", "true");
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.queryByRole("tab")).toBeNull();
+    expect(screen.queryByRole("tabpanel")).toBeNull();
   });
 
-  it("selecting a tab shows only its panel and puts the section in the URL hash", async () => {
+  it("marks the section in view as current in the table of contents", () => {
     view(<Docs />);
-    await userEvent.click(screen.getByRole("tab", { name: "Errors" }));
-    expect(screen.getByTestId("hash")).toHaveTextContent("#errors");
-    expect(screen.getByRole("tab", { name: "Errors" })).toHaveAttribute("aria-selected", "true");
-    const panels = screen.getAllByRole("tabpanel");
-    expect(panels).toHaveLength(1);
-    expect(panels[0]).toHaveAccessibleName("Errors");
-    expect(screen.getByRole("table", { name: "Error codes" })).toBeInTheDocument();
-    expect(screen.getByText("Quickstart")).not.toBeVisible();
-  });
-
-  it("opens the tab named in the hash, so links work (also in the page's own URL)", () => {
-    view(<Docs />, "/docs#chat");
-    expect(screen.getByRole("tab", { name: "Chat" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getAllByRole("tabpanel")[0]).toHaveAccessibleName("Chat");
-  });
-
-  it("falls back to the first tab for an unknown hash", () => {
-    view(<Docs />, "/docs#nope");
-    expect(screen.getByRole("tab", { name: "Getting started" })).toHaveAttribute(
-      "aria-selected",
-      "true",
+    const links = within(screen.getByRole("navigation", { name: "On this page" })).getAllByRole(
+      "link",
     );
+    const target = document.getElementById("errors")!;
+    act(() =>
+      observers.forEach((o) => {
+        o.cb([{ target, isIntersecting: true }]);
+      }),
+    );
+    expect(links[5]).toHaveAttribute("aria-current", "true");
+    expect(links[0]).not.toHaveAttribute("aria-current");
   });
 
-  it("is keyboard operable: arrows, Home and End move focus and select; only the selected tab is in the tab order", async () => {
-    view(<Docs />);
-    const user = userEvent.setup();
-    const tab = (n: string) => screen.getByRole("tab", { name: n });
-    expect(tab("Getting started")).toHaveAttribute("tabindex", "0");
-    expect(tab("Chat")).toHaveAttribute("tabindex", "-1");
-    tab("Getting started").focus();
-    await user.keyboard("{ArrowRight}");
-    expect(tab("Authentication")).toHaveFocus();
-    expect(tab("Authentication")).toHaveAttribute("aria-selected", "true");
-    await user.keyboard("{ArrowDown}");
-    expect(tab("Chat")).toHaveFocus();
-    await user.keyboard("{End}");
-    expect(tab("Limits")).toHaveFocus();
-    await user.keyboard("{ArrowRight}"); // wraps
-    expect(tab("Getting started")).toHaveFocus();
-    await user.keyboard("{ArrowLeft}"); // wraps back
-    expect(tab("Limits")).toHaveFocus();
-    await user.keyboard("{Home}");
-    expect(tab("Getting started")).toHaveFocus();
-    expect(screen.getByTestId("hash")).toHaveTextContent("#getting-started");
-  });
-
-  it("opens directly on the tabs: no visible DOCS / API reference / description block", () => {
+  it("has the same head as Privacy: a label, the title as the page heading, a lead, and the page title", () => {
     const { container } = view(<Docs />);
-    const h1 = screen.getByRole("heading", { level: 1, name: "API reference" });
-    expect(h1).toHaveClass("visually-hidden");
-    expect(container.querySelector(".doc-h1")).toBeNull();
-    expect(container.querySelector(".doc-content > .lead")).toBeNull();
-    expect(screen.queryByText(/Everything your chatbot's backend needs/)).toBeNull();
-    expect(screen.queryByText("DOCS", { selector: ".label" })).toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: "API reference" })).toHaveClass("doc-h1");
+    expect(screen.getByText("DOCS", { selector: ".label" })).toBeInTheDocument();
+    expect(container.querySelector(".doc-content > .lead")).not.toBeNull();
     expect(document.title).toBe("API reference · Lumen");
   });
 
-  it("has no scroll-spy table of contents any more", () => {
+  it("scrolls inside the same long page, with room at the bottom so Limits can become current", () => {
     view(<Docs />);
-    expect(screen.queryByRole("navigation", { name: "On this page" })).toBeNull();
+    expect(document.querySelector(".doc-scroll")).toHaveClass("doc-spy");
   });
 });
 
@@ -154,6 +116,48 @@ describe("Privacy scroll-spy", () => {
     );
     expect(links[3]).toHaveAttribute("aria-current", "true");
     expect(links[0]).not.toHaveAttribute("aria-current");
+  });
+});
+
+describe("current-section indicator", () => {
+  it("Docs: the lime line sits on the first entry and follows the section in view", () => {
+    view(<Docs />);
+    const links = within(screen.getByRole("navigation", { name: "On this page" })).getAllByRole(
+      "link",
+    );
+    expect(links[0].querySelector(".toc-ind")).not.toBeNull();
+    const target = document.getElementById("limits")!;
+    act(() =>
+      observers.forEach((o) => {
+        o.cb([{ target, isIntersecting: true }]);
+      }),
+    );
+    expect(links[6].querySelector(".toc-ind")).not.toBeNull();
+    expect(document.querySelectorAll(".toc-ind")).toHaveLength(1);
+  });
+
+  it("Privacy: the lime line follows the section in view", () => {
+    view(<Privacy />);
+    const links = within(screen.getByRole("navigation", { name: "On this page" })).getAllByRole(
+      "link",
+    );
+    const target = document.getElementById(links[6].getAttribute("href")!.slice(1))!;
+    act(() =>
+      observers.forEach((o) => {
+        o.cb([{ target, isIntersecting: true }]);
+      }),
+    );
+    expect(links[6].querySelector(".toc-ind")).not.toBeNull();
+    expect(document.querySelectorAll(".toc-ind")).toHaveLength(1);
+  });
+
+  it("the Privacy page can scroll its last sections up into the scroll-spy band, and the scrollbar keeps clear of the content", () => {
+    view(<Privacy />);
+    expect(document.querySelector(".doc-scroll")).toHaveClass("doc-spy");
+    const css = readFileSync("src/shared/styles/styles.css", "utf8");
+    expect(css).toMatch(/\.doc-spy\s*\{[^}]*padding-bottom:\s*50dvh/);
+    expect(css).toMatch(/\.doc-scroll\s*\{[^}]*padding:[^;]*\s2\dpx\s\d+px\s0;/);
+    expect(css).toMatch(/\.doc-content table\.data\s*\{[^}]*min-width:\s*0/);
   });
 });
 
@@ -208,7 +212,7 @@ describe("full-height layout: only the content region scrolls", () => {
     const region = screen.getByRole("region", { name: "API reference content" });
     expect(region).toHaveAttribute("tabindex", "0");
     expect(region).toHaveClass("doc-scroll");
-    expect(region.querySelector('[role="tabpanel"]')).not.toBeNull();
+    expect(region.querySelector("section#getting-started")).not.toBeNull();
     const pub = container.querySelector(".public")!;
     expect(pub.querySelector("header.pub-nav")).not.toBeNull();
     expect(pub.lastElementChild!.tagName).toBe("FOOTER"); // footer last: stays at the bottom of the screen

@@ -1,12 +1,5 @@
-import {
-  Children,
-  isValidElement,
-  type KeyboardEvent,
-  type ReactNode,
-  useEffect,
-  useState,
-} from "react";
-import { useLocation, useNavigate } from "react-router";
+import { motion } from "motion/react";
+import { type ReactNode, useEffect, useState } from "react";
 import { usePageTitle } from "../../shared/lib/usePageTitle";
 import { PublicLayout, SectionLabel } from "../../shared/ui/PublicLayout";
 
@@ -43,6 +36,11 @@ function useScrollSpy(ids: string[]) {
   return active;
 }
 
+// The lime line beside the current entry; one shared layoutId per list, so it slides to the next entry.
+function TocIndicator() {
+  return <motion.span layoutId="toc-spy" className="toc-ind" transition={{ duration: 0.2 }} />;
+}
+
 // Shared by Docs and Privacy: a sticky table of contents beside a readable, width-limited column.
 export function DocLayout({
   label,
@@ -58,6 +56,7 @@ export function DocLayout({
   children: ReactNode;
 }) {
   const active = useScrollSpy(toc.map((t) => t.id));
+  usePageTitle(title);
   return (
     <PublicLayout fill>
       <div className="doc-page">
@@ -67,6 +66,7 @@ export function DocLayout({
             {toc.map((t) => (
               <li key={t.id}>
                 <a href={`#${t.id}`} aria-current={active === t.id ? "true" : undefined}>
+                  {active === t.id && <TocIndicator />}
                   {t.label}
                 </a>
               </li>
@@ -75,7 +75,7 @@ export function DocLayout({
         </nav>
         <main className="doc-main">
           <div
-            className="doc-scroll doc-content"
+            className="doc-scroll doc-content doc-spy"
             role="region"
             aria-label={`${title} content`}
             tabIndex={0}
@@ -84,95 +84,6 @@ export function DocLayout({
             <h1 className="doc-h1">{title}</h1>
             <div className="lead">{lead}</div>
             {children}
-          </div>
-        </main>
-      </div>
-    </PublicLayout>
-  );
-}
-
-// Docs: every section is its own tab. The selected tab lives in the URL hash (#errors), so links work and Back
-// moves between tabs. Children are <section id> elements; only the one named by the hash is visible.
-export function DocTabs({
-  title,
-  toc,
-  children,
-}: {
-  title: string;
-  toc: TocItem[];
-  children: ReactNode;
-}) {
-  const hash = useLocation().hash.slice(1);
-  const navigate = useNavigate();
-  const active = toc.some((t) => t.id === hash) ? hash : toc[0].id;
-  usePageTitle(title);
-  const select = (id: string) => navigate({ hash: `#${id}` });
-
-  function onKeyDown(e: KeyboardEvent, i: number) {
-    const last = toc.length - 1;
-    const to =
-      e.key === "ArrowRight" || e.key === "ArrowDown"
-        ? (i + 1) % toc.length
-        : e.key === "ArrowLeft" || e.key === "ArrowUp"
-          ? (i - 1 + toc.length) % toc.length
-          : e.key === "Home"
-            ? 0
-            : e.key === "End"
-              ? last
-              : -1;
-    if (to < 0) return;
-    e.preventDefault();
-    document.getElementById(`tab-${toc[to].id}`)?.focus();
-    select(toc[to].id);
-  }
-
-  return (
-    <PublicLayout fill>
-      <div className="doc-page">
-        <div className="doc-toc">
-          <div className="label-sm">SECTIONS</div>
-          <div role="tablist" aria-label="Docs sections" aria-orientation="vertical">
-            {toc.map((t, i) => (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                id={`tab-${t.id}`}
-                aria-selected={active === t.id}
-                aria-controls={`panel-${t.id}`}
-                tabIndex={active === t.id ? 0 : -1}
-                onClick={() => select(t.id)}
-                onKeyDown={(e) => onKeyDown(e, i)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <main className="doc-main">
-          <div
-            className="doc-scroll doc-content"
-            role="region"
-            aria-label={`${title} content`}
-            tabIndex={0}
-          >
-            <h1 className="visually-hidden">{title}</h1>
-            {Children.toArray(children).map((child) => {
-              const id = isValidElement<{ id?: string }>(child) ? child.props.id : undefined;
-              if (!id) return child;
-              return (
-                <div
-                  key={id}
-                  role="tabpanel"
-                  id={`panel-${id}`}
-                  aria-labelledby={`tab-${id}`}
-                  hidden={id !== active}
-                  className="doc-panel"
-                >
-                  {child}
-                </div>
-              );
-            })}
           </div>
         </main>
       </div>

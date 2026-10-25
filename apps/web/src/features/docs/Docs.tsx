@@ -1,5 +1,5 @@
 import { CodeBlock } from "../../shared/ui/PublicLayout";
-import { DocTabs } from "./DocLayout";
+import { DocLayout } from "./DocLayout";
 
 const ERRORS = [
   ["401", "invalid_api_key", "The x-api-key header is missing, wrong or revoked."],
@@ -59,7 +59,12 @@ const TOC = [
 
 export function Docs() {
   return (
-    <DocTabs title="API reference" toc={TOC}>
+    <DocLayout
+      label="DOCS"
+      title="API reference"
+      toc={TOC}
+      lead="Everything your chatbot's backend needs: upload documents, ask questions, and read the errors."
+    >
       <section id="getting-started">
         <div className="label">01 — GETTING STARTED</div>
         <h2 className="h2s">Quickstart</h2>
@@ -77,6 +82,7 @@ export function Docs() {
         </ol>
         <CodeBlock
           copyable
+          lang="bash"
         >{`curl -X POST $LUMEN_URL/v1/chat \\\n  -H "x-api-key: $LUMEN_API_KEY" \\\n  -H "content-type: application/json" \\\n  -d '{"query": "When does enrollment close?"}'`}</CodeBlock>
         <p className="body muted-2">
           Keep the key on your server. Never put it in a browser or mobile app.
@@ -104,11 +110,14 @@ export function Docs() {
         </p>
         <CodeBlock
           copyable
+          lang="http"
         >{`POST /v1/chat\nx-api-key: lum_••••••••\n\n{ "query": "When does enrollment close?", "session_id": "visitor-42" }`}</CodeBlock>
         <p className="body muted-2">
           Response <span className="mono">200</span>:
         </p>
-        <CodeBlock copyable>{CHAT_RES}</CodeBlock>
+        <CodeBlock copyable lang="json">
+          {CHAT_RES}
+        </CodeBlock>
         <ul className="doc-list">
           <li>
             <span className="mono">answer</span>: cites passages as{" "}
@@ -144,7 +153,7 @@ export function Docs() {
           <span className="mono">file</span> field (PDF, .txt or .md; the server enforces an upload
           size limit). Returns <span className="mono">202</span>:
         </div>
-        <CodeBlock copyable>{`{ "document_id": "c1a2…", "status": "processing" }`}</CodeBlock>
+        <CodeBlock copyable lang="json">{`{ "document_id": "c1a2…", "status": "processing" }`}</CodeBlock>
         <div className="endpoint">
           <span className="mono">GET /v1/documents/:id</span> Returns{" "}
           <span className="mono">200</span>. Poll until <span className="mono">status</span> is{" "}
@@ -154,6 +163,7 @@ export function Docs() {
         </div>
         <CodeBlock
           copyable
+          lang="json"
         >{`{ "document_id": "c1a2…", "status": "ready", "chunk_count": 14, "error": null }`}</CodeBlock>
         <div className="endpoint">
           <span className="mono">DELETE /v1/documents/:id</span> Deletes the document and its
@@ -173,6 +183,7 @@ export function Docs() {
         </p>
         <CodeBlock
           copyable
+          lang="json"
         >{`{ "request_id": "3f0c1a7b-5d2e-4c8a-9b61-0e7f4a2d9c13", "rating": 1 }`}</CodeBlock>
       </section>
 
@@ -182,6 +193,7 @@ export function Docs() {
         <p className="body muted-2">Every error has the same shape:</p>
         <CodeBlock
           copyable
+          lang="json"
         >{`{ "error": { "code": "rate_limited", "message": "Too many requests." } }`}</CodeBlock>
         <div className="scroll-x">
           <table className="data" aria-label="Error codes">
@@ -221,6 +233,6 @@ export function Docs() {
           <span className="mono">retry_after_seconds</span> in the body.
         </p>
       </section>
-    </DocTabs>
+    </DocLayout>
   );
 }

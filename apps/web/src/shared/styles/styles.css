@@ -1538,7 +1538,7 @@ html.snap-home {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: clamp(24px, 4vw, 48px) 8px 64px 0;
+  padding: clamp(24px, 4vw, 48px) 28px 64px 0; /* the gap keeps the scrollbar clear of the dividers and tables */
   overscroll-behavior: contain;
 }
 .doc-scroll:focus-visible {
@@ -1555,8 +1555,7 @@ html.snap-home {
   flex-direction: column;
   gap: 12px;
 }
-.doc-toc ul,
-.doc-toc [role="tablist"] {
+.doc-toc ul {
   display: flex;
   flex-direction: column;
   border-left: 1px solid var(--line);
@@ -1568,35 +1567,21 @@ html.snap-home {
   border-left: 1px solid transparent;
   font-size: 14px;
   color: var(--text-3);
-  transition:
-    color 0.15s,
-    border-color 0.15s;
+  transition: color 0.15s;
 }
-.doc-toc a:hover,
-.doc-toc [role="tab"]:hover {
+.toc-ind {
+  position: absolute;
+  left: -1px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--lime);
+}
+.doc-toc a:hover {
   color: var(--text);
 }
-.doc-toc a[aria-current="true"],
-.doc-toc [role="tab"][aria-selected="true"] {
+.doc-toc a[aria-current="true"] {
   color: var(--text);
-  border-left-color: var(--lime);
-}
-.doc-toc [role="tab"] {
-  display: block;
-  width: 100%;
-  text-align: left;
-  background: none;
-  border: 0;
-  border-left: 1px solid transparent;
-  margin-left: -1px;
-  padding: 6px 0 6px 14px;
-  font: inherit;
-  font-size: 14px;
-  color: var(--text-3);
-  cursor: pointer;
-}
-.doc-panel[hidden] {
-  display: none;
 }
 .doc-content {
   display: flex;
@@ -1619,6 +1604,10 @@ html.snap-home {
 .center-card {
   margin: 0 auto;
   display: flex;
+/* the last sections of a long page need room to scroll up into the scroll-spy band, so they can become current */
+.doc-spy {
+  padding-bottom: 50dvh;
+}
   flex-direction: column;
   gap: 28px;
   min-height: 60dvh;
@@ -1640,6 +1629,7 @@ html.snap-home {
 }
 
 /* ---- app frame, projects, account ---- */
+  position: relative;
 .frame {
   min-height: 100vh;
 }
@@ -1855,15 +1845,13 @@ html.snap-home {
   .doc-scroll {
     padding-right: 0;
   }
-  .doc-toc ul,
-  .doc-toc [role="tablist"] {
+  .doc-toc ul {
     flex-direction: row;
     overflow-x: auto;
     border-left: 0;
     gap: 4px;
   }
-  .doc-toc a,
-  .doc-toc [role="tab"] {
+  .doc-toc a {
     width: auto;
     white-space: nowrap;
     padding: 6px 12px;
@@ -1888,7 +1876,6 @@ html.snap-home {
     width: 100%;
   }
 }
-/* biome-ignore lint/style/noDescendingSpecificity: sets animation only; the earlier row-line rule sets border-top */
 .doc-content ol.doc-list {
   list-style: decimal;
   padding-left: 22px;
@@ -1899,6 +1886,7 @@ html.snap-home {
 }
 .doc-content pre.code {
   background: var(--surface);
+/* biome-ignore lint/style/noDescendingSpecificity: sets animation only; the earlier row-line rule sets border-top */
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 20px 24px;
@@ -1943,6 +1931,9 @@ html.snap-home {
   animation: pulse 1.4s infinite;
 }
 
+  .toc-ind {
+    display: none;
+  }
 .in-view .bar {
   animation-play-state: running;
 }
@@ -1967,6 +1958,9 @@ html.snap-home {
   font-size: 36px;
 }
 .an-row {
+.doc-content table.data {
+  min-width: 0;
+}
   display: grid;
   gap: 28px;
   align-items: stretch;
@@ -2091,6 +2085,12 @@ html.snap-home {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* account */
+.acct-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
 .model-row:last-child {
   padding-bottom: 0;
 }
@@ -2098,15 +2098,15 @@ html.snap-home {
 .model-row:not(.model-head) + .model-row {
   border-top: 1px solid var(--line-soft);
 }
-
-/* account */
-.acct-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
   align-items: stretch;
 }
 .acct-methods {
+  grid-column: 1 / -1;
+}
+.acct-name {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
 .model-usage {
   grid-column: 1 / 3;
 }
@@ -2116,12 +2116,6 @@ html.snap-home {
 .tier-hint {
   padding-top: 16px;
 }
-  grid-column: 1 / -1;
-}
-.acct-name {
-  font-size: 28px;
-  font-weight: 500;
-  letter-spacing: -0.03em;
 }
 .acct-totals {
   display: grid;
@@ -2129,19 +2123,25 @@ html.snap-home {
   gap: 16px 24px;
   margin: 0;
 }
-  justify-content: center;
 .acct-total {
   display: flex;
-.model-actions .link-btn {
-  flex-basis: 100%;
-  text-align: center;
-}
   flex-direction: column;
   gap: 4px;
 }
 .acct-total dd {
+  justify-content: center;
   margin: 0;
   font-size: 32px;
+.model-actions .link-btn {
+  flex-basis: 100%;
+  text-align: center;
+}
+}
+@media (max-width: 900px) {
+  .acct-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .modal-wide {
   max-width: 640px;
   padding: 32px 36px;
@@ -2167,12 +2167,6 @@ html.snap-home {
 .field input::placeholder {
   color: var(--text-4);
 }
-}
-@media (max-width: 900px) {
-  .acct-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 
 /* home: scale, what it is, routing diagram, feature grid, use cases */
 .home .h2 {
@@ -2182,16 +2176,16 @@ html.snap-home {
   font-size: clamp(19px, 1.6vw, 24px);
   max-width: 620px;
 }
-  .model-usage,
-  .model-limits {
-    grid-column: 1 / -1;
-  }
 .home .body {
   font-size: 17px;
 }
 .hero {
   position: relative;
   isolation: isolate;
+  .model-usage,
+  .model-limits {
+    grid-column: 1 / -1;
+  }
 }
 .grid-art {
   position: absolute;
