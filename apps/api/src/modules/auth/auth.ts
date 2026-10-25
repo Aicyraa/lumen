@@ -37,6 +37,10 @@ export function createAuth({
   if (github.clientId && github.clientSecret)
     socialProviders.github = { clientId: github.clientId, clientSecret: github.clientSecret };
 
+  // Every tenant table points at tenants(id); an organization made without that row (a failed create, a manual insert) is repaired when it is selected.
+  const ensureTenant = (id: string) =>
+    pool.query("INSERT INTO tenants (id) VALUES ($1) ON CONFLICT DO NOTHING", [id]);
+
   // A signed-in user must always have a tenant: create the personal organization once, reuse it afterwards.
   let createOrganization: (body: {
     name: string;
@@ -106,7 +110,15 @@ export function createAuth({
         create: {
           before: async (session) => {
             const activeOrganizationId = await ensurePersonalOrg(session.userId);
+            await ensureTenant(activeOrganizationId);
             return { data: { ...session, activeOrganizationId } };
+          },
+        },
+        // set-active checks membership first, then updates the session: the project being selected must have its tenants row.
+        update: {
+          before: async (data) => {
+            const id = (data as { activeOrganizationId?: string | null }).activeOrganizationId;
+            if (id) await ensureTenant(id);
           },
         },
       },
@@ -162,9 +174,7 @@ export function createAuth({
           // The tenants row comes first: every tenant table points at it. The organization id is the tenant id.
           afterCreateOrganization: async ({ organization, user }) => {
             try {
-              await pool.query("INSERT INTO tenants (id) VALUES ($1) ON CONFLICT DO NOTHING", [
-                organization.id,
-              ]);
+              await ensureTenant(organization.id);
             } finally {
               if (user?.id) releaseProjectLock(user.id);
             }
