@@ -133,3 +133,42 @@ def test_ingest_for_a_tenant_without_a_tenants_row_fails_clearly_and_writes_noth
 
     with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
         assert conn.execute("SELECT count(*) FROM documents").fetchone()[0] == 0
+
+
+def test_serve_runs_without_reload_on_localhost(monkeypatch, no_env_file):
+    import uvicorn
+
+    seen = {}
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kw: seen.update(app=app, **kw))
+    for name in ("RAG_PORT", "RAG_HOST", "RAG_WORKERS"):
+        monkeypatch.delenv(name, raising=False)
+    assert cli.main(["serve"]) == 0
+    assert seen == {
+        "app": "app.main:app",
+        "host": "127.0.0.1",
+        "port": 8000,
+        "workers": 1,
+        "reload": False,
+    }
+
+
+def test_serve_reads_port_and_workers_from_the_environment(monkeypatch, no_env_file):
+    import uvicorn
+
+    seen = {}
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kw: seen.update(kw))
+    monkeypatch.setenv("RAG_PORT", "8123")
+    monkeypatch.setenv("RAG_WORKERS", "3")
+    cli.main(["serve"])
+    assert (seen["port"], seen["workers"], seen["reload"]) == (8123, 3, False)
+
+
+def test_serve_does_not_set_node_env(monkeypatch, no_env_file):
+    import os
+
+    import uvicorn
+
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kw: None)
+    monkeypatch.delenv("NODE_ENV")
+    cli.main(["serve"])
+    assert "NODE_ENV" not in os.environ  # production unless the operator says otherwise
