@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { COPY_FAILED, useCopy } from "../../shared/lib/useCopy";
 import { Reveal } from "../../shared/motion/motion";
 import { LogoMark } from "../../shared/ui/Logo";
-import { CodeBlock, PublicLayout, SectionLabel } from "../../shared/ui/PublicLayout";
+import { CodeBlock, PublicLayout, SectionLabel, TermDots } from "../../shared/ui/PublicLayout";
 import { Segmented } from "../../shared/ui/ui";
 import { DotGrid, LineIcon } from "./art";
 import { RouteExplorer } from "./RouteFlow";
@@ -72,8 +72,8 @@ const SECURITY = [
 ];
 
 const CODE = {
-  curl: `curl -X POST $LUMEN_URL/v1/chat \\\n  -H "x-api-key: $LUMEN_API_KEY" \\\n  -H "content-type: application/json" \\\n  -d '{"query": "When does enrollment close?"}'`,
-  node: `const res = await fetch(process.env.LUMEN_URL + "/v1/chat", {\n  method: "POST",\n  headers: {\n    "x-api-key": process.env.LUMEN_API_KEY,\n    "content-type": "application/json",\n  },\n  body: JSON.stringify({ query, session_id }),\n});\n\nconst { answer, sources, route } = await res.json();`,
+  curl: `curl -X POST $LUMEN_URL/v1/chat \\\n  -H "x-api-key: $LUMEN_API_KEY" \\\n  -H "content-type: application/json" \\\n  -d '{\n    "query": "When does enrollment close?",\n    "session_id": "visitor-42"\n  }'\n\n# { "answer": "Enrollment closes on 15 March. [1]", ... }`,
+  node: `const res = await fetch(process.env.LUMEN_URL + "/v1/chat", {\n  method: "POST",\n  headers: {\n    "x-api-key": process.env.LUMEN_API_KEY,\n    "content-type": "application/json",\n  },\n  body: JSON.stringify({ query, session_id }),\n});\nconst { answer, sources, route } = await res.json();`,
   python: `import os, requests\n\nr = requests.post(\n    os.environ["LUMEN_URL"] + "/v1/chat",\n    headers={"x-api-key": os.environ["LUMEN_API_KEY"]},\n    json={"query": "When does enrollment close?"},\n)\ndata = r.json()\nprint(data["answer"], data["route"]["model_tier"])`,
 };
 type CodeId = keyof typeof CODE;
@@ -84,12 +84,16 @@ export function Home() {
   // CSS scroll-snap (proximity) only on this page, so the dashboard and docs scroll normally.
   useEffect(() => {
     document.documentElement.classList.add("snap-home");
+// The three snippets are all nine lines long, so the quickstart box is full whichever tab is open.
     return () => document.documentElement.classList.remove("snap-home");
   }, []);
 
   return (
     <PublicLayout>
       <main className="home">
+const LANG = { curl: "bash", node: "js", python: "python" } as const;
+// a snippet shorter than the longest still gets its height, so changing tabs never moves the page below
+const CODE_LINES = Math.max(...Object.values(CODE).map((c) => c.split("\n").length));
         <section className="snap-section hero" aria-labelledby="hero-h">
           <GridArt />
           <SectionLabel>RAG API FOR YOUR CHATBOT — 01</SectionLabel>
@@ -190,24 +194,27 @@ export function Home() {
               backend talks to Lumen.
             </p>
           </div>
-          <div className="card flush">
-            <div className="code-bar">
-              <Segmented
-                label="Language"
-                options={
-                  [
-                    ["curl", "cURL"],
-                    ["node", "Node"],
-                    ["python", "Python"],
-                  ] as const
-                }
-                value={tab}
-                onChange={(t) => {
-                  setTab(t);
-                  clip.reset();
-                }}
-                plain
-              />
+          <Reveal className="term" delay={0.1}>
+            <div className="term-bar">
+              <div className="code-bar-left">
+                <TermDots />
+                <Segmented
+                  label="Language"
+                  options={
+                    [
+                      ["curl", "cURL"],
+                      ["node", "Node"],
+                      ["python", "Python"],
+                    ] as const
+                  }
+                  value={tab}
+                  onChange={(t) => {
+                    setTab(t);
+                    clip.reset();
+                  }}
+                  plain
+                />
+              </div>
               <button
                 type="button"
                 className="btn btn-outline btn-sm mono"
@@ -221,8 +228,10 @@ export function Home() {
                 </span>
               )}
             </div>
-            <CodeBlock testId="code">{CODE[tab]}</CodeBlock>
-          </div>
+            <CodeBlock testId="code" lang={LANG[tab]} minLines={CODE_LINES}>
+              {CODE[tab]}
+            </CodeBlock>
+          </Reveal>
         </section>
 
         <section className="snap-section deco-host" aria-label="Security">

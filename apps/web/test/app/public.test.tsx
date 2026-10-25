@@ -92,6 +92,34 @@ describe("Home", () => {
     expect(within(qs).getByRole("button", { name: "Copied" })).toBeInTheDocument();
   });
 
+  it("the quickstart keeps one height for all three snippets, so the sections below never move when the tab changes", async () => {
+    view(<Home />);
+    const qs = screen.getByRole("region", { name: "Quickstart" });
+    const lines = (t: string) => t.split("\n").length;
+    const code = () => within(qs).getByTestId("code");
+    const fixed = () => Number(code().style.getPropertyValue("--min-lines"));
+    const longest = lines(code().textContent!);
+    const seen = [fixed()];
+    let max = longest;
+    for (const tab of ["Node", "Python"]) {
+      await userEvent.click(within(qs).getByRole("button", { name: tab }));
+      max = Math.max(max, lines(code().textContent!));
+      seen.push(fixed());
+    }
+    expect(new Set(seen).size).toBe(1);
+    expect(seen[0]).toBe(max);
+    expect(code()).toHaveAttribute("data-lang", "python");
+  });
+
+  it("the quickstart is a terminal window: dots, tabs and Copy in its bar, and a coloured snippet", () => {
+    view(<Home />);
+    const qs = screen.getByRole("region", { name: "Quickstart" });
+    const term = qs.querySelector(".term")!;
+    expect(term.querySelector(".term-bar .term-dots")).not.toBeNull();
+    expect(term.querySelector(".term-bar .segmented")).not.toBeNull();
+    expect(within(qs).getByTestId("code").querySelector(".tk-kw")).toHaveTextContent("curl");
+  });
+
   it("quickstart does not say Copied when the clipboard write is refused", async () => {
     const writeText = vi.fn().mockRejectedValue(new Error("denied"));
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });

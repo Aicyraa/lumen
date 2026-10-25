@@ -172,6 +172,21 @@ describe("Docs content", () => {
     expect(await screen.findByRole("button", { name: "Copied" })).toBeInTheDocument();
   });
 
+  it("code blocks are terminal windows: dots, a language title, line numbers by CSS and syntax colours", () => {
+    view(<Docs />);
+    const first = document.querySelector(".term")!;
+    expect(first.querySelector(".term-dots")).not.toBeNull();
+    expect(first.querySelector(".term-title")).toHaveTextContent("bash");
+    expect(first.querySelector("pre.code")).toHaveAttribute("data-lang", "bash");
+    expect(first.querySelector(".tk-kw")).toHaveTextContent("curl");
+    expect(first.querySelector(".tk-flag")).toHaveTextContent("-X");
+    expect(first.querySelector(".tk-var")).toHaveTextContent("$LUMEN_URL");
+    expect(first.querySelectorAll(".ln")).toHaveLength(4);
+    const langs = [...document.querySelectorAll(".term-title")].map((e) => e.textContent);
+    expect(langs).toContain("http");
+    expect(langs).toContain("json");
+  });
+
   it("a refused clipboard write shows a manual-copy message, not Copied", async () => {
     const writeText = vi.fn().mockRejectedValue(new Error("denied"));
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });

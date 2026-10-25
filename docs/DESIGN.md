@@ -81,7 +81,7 @@ Lumen has no pricing of its own: omit the savings calculator section (keep the o
   - Outline: 1px `line-strong`, text `#efeee9`.
 - **Segmented toggle / tabs** — container 1px `line-strong`, radius 999px, padding 4px, gap 4px, Geist Mono 12px. Active pill bg `#efeee9` text `#0c0c0b`; inactive transparent, text-2. Used for 7D/30D, code tabs, log filters, demo cases.
 - **Card** — bg surface, 1px `line`, radius 14px (12px for nested detail cards), padding 24–32px. Starts with a mono section label.
-- **Code block** — `<pre>` Geist Mono 13px / 1.7–1.75, code-text; lime highlights a single key value.
+- **Code block** — a terminal / editor window: muted dots and a title bar (language, Copy), then a `<pre>` in Geist Mono 13–16px / 1.75 with code-text, line numbers (a `$` prompt for shell) and syntax colours. The colours exist only inside code: keywords `oklch(0.76 0.1 305)`, keys, calls and flags `oklch(0.78 0.09 235)`, strings lime-soft, numbers and variables amber, comments text-4. Snippets that switch in place (tabs) share one fixed height.
 - **Table** — CSS grid rows; header row mono 11px text-4 with `line` bottom border; rows padding 16–18px, `line-soft` divider, 14px text. Expandable rows show `+` / `−` in mono at the right and open into a 3-card detail grid (Route, Usage, Sources).
 - **Status dot** — 7px circle + mono 12px label in the status color (ready lime, processing amber, failed red; cheap `#efeee9`, expensive lime, none text-3).
 - **Score bar** — 4px track `#262624`, fill `#efeee9`, mono score beside it.
@@ -115,7 +115,7 @@ Subtle and functional; all under ~600ms except the typewriter.
 
 ## 8. Don'ts
 
-- No new colors outside the table; no second accent.
+- No new colors outside the table; no second accent. The only exception is the syntax colours inside code blocks (see Components).
 - No gradients (except the image-slot stripe), shadows, glassmorphism or rounded cards with colored left borders.
 - No emoji or decorative icons; status is communicated with dots and words.
 - No Inter/Roboto/Arial; Geist only.
