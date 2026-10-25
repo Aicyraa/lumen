@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "../../shared/lib/api";
-import { fmtCost, fmtMs, fmtScore, fmtTime, tierTone } from "../../shared/lib/format";
+import { fmtCost, fmtMs, fmtScore, fmtTime, RATE_LIMITED, tierTone } from "../../shared/lib/format";
 import type { Range, RequestDetail, RequestRow, RequestsPage } from "../../shared/lib/types";
 import { Dialog } from "../../shared/ui/Dialog";
 import { RouteCard } from "../../shared/ui/RouteCard";
@@ -104,7 +104,7 @@ export function Requests() {
 }
 
 function Row({ r, onOpen }: { r: RequestRow; onOpen: () => void }) {
-  const label = r.tier ?? "failed";
+  const label = r.tier ?? (r.status === RATE_LIMITED ? "rate limited" : "failed");
   return (
     <div className="tr-wrap" role="row">
       <button
@@ -144,7 +144,7 @@ function Drawer({ id, org, onClose }: { id: string; org: string; onClose: () => 
       {d.data && (
         <div className="stack-sm">
           <p className="body">{d.data.query}</p>
-          <RouteCard route={d.data.route} />
+          <RouteCard route={d.data.route} status={d.data.status} />
           <UsageCard usage={d.data.usage} noModel={d.data.route.tier === "none"}>
             <div className="meta mono small muted-3">
               <span>{d.data.id}</span>

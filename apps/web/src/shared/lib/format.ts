@@ -30,14 +30,18 @@ export const fmtDay = (isoDate: string) =>
 // A usage meter turns amber above 80% of its limit (DESIGN.md).
 export const isNearLimit = (used: number, max: number) => max > 0 && used / max > 0.8;
 
-export const tierLabel = (t: string | null | undefined) =>
-  t === "none"
-    ? "No model called"
-    : t === "expensive"
-      ? "Expensive tier"
-      : t === "cheap"
-        ? "Cheap tier"
-        : "Failed";
+export const RATE_LIMITED = "provider_rate_limited";
+
+export const tierLabel = (t: string | null | undefined, status?: string) =>
+  status === RATE_LIMITED && !t
+    ? "Rate limited"
+    : t === "none"
+      ? "No model called"
+      : t === "expensive"
+        ? "Expensive tier"
+        : t === "cheap"
+          ? "Cheap tier"
+          : "Failed";
 export const tierTone = (t: string | null | undefined) =>
   (t === "expensive" ? "expensive" : t === "none" ? "none" : t === "cheap" ? "cheap" : "failed") as
     | "expensive"
@@ -47,6 +51,7 @@ export const tierTone = (t: string | null | undefined) =>
 
 // Plain statement of what the route fields say. Nothing here is guessed beyond the returned fields.
 export function routeWhy(r: {
+  status?: string;
   tier: string | null;
   k: number | null;
   escalated: boolean | null;
@@ -61,5 +66,7 @@ export function routeWhy(r: {
     return `The question was clearly hard (difficulty ${fmtScore(r.difficulty)}), so the router used the larger model with ${r.k} passages.`;
   if (r.tier === "cheap")
     return `A strong match (best ${fmtScore(r.top_score)}) and a plain question, so the smaller model with ${r.k} passages was used.`;
+  if (r.status === RATE_LIMITED)
+    return "The model provider is rate limiting this workspace, so no answer was returned.";
   return "The model provider failed, so no answer was returned.";
 }

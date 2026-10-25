@@ -19,7 +19,7 @@ const MIX = [
   ["escalated", "Escalated (caution)", "mix-escalated"],
   ["expensive_hard", "Expensive (hard)", "mix-expensive"],
   ["none", "No answer — no model called", "mix-none"],
-  ["failed", "Failed — provider error", "mix-failed"],
+  ["failed", "Failed — provider error or rate limit", "mix-failed"],
 ] as const;
 
 export function Analytics() {
