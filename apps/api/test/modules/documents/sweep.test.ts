@@ -1,9 +1,10 @@
-import { existsSync, mkdirSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sweepInterrupted } from "../../../src/modules/documents/sweep.js";
 import { type Ctx, makeCtx, type Tenant } from "../../helpers/ctx.js";
 
+const SWEEP_LOCK_NAME = "lumen:sweep-interrupted"; // the advisory lock every API process takes for the sweep
 let ctx: Ctx, a: Tenant, b: Tenant;
 beforeAll(async () => {
   ctx = await makeCtx({ interruptedIngestAfterSeconds: 600 });
@@ -72,5 +73,77 @@ describe("interrupted-ingest sweep", () => {
     await sweep();
     expect(existsSync(stale)).toBe(false);
     expect(existsSync(fresh)).toBe(true);
+  });
+});
+
+describe("sweep robustness", () => {
+  it("keeps going when an upload file disappears between listing and stat (ENOENT)", async () => {
+    mkdirSync(ctx.config.uploadDir, { recursive: true });
+    const dangling = join(ctx.config.uploadDir, "aaa-vanished"); // listed by readdir, but stat() on it is ENOENT
+    const stale = join(ctx.config.uploadDir, "zzz-stale-after-vanished");
+    symlinkSync(join(ctx.config.uploadDir, "does-not-exist"), dangling);
+    writeFileSync(stale, "x");
+    const old = new Date(Date.now() - 20 * 60 * 1000);
+    utimesSync(stale, old, old);
+    try {
+      await expect(sweep()).resolves.toBeTypeOf("number");
+      expect(existsSync(stale)).toBe(false); // the files after the missing one were still looked at
+    } finally {
+      rmSync(dangling, { force: true });
+    }
+  });
+
+  it("a second process skips the sweep while another holds the advisory lock, and the lock is released afterwards", async () => {
+    const stuck = await insert(a.tenantId, "processing", 30);
+    const other = await ctx.pool.connect(); // stands in for another API process
+    try {
+      const { rows } = await other.query("SELECT pg_try_advisory_lock(hashtext($1)) AS ok", [
+        SWEEP_LOCK_NAME,
+      ]);
+      expect(rows[0].ok).toBe(true);
+      expect(await sweep()).toBe(0);
+      expect((await row(stuck)).status).toBe("processing"); // untouched: the other process owns this sweep
+    } finally {
+      await other.query("SELECT pg_advisory_unlock_all()");
+      other.release();
+    }
+    expect(await sweep()).toBeGreaterThanOrEqual(1);
+    expect((await row(stuck)).status).toBe("failed");
+    // released after the run, even though the same pool served it: another connection can take it now
+    const probe = await ctx.pool.connect();
+    try {
+      const { rows } = await probe.query("SELECT pg_try_advisory_lock(hashtext($1)) AS ok", [
+        SWEEP_LOCK_NAME,
+      ]);
+      expect(rows[0].ok).toBe(true);
+    } finally {
+      await probe.query("SELECT pg_advisory_unlock_all()");
+      probe.release();
+    }
+  });
+
+  it("releases the lock when the sweep fails", async () => {
+    const broken = {
+      ...ctx.pool,
+      query: () => Promise.reject(new Error("db down")),
+      connect: ctx.pool.connect.bind(ctx.pool),
+    };
+    await expect(
+      sweepInterrupted({
+        pool: broken as never,
+        config: ctx.config,
+        log: { info() {}, warn() {} },
+      }),
+    ).rejects.toThrow("db down");
+    const probe = await ctx.pool.connect();
+    try {
+      const { rows } = await probe.query("SELECT pg_try_advisory_lock(hashtext($1)) AS ok", [
+        SWEEP_LOCK_NAME,
+      ]);
+      expect(rows[0].ok).toBe(true);
+    } finally {
+      await probe.query("SELECT pg_advisory_unlock_all()");
+      probe.release();
+    }
   });
 });
