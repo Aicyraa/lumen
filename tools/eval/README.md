@@ -50,14 +50,15 @@ from `.env`): `always_cheap` (`force_tier: "cheap"`), `always_expensive` (`force
 (no `force_tier`). An answer is graded by an LLM judge (OpenAI-compatible `{EVAL_BASE_URL}/chat/completions`,
 temperature 0, strict JSON `{"correct": bool, "reason": str}`; one retry on a malformed reply). `unanswerable` rows are graded
 by rule: correct when the answer is the not-found message. Sources are ignored for correctness (the service returns the retrieved sources even then) but counted: `verdicts.csv` column `unanswerable_with_sources` is `yes` for such rows. The grading rule version is part of the resume key of unanswerable rows. A system error (for example
-`provider_error`) counts as wrong. A 429 is waited out using `Retry-After` and the `x-ratelimit-*` headers.
+`provider_error`) is counted in `errors`, not as a wrong answer. The resume key also covers the model ids, provider, judge model and a hash of the `router:` block of `apps/rag-service/app/config.yaml` (override the path with `EVAL_ROUTER_CONFIG`); a state file written before that is ignored with a note on stderr. A 429 is waited out using `Retry-After` and the `x-ratelimit-*` headers.
 
 Outputs (both git-ignored):
 
 - `verdicts.csv`: `setup,query,answer_excerpt,verdict,reason,flagged_for_review`. **Spot-check the rows marked `yes`**
   (a random 20 percent, plus every judge failure) and fix `expected_answer` or tell the agent where the judge was wrong.
-- `results.csv`: `setup,split,accuracy,median_latency_ms,escalation_rate,unanswerable_handled,estimated_cost_per_query_usd`,
-  one row per setup and split (`train` = `held_out` false or empty, `held_out`). `escalation_rate` is the share of
+- `results.csv`: `setup,split,accuracy,median_latency_ms,escalation_rate,unanswerable_handled,estimated_cost_per_query_usd,errors`,
+  one row per setup and split. `errors` counts runs where the service or the judge failed (provider errors, 429s); they are left out of
+  `accuracy` and the other columns, which are over the answered questions only (the console prints `accuracy over N answered of M`) (`train` = `held_out` false or empty, `held_out`). `escalation_rate` is the share of
   questions answered by the expensive tier (0 for always-cheap by construction; questions that call no model count as not
   escalated). `unanswerable_handled` is the accuracy over the `unanswerable` rows only. `median_latency_ms` is the
   service's own `usage.latency_ms`. `estimated_cost_per_query_usd` is the tenant's estimated provider cost: provider token
