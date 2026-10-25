@@ -12,6 +12,7 @@ export function testConfig(overrides: Partial<Config> = {}) {
     RAG_SERVICE_URL: "http://127.0.0.1:1",
   };
   const config = loadConfig(env, overrides);
-  if (!config.databaseUrl.endsWith(`/${testDbName()}`)) throw new Error("tests must use the test database");
+  if (!config.databaseUrl.endsWith(`/${testDbName()}`))
+    throw new Error("tests must use the test database");
   return config;
 }

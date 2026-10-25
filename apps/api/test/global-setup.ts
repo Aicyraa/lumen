@@ -8,7 +8,8 @@ import { testConfig, testDbName } from "./helpers/env.js";
 export default async function setup() {
   const config = testConfig();
   const db = testDbName();
-  if (!/^[a-z0-9_]+$/.test(db)) throw new Error("LUMEN_TEST_DB must be letters, digits and underscores");
+  if (!/^[a-z0-9_]+$/.test(db))
+    throw new Error("LUMEN_TEST_DB must be letters, digits and underscores");
   const admin = createPool(config.databaseUrl.replace(new RegExp(`/${db}$`), "/postgres"));
   const { rowCount } = await admin.query("SELECT 1 FROM pg_database WHERE datname = $1", [db]);
   if (!rowCount) await admin.query(`CREATE DATABASE ${db}`);
