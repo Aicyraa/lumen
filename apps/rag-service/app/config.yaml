@@ -11,6 +11,12 @@ database:
 
 ingest:
   embed_batch_size: 32
+  max_pages: 200                  # a PDF with more pages is 422 document_too_large
+  max_chunks: 2000                # more chunks than this is 422 document_too_large, checked before embedding
+  # The embedding model silently truncates input past its window (256 word pieces). Approximation, not a
+  # tokenizer: a chunk counts as max(words, characters / chars_per_token) tokens; longer chunks are split.
+  max_chunk_tokens: 200
+  chars_per_token: 3
   status_check_every_batches: 4   # re-read the document status this often while embedding; stop if it failed
 
 retrieval:

@@ -40,3 +40,51 @@ def test_unsupported_type_is_rejected(tmp_path):
     f.write_bytes(b"x")
     with pytest.raises(ValueError):
         extract_text(f)
+
+
+def blank_pdf(tmp_path, pages, password=None):
+    from pypdf import PdfWriter
+
+    w = PdfWriter()
+    for _ in range(pages):
+        w.add_blank_page(200, 200)
+    if password:
+        w.encrypt(password)
+    f = tmp_path / "x.pdf"
+    with open(f, "wb") as out:
+        w.write(out)
+    return f
+
+
+def test_corrupt_pdf_is_unreadable_not_unsupported(tmp_path):
+    from app.ingest.extract import UnreadableDocument
+
+    f = tmp_path / "bad.pdf"
+    f.write_bytes(b"this is not a pdf")
+    with pytest.raises(UnreadableDocument):
+        extract_text(f)
+
+
+def test_encrypted_pdf_is_unreadable(tmp_path):
+    from app.ingest.extract import UnreadableDocument
+
+    with pytest.raises(UnreadableDocument):
+        extract_text(blank_pdf(tmp_path, 1, password="secret"))
+
+
+def test_pdf_over_max_pages_is_too_large(tmp_path, monkeypatch):
+    from app.core.config import load_config
+    from app.ingest.extract import DocumentTooLarge
+
+    monkeypatch.setitem(load_config()["ingest"], "max_pages", 2)
+    assert extract_text(blank_pdf(tmp_path, 2)) == "\n"  # at the limit is fine
+    with pytest.raises(DocumentTooLarge):
+        extract_text(blank_pdf(tmp_path, 3))
+
+
+def test_suffix_is_checked_before_the_file_is_touched(tmp_path):
+    from app.ingest.extract import UnreadableDocument
+
+    with pytest.raises(ValueError) as exc:
+        extract_text(tmp_path / "does-not-exist.exe")
+    assert not isinstance(exc.value, UnreadableDocument) and "unsupported" in str(exc.value)

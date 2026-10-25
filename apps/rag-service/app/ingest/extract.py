@@ -3,6 +3,14 @@ from pathlib import Path
 from pypdf import PdfReader
 
 
+class UnreadableDocument(ValueError):
+    """A PDF that cannot be read (corrupt or encrypted)."""
+
+
+class DocumentTooLarge(ValueError):
+    """More pages than ingest.max_pages."""
+
+
 def extract_text(path) -> str:
     """Read .txt/.md as UTF-8 or a PDF with pypdf. A scanned PDF gives an empty string (no OCR)."""
     path = Path(path)

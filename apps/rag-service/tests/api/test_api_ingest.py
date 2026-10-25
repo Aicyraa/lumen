@@ -52,10 +52,43 @@ def test_empty_file_is_422_no_text_extracted_and_writes_nothing(client):
     assert chunk_count("tenant_a", doc_id) == 0
 
 
-def test_unreadable_pdf_is_422_no_text_extracted(client):
+def test_unreadable_pdf_is_422_unreadable_document(client):
     doc_id = add_document("tenant_a", "bad.pdf")
     resp = post(client, "tenant_a", doc_id, "bad.pdf", b"this is not a pdf")
-    assert resp.status_code == 422 and resp.json()["error"]["code"] == "no_text_extracted"
+    assert resp.status_code == 422 and resp.json()["error"]["code"] == "unreadable_document"
+
+
+def test_encrypted_pdf_is_422_unreadable_document(client, tmp_path):
+    from tests.ingest.test_extract import blank_pdf
+
+    doc_id = add_document("tenant_a", "locked.pdf")
+    data = blank_pdf(tmp_path, 1, password="secret").read_bytes()
+    resp = post(client, "tenant_a", doc_id, "locked.pdf", data)
+    assert resp.status_code == 422 and resp.json()["error"]["code"] == "unreadable_document"
+
+
+def test_pdf_over_max_pages_is_422_document_too_large(client, tmp_path, monkeypatch):
+    from app.core.config import load_config
+    from tests.ingest.test_extract import blank_pdf
+
+    monkeypatch.setitem(load_config()["ingest"], "max_pages", 1)
+    doc_id = add_document("tenant_a", "big.pdf")
+    resp = post(client, "tenant_a", doc_id, "big.pdf", blank_pdf(tmp_path, 2).read_bytes())
+    assert resp.status_code == 422 and resp.json()["error"]["code"] == "document_too_large"
+
+
+def test_too_many_chunks_is_422_document_too_large_before_embedding(client, monkeypatch):
+    from app.core.config import load_config
+
+    def no_embed(texts):
+        raise AssertionError("must not embed an oversized document")
+
+    monkeypatch.setitem(load_config()["ingest"], "max_chunks", 2)
+    monkeypatch.setattr("app.api.routes.embed", no_embed)
+    doc_id = add_document("tenant_a", "big.txt")
+    resp = post(client, "tenant_a", doc_id)  # LONG_TEXT makes 3+ chunks
+    assert resp.status_code == 422 and resp.json()["error"]["code"] == "document_too_large"
+    assert chunk_count("tenant_a", doc_id) == 0
 
 
 def test_unsupported_file_type_is_415(client):
