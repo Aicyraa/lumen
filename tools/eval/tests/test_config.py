@@ -36,6 +36,13 @@ def test_prices_need_both_input_and_output(tmp_path):
     assert cfg.prices == {"cheap": (0.1, 0.4), "expensive": None}
 
 
+@pytest.mark.parametrize("secret,expected", [("runner-secret", "runner-secret"), ("", "s")])
+def test_nonempty_environment_overrides_file(tmp_path, monkeypatch, secret, expected):
+    monkeypatch.setenv("INTERNAL_SECRET", secret)
+    cfg = load_config(write_env(tmp_path, BASE))
+    assert cfg.internal_secret == expected
+
+
 def test_missing_variable_is_named_but_never_its_value(tmp_path):
     env = {k: v for k, v in BASE.items() if k != "EVAL_MODEL_BIG"}
     del env["RAG_URL"]
