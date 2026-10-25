@@ -4,6 +4,8 @@ import json
 import re
 import unicodedata
 
+from app.core.config import load_config
+
 _ABSENCE = re.compile(
     r"\b(?:documents?|passages?|corpus|manual)\b.*\b(?:do not|does not|don't|doesn't) "
     r"(?:list|state|provide|specify|report|contain)\b"
@@ -80,6 +82,7 @@ def render_answer(raw: str, passages: list[str], not_found: str) -> str:
                     if len(matches) != 1:
                         raise ValueError("Quote absent or ambiguous")
                     number = matches[0]
+                _check_quote_length(normalized, _quote_text(passages[number - 1]))
                 if number not in citations:
                     citations.append(number)
             lines.append(text.strip() + " " + "".join(f"[{n}]" for n in citations))
@@ -88,6 +91,15 @@ def render_answer(raw: str, passages: list[str], not_found: str) -> str:
         return "\n\n".join(lines)
     except (KeyError, TypeError, IndexError) as e:
         raise ValueError("Invalid grounded answer") from e
+
+
+def _check_quote_length(quote: str, passage: str) -> None:
+    """A one-word or tiny quote proves nothing; the limit shrinks to the passage when it is shorter."""
+    cfg = load_config()["llm"]
+    min_chars = min(cfg["min_quote_chars"], len(passage))
+    min_words = min(cfg["min_quote_words"], len(passage.split()))
+    if len(quote) < min_chars or len(quote.split()) < min_words:
+        raise ValueError("Quote too short")
 
 
 def _quote_text(text: str) -> str:
