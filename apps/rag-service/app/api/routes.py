@@ -227,7 +227,9 @@ def query(req: QueryRequest, caller=Depends(get_caller)):
         {"document_id": doc_id, "chunk_id": chunk_id, "score": score}
         for chunk_id, doc_id, _, score in hits
     ]
-    if req.include_snippets:  # live to the owner only: never stored, never logged
+    if answer == messages["not_found"]:
+        sources = []
+    if req.include_snippets and sources:  # live to the owner only: never stored, never logged
         names = store.filenames(req.tenant_id, [s["document_id"] for s in sources])
         n = load_config()["llm"]["snippet_chars"]
         for s, (_, _, content, _) in zip(sources, hits):

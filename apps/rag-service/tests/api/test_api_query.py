@@ -195,6 +195,30 @@ def test_model_generic_refusal_is_normalized_without_an_extra_call(client, llm, 
     assert len(llm.calls) == 1
 
 
+@pytest.mark.parametrize("include_snippets", [False, True])
+@pytest.mark.parametrize(
+    "raw",
+    [
+        '{"claims":[]}',
+        "I’m sorry, but I can’t help with that.",
+        '{"claims":[{"text":"The manual does not list serial numbers.",'
+        '"evidence":[{"passage":1,"quote":"The manual does not list serial numbers."}]}]}',
+    ],
+)
+def test_model_not_found_returns_no_sources(client, llm, best_score, raw, include_snippets):
+    add_doc("tenant_a", ["The manual does not list serial numbers."])
+    best_score(0.6)
+    llm.extra = {"cheap-model": {"text": raw}}
+    response = ask(client, include_snippets=include_snippets)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["answer"] == MESSAGES["not_found"]
+    assert body["sources"] == []
+    assert body["route"]["model_tier"] == "cheap"
+    assert len(llm.calls) == len(body["attempts"]) == 1
+    assert (body["usage"]["tokens_in"], body["usage"]["tokens_out"]) == (100, 10)
+
+
 def test_successful_answer_repair_counts_both_model_attempts(client, llm, best_score):
     from app.api.deps import get_caller
 
