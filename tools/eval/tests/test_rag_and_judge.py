@@ -85,12 +85,15 @@ def test_judge_rejects_a_non_boolean_verdict(server):
     assert judge(cfg(judge_url=s.url), "Q", "e", "a").error
 
 
-def test_unanswerable_correct_only_for_the_not_found_message_without_sources():
+def test_unanswerable_is_correct_for_the_not_found_message_whatever_the_sources():
     nf = "NOT FOUND."
     assert grade_unanswerable(nf, [], nf).correct
     assert grade_unanswerable("  NOT FOUND.  ", [], nf).correct
-    assert not grade_unanswerable(nf, [{"document_id": "d"}], nf).correct  # claims a source
+    with_src = grade_unanswerable(nf, [{"document_id": "d"}, {"document_id": "e"}], nf)
+    assert with_src.correct and with_src.listed_sources == 2  # tracked, not penalised
+    assert grade_unanswerable(nf, [], nf).listed_sources == 0
     assert not grade_unanswerable("The president is Ana [1].", [], nf).correct
+    assert not grade_unanswerable("The president is Ana [1].", [{"document_id": "d"}], nf).correct
     assert not grade_unanswerable("", [], nf).correct
 
 

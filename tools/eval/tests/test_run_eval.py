@@ -150,6 +150,7 @@ def test_unanswerable_rows_are_graded_by_rule_not_by_the_judge(env):
         "verdict",
         "reason",
         "flagged_for_review",
+        "unanswerable_with_sources",
     ]
     rule = [r for r in v if r["query"] == "Q2?" and r["setup"] == "always_cheap"][0]
     assert rule["verdict"] == "correct" and rule["reason"].startswith("rule:")
@@ -412,3 +413,43 @@ def test_quota_exhaustion_stops_cleanly_and_can_be_resumed(env, server, capsys):
     assert main(args(env, "--resume")) == 0
     assert len(read(tmp / "results.csv")) == 6
     assert len(rag.calls) == 4  # only the 4 pairs that had not completed
+
+
+def nf_with_sources_handler(method, path, headers, body):
+    if (
+        body["query"] == "Q2?"
+    ):  # the service says "not found" but still returns the retrieved sources
+        return 200, {}, resp(NF, "cheap", 0.4, 100, True)
+    return rag_handler()(method, path, headers, body)
+
+
+def test_not_found_with_sources_is_correct_and_counted(env, server, capsys):
+    q, envp, rag, judge, tmp = env
+    s = server(nf_with_sources_handler)
+    envp.write_text(envp.read_text().replace(rag.url, s.url))
+    assert main(args(env)) == 0
+    v = [r for r in read(tmp / "verdicts.csv") if r["query"] == "Q2?"]
+    cheap = [r for r in v if r["setup"] == "always_cheap"][0]
+    assert cheap["verdict"] == "correct" and cheap["unanswerable_with_sources"] == "yes"
+    exp = [r for r in v if r["setup"] == "always_expensive"][0]
+    assert exp["verdict"] == "correct"
+    assert all(r["unanswerable_with_sources"] == "yes" for r in v)
+    assert all(
+        r["unanswerable_with_sources"] == ""
+        for r in read(tmp / "verdicts.csv")
+        if r["query"] == "Q1?"
+    )
+    assert "3 not-found answer(s) still listed sources" in capsys.readouterr().out
+    got = {(r["setup"], r["split"]): r for r in read(tmp / "results.csv")}
+    assert got[("always_cheap", "held_out")]["unanswerable_handled"] == "1.0"
+
+
+def test_changing_the_grading_rule_version_reruns_old_verdicts(env, monkeypatch):
+    import evalkit.cli as cli
+
+    q, envp, rag, judge, tmp = env
+    main(args(env, "--limit", "1"))
+    assert len(rag.calls) == 3
+    monkeypatch.setattr(cli, "GRADING_RULES", "some-other-rule")
+    main(args(env, "--limit", "1", "--resume"))
+    assert len(rag.calls) == 6
