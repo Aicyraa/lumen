@@ -32,6 +32,8 @@ const TUNABLES: [string, string][] = [
   ["sessionIdMaxChars", "SESSION_ID_MAX_CHARS"],
   ["maxPricePerMillion", "MAX_PRICE_PER_MILLION"],
   ["endpointGuardCacheTtlMs", "ENDPOINT_GUARD_CACHE_TTL_MS"],
+  ["maxModelsPerTier", "MAX_MODELS_PER_TIER"],
+  ["modelTestRatePerMinute", "MODEL_TEST_RATE_PER_MINUTE"],
 ];
 
 describe("rule 9: limits live in config.json / the environment", () => {
@@ -41,6 +43,10 @@ describe("rule 9: limits live in config.json / the environment", () => {
     expect(
       (loadConfig({ ...good, [envName]: "4321" }) as unknown as Record<string, number>)[key],
     ).toBe(4321);
+  });
+
+  it("allows 5 models per tier by default", () => {
+    expect(loadConfig(good).maxModelsPerTier).toBe(5);
   });
 
   it("the attempts cap default is not the old literal 50", () => {
