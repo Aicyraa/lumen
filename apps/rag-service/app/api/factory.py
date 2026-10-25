@@ -19,7 +19,9 @@ async def lifespan(app: FastAPI):
 
 
 async def api_error_handler(request: Request, exc: ApiError):
-    return error_response(exc.status, exc.code, exc.message, exc.extra)
+    return error_response(
+        exc.status, exc.code, exc.message, exc.extra, exc.error_fields, exc.headers
+    )
 
 
 async def http_error_handler(request: Request, exc: StarletteHTTPException):

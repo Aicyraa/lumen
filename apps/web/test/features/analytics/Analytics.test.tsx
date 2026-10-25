@@ -88,6 +88,7 @@ describe("Analytics", () => {
     expect(screen.getByText("ESTIMATED PROVIDER COST")).toBeInTheDocument();
     const mix = screen.getByRole("list", { name: "Route mix" });
     expect(within(mix).getByText(/Failed/)).toBeInTheDocument();
+    expect(within(mix).getByText(/rate limit/i)).toBeInTheDocument();
     expect(within(mix).getByText("50%")).toBeInTheDocument(); // 5 of 10 cheap
     expect(screen.getByText("Is there visitor parking?")).toBeInTheDocument();
     expect(screen.getByText("0.09")).toBeInTheDocument();

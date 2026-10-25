@@ -15,6 +15,7 @@ CFG = {
     "max_output_tokens": 50,
     "temperature": 0,
     "rate_limit_retry_seconds": 0,
+    "rate_limit_max_wait_seconds": 10,
     "omit_temperature_providers": ["openai", "anthropic"],
     "max_rate_limit_headers": 3,
     "max_header_value_chars": 20,
@@ -162,7 +163,7 @@ def test_provider_reported_cost_is_returned_only_when_the_response_has_a_number(
     assert run().reported_cost_usd is None
 
 
-def test_one_retry_after_a_429_is_still_one_attempt(server):
+def test_one_retry_after_a_429_is_still_one_attempt(server, sleeps):
     server.replies = [
         httpx2.Response(429, json={"error": {"message": "slow"}}),
         ok(completion("later")),
@@ -171,7 +172,7 @@ def test_one_retry_after_a_429_is_still_one_attempt(server):
     assert (a.outcome, a.text) == ("ok", "later") and len(server.requests) == 2
 
 
-def test_second_429_is_rate_limited_with_its_headers_and_no_tokens(server):
+def test_second_429_is_rate_limited_with_its_headers_and_no_tokens(server, sleeps):
     r = httpx2.Response(429, json={"error": {"message": "slow"}}, headers={"retry-after": "7"})
     server.replies = [r, r]
     a = run()
@@ -215,3 +216,83 @@ def test_key_and_provider_text_never_reach_the_attempt_or_the_logs(server, caplo
     ]
     a = run()
     assert KEY not in repr(a) and KEY not in caplog.text and "passage text" not in caplog.text
+
+
+# ---- 429 handling: read how long the provider wants us to wait; retry only when that is short ----
+
+
+@pytest.fixture
+def sleeps(monkeypatch):
+    calls = []
+    monkeypatch.setattr(llm.time, "sleep", calls.append)
+    return calls
+
+
+def limited(**headers):
+    return httpx2.Response(429, json={"error": {"message": "slow"}}, headers=headers)
+
+
+@pytest.mark.parametrize(
+    "headers,expected",
+    [
+        ({"retry-after": "855"}, 855),
+        ({"retry-after": "2.2"}, 3),  # rounded up: never retry early
+        ({"retry-after": "7", "x-ratelimit-reset-requests": "9m"}, 7),  # retry-after wins
+        ({"x-ratelimit-reset-requests": "8m38.4s"}, 519),
+        ({"x-ratelimit-reset-requests": "1h2m3s"}, 3723),
+        ({"x-ratelimit-reset-requests": "250ms"}, 1),
+        ({"x-ratelimit-reset-requests": "2s", "x-ratelimit-reset-tokens": "1m"}, 60),  # slowest
+        ({"retry-after": "soon", "x-ratelimit-reset-tokens": "12s"}, 12),  # junk falls through
+        ({"retry-after": "-5"}, None),
+        ({"x-ratelimit-reset-requests": "garbage"}, None),
+        ({}, None),
+    ],
+)
+def test_wait_is_read_from_the_headers(headers, expected):
+    assert llm.wait_seconds(headers) == expected
+
+
+def test_a_long_wait_neither_sleeps_nor_retries(server, sleeps):
+    server.replies = [limited(**{"retry-after": "855"})]
+    a = run()
+    assert a.outcome == "rate_limited" and a.retry_after_seconds == 855
+    assert len(server.requests) == 1 and sleeps == []
+    assert (a.tokens_in, a.tokens_out, a.text) == (None, None, None)
+
+
+def test_a_short_wait_sleeps_that_long_and_retries_once(server, sleeps):
+    server.replies = [limited(**{"retry-after": "3"}), ok(completion("later"))]
+    a = run()
+    assert (a.outcome, a.text) == ("ok", "later") and len(server.requests) == 2
+    assert sleeps == [3]
+
+
+def test_no_header_falls_back_to_the_configured_retry_wait(server, sleeps):
+    server.replies = [limited(), ok()]
+    assert run().outcome == "ok" and sleeps == [CFG["rate_limit_retry_seconds"]]
+
+
+def test_a_wait_exactly_at_the_limit_is_still_retried(server, sleeps):
+    server.replies = [limited(**{"retry-after": "10"}), ok()]
+    assert run().outcome == "ok" and sleeps == [10]
+
+
+def test_second_429_after_a_retry_reports_its_wait(server, sleeps):
+    server.replies = [limited(**{"retry-after": "2"}), limited(**{"retry-after": "4"})]
+    a = run()
+    assert a.outcome == "rate_limited" and len(server.requests) == 2
+    assert a.retry_after_seconds == 4
+
+
+def test_attempt_exposes_retry_after_only_when_known(server):
+    server.replies = [limited(**{"retry-after": "855"}), ok()]
+    assert run().public()["retry_after_seconds"] == 855
+    assert "retry_after_seconds" not in run().public()
+
+
+def test_config_has_the_max_wait_default():
+    from app.core.config import load_config
+
+    llm_cfg = load_config()["llm"]
+    assert llm_cfg["rate_limit_max_wait_seconds"] == 10
+    assert llm_cfg["rate_limit_retry_seconds"] == 2

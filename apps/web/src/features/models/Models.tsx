@@ -160,6 +160,7 @@ export function Models() {
         <div className="models-grid">
           {GROUPS.map((g) => {
             const rows = models.data?.[g.tier] ?? [];
+            const allLimited = rows.length > 0 && rows.every((m) => limitedUntil(byId.get(m.id)));
             return (
               <section key={g.tier} className="card tier-card" aria-labelledby={`g-${g.tier}`}>
                 <div className="group-head">
@@ -197,6 +198,12 @@ export function Models() {
                     onRemove={() => remove.mutate(m.id)}
                   />
                 ))}
+                {allLimited && (
+                  <p className="small muted-3 tier-hint">
+                    Every model in this tier is rate limited. Add a backup model from another
+                    provider to keep answering.
+                  </p>
+                )}
                 {!rows.length && <div className="card-empty">{g.empty}</div>}
               </section>
             );
@@ -205,6 +212,18 @@ export function Models() {
       )}
     </div>
   );
+}
+
+// The ISO time while the provider still asks us to wait, else null (a time already past counts as over).
+const limitedUntil = (u?: ModelUsage) =>
+  u?.rate_limited_until && Date.parse(u.rate_limited_until) > Date.now()
+    ? new Date(u.rate_limited_until)
+    : null;
+
+function remainingText(until: Date) {
+  const min = Math.max(1, Math.ceil((until.getTime() - Date.now()) / 60_000));
+  if (min >= 90) return `about ${Math.round(min / 60)} hours left`;
+  return `about ${min} ${min === 1 ? "minute" : "minutes"} left`;
 }
 
 function limitsText(u?: ModelUsage) {
@@ -234,6 +253,7 @@ function ModelRow({
   onMove: (d: "up" | "down") => void;
   onRemove: () => void;
 }) {
+  const until = limitedUntil(u);
   const fails = u ? u.failures.error + u.failures.timeout + u.failures.rate_limited : 0;
   return (
     <div className="model-row" role="row" data-testid={`model-${m.id}`}>
@@ -247,9 +267,18 @@ function ModelRow({
         <span className="mono small muted-3">{m.key_hint}</span>
       </div>
       <div className="model-cell" role="cell">
-        <StatusDot tone={m.status === "connected" ? "ready" : "failed"}>
-          {m.status === "connected" ? "Connected" : "Failing"}
-        </StatusDot>
+        {until ? (
+          <span title={`Rate limited by the provider, ${remainingText(until)}`}>
+            <StatusDot tone="processing">
+              Rate limited until{" "}
+              {until.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </StatusDot>
+          </span>
+        ) : (
+          <StatusDot tone={m.status === "connected" ? "ready" : "failed"}>
+            {m.status === "connected" ? "Connected" : "Failing"}
+          </StatusDot>
+        )}
       </div>
       <div className="model-cell small muted-3" role="cell">
         {u ? (

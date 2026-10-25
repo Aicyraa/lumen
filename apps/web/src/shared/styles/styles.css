@@ -1332,6 +1332,7 @@ label.btn:focus-within {
     order: 2;
     margin-top: 0;
   }
+  .try-grid.with-side,
   .try-grid,
   .split,
   .head-grid,

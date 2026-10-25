@@ -20,9 +20,8 @@ interface Attempt {
   endpoint_url?: string;
   api_key?: string;
 }
-type Handler = (
-  call: StubCall,
-) => { status: number; body: unknown } | Promise<{ status: number; body: unknown }>;
+type Out = { status: number; body: unknown; headers?: Record<string, string> };
+type Handler = (call: StubCall) => Out | Promise<Out>;
 
 export async function startRagStub(secret: string) {
   const calls: StubCall[] = [];
@@ -94,7 +93,10 @@ export async function startRagStub(secret: string) {
     };
     calls.push(call);
     const out = await handlers[name](call);
-    res.status(out.status).json(out.body);
+    res
+      .status(out.status)
+      .set(out.headers ?? {})
+      .json(out.body);
   };
   app.post("/internal/ingest", multer().single("file"), run("ingest"));
   app.post("/internal/query", express.json(), run("query"));

@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { TryIt } from "../../../src/features/try-it/TryIt";
@@ -148,5 +148,58 @@ describe("TryIt", () => {
       await screen.findByText(/Enrollment closes on 15 March/);
       expect(container.querySelector(".try-grid")).toHaveClass("with-side");
     });
+  });
+});
+
+describe("TryIt provider rate limit", () => {
+  const limited = (seconds: number) =>
+    reply(
+      429,
+      {
+        error: {
+          code: "provider_rate_limited",
+          message:
+            "The model provider is rate limiting this workspace. Try again in about 12 minutes.",
+          retry_after_seconds: seconds,
+        },
+      },
+      { "retry-after": String(seconds) },
+    );
+
+  it("shows the server message and a live countdown, then re-enables a hint at 0; Ask stays usable", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      mockFetch(() => limited(702));
+      renderWithProviders(<TryIt />);
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      await user.type(screen.getByLabelText("Question"), "hi{enter}");
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent("The model provider is rate limiting this workspace.");
+      expect(alert).toHaveTextContent("Try again in 11:42");
+      expect(screen.getByRole("button", { name: "Ask" })).toBeEnabled();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+      expect(screen.getByRole("alert")).toHaveTextContent("Try again in 11:40");
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(700_000);
+      });
+      expect(screen.getByRole("alert")).toHaveTextContent("You can try again now");
+      expect(screen.getByRole("alert")).not.toHaveTextContent(/Try again in \d/);
+      expect(screen.getByRole("button", { name: "Ask" })).toBeEnabled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the wording of other errors", async () => {
+    mockFetch(() =>
+      reply(502, { error: { code: "provider_error", message: "Every model failed." } }),
+    );
+    renderWithProviders(<TryIt />);
+    await userEvent.type(screen.getByLabelText("Question"), "hi{enter}");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Every model failed.");
+    expect(alert).not.toHaveTextContent(/try again/i);
   });
 });

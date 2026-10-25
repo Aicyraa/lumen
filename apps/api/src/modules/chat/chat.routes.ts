@@ -109,18 +109,27 @@ export function chatHandler(
       });
     } catch (err) {
       const failedId = randomUUID();
+      // The service's 429 is passed on only with a valid wait; otherwise it stays an ordinary provider failure.
+      const wait = err instanceof RagError ? err.retryAfterSeconds : undefined;
       const { attempts } = priceAttempts(
         err instanceof RagError ? err.attempts : [],
         known,
         config,
       );
       await insertLog(req, failedId, q, {
-        status: "provider_error",
+        status: wait ? "provider_rate_limited" : "provider_error",
         usage: { latency_ms: Date.now() - started },
       }).catch((e: Error) => log.error({ err: e.message }, "request_logs insert failed"));
       await book(failedId, attempts);
       log.warn({ code: (err as { code?: string }).code }, "chat failed");
       if (err instanceof ApiError) throw err;
+      if (wait)
+        throw new ApiError(
+          429,
+          "provider_rate_limited",
+          `The model provider is rate limiting this workspace. Try again in about ${Math.ceil(wait / 60)} ${wait <= 60 ? "minute" : "minutes"}.`,
+          wait,
+        );
       // Express's own messages: never relay text from the service, it may quote a provider's error.
       if (err instanceof RagError && err.code === "no_models_configured")
         throw new ApiError(

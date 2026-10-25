@@ -44,13 +44,30 @@ export class RagError extends Error {
   status: number;
   code: string;
   attempts: RawAttempt[]; // what the service tried before failing (internal)
-  constructor(status: number, code: string, message: string, attempts: RawAttempt[] = []) {
+  retryAfterSeconds?: number; // provider_rate_limited only, already validated
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    attempts: RawAttempt[] = [],
+    retryAfterSeconds?: number,
+  ) {
     super(message);
     this.status = status;
     this.code = code;
     this.attempts = attempts;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
+
+// A wait is a whole number of seconds from 1 to one day; anything else from the service is ignored.
+const MAX_RETRY_AFTER_SECONDS = 86_400;
+const validWait = (v: unknown) => {
+  const n = typeof v === "string" && /^\d{1,9}$/.test(v) ? Number(v) : v;
+  return typeof n === "number" && Number.isInteger(n) && n >= 1
+    ? Math.min(n, MAX_RETRY_AFTER_SECONDS)
+    : undefined;
+};
 
 export type RagClient = ReturnType<typeof createRagClient>;
 
@@ -76,7 +93,7 @@ export function createRagClient(
       throw new ApiError(502, "provider_error", `The answer service ${why}. Try again shortly.`);
     }
     const body = (await res.json().catch(() => null)) as {
-      error?: { code?: string; message?: string };
+      error?: { code?: string; message?: string; retry_after_seconds?: unknown };
       attempts?: RawAttempt[];
     } | null;
     if (!res.ok)
@@ -85,6 +102,9 @@ export function createRagClient(
         body?.error?.code ?? "rag_error",
         body?.error?.message ?? `rag service returned ${res.status}`,
         Array.isArray(body?.attempts) ? body.attempts : [],
+        res.status === 429 && body?.error?.code === "provider_rate_limited"
+          ? (validWait(body.error.retry_after_seconds) ?? validWait(res.headers.get("retry-after")))
+          : undefined,
       );
     return body as T;
   }

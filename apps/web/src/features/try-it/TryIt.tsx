@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
 import { ApiError, post } from "../../shared/lib/api";
+import { fmtCountdown, useCountdown } from "../../shared/lib/countdown";
 import { fmtScore } from "../../shared/lib/format";
 import type { TryResponse } from "../../shared/lib/types";
 import { RouteCard } from "../../shared/ui/RouteCard";
@@ -24,6 +25,19 @@ function Answer({ text }: { text: string }) {
         ),
       )}
     </>
+  );
+}
+
+// The server message plus a live countdown. A fixed min-height keeps the layout from jumping at 0.
+function RateLimitNotice({ message, seconds }: { message: string; seconds: number }) {
+  const left = useCountdown(seconds);
+  return (
+    <div role="alert" className="error-text" style={{ minHeight: "3em" }}>
+      <div>{message}</div>
+      <div className="mono" aria-live="off">
+        {left > 0 ? `Try again in ${fmtCountdown(left)}` : "You can try again now"}
+      </div>
+    </div>
   );
 }
 
@@ -77,18 +91,32 @@ export function TryIt() {
             Embedding, searching your documents, routing…
           </StatusMessage>
         )}
-        {err && (
-          <ErrorText>
-            {err instanceof ApiError && err.code === "no_models_configured" ? (
-              <>
-                No models are configured. Add a model in the{" "}
-                <Link to="/dashboard/models">Models tab</Link>.
-              </>
-            ) : (
-              err.message
-            )}
-          </ErrorText>
-        )}
+        {err instanceof ApiError &&
+          err.code === "provider_rate_limited" &&
+          err.retryAfterSeconds != null && (
+            <RateLimitNotice
+              key={ask.submittedAt}
+              message={err.message}
+              seconds={err.retryAfterSeconds}
+            />
+          )}
+        {err &&
+          !(
+            err instanceof ApiError &&
+            err.code === "provider_rate_limited" &&
+            err.retryAfterSeconds != null
+          ) && (
+            <ErrorText>
+              {err instanceof ApiError && err.code === "no_models_configured" ? (
+                <>
+                  No models are configured. Add a model in the{" "}
+                  <Link to="/dashboard/models">Models tab</Link>.
+                </>
+              ) : (
+                err.message
+              )}
+            </ErrorText>
+          )}
         {!r && !err && !ask.isPending && (
           <StatusMessage state="empty">
             Ask a question to see the answer, its route and its sources here.

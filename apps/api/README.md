@@ -47,6 +47,21 @@ host (cached for `endpointGuardCacheTtlMs`); a host that now resolves to a priva
 never sent, and the model is marked `failing`.
 Limits for this feature (attempt cap, stored rate-limit header cap, field lengths, Test & save token budget, response
 size cap, price ceiling) live in `config.json` and can be overridden by upper-snake env vars such as `MODEL_ATTEMPTS_MAX`.
+
+**Provider rate limits.** When every attempt of the chosen tier was rate limited, the Python service answers `429
+provider_rate_limited` (an attempt may carry `retry_after_seconds`). `/v1/chat` and `/try` then answer
+`429` with the header `Retry-After: <seconds>` and
+`{ "error": { "code": "provider_rate_limited", "message": "The model provider is rate limiting this workspace. Try again in about 2 minutes.", "retry_after_seconds": 120 } }`.
+The wait is read from the body, else the service's `Retry-After` header, and must be a whole number of seconds (capped at
+one day); if neither is valid the call stays `502 provider_error`. The message is always built by Express from that number,
+never relayed. The request is logged with `status: "provider_rate_limited"` (tier `null`, so Analytics counts it under
+`failed` and Requests shows it like a `provider_error`; it still counts toward the monthly allowance), its `model_calls`
+rows have outcome `rate_limited`, and the model's stored `rate_limits` keeps the `retry-after` header. Any other mix of
+failures stays `502 provider_error`.
+`GET /models/usage` (and Analytics `by_model`) add `rate_limited_until` per model: the ISO time
+`rate_limits_seen_at + rate_limits["retry-after"]` (seconds) while that is still in the future, else `null`
+(an HTTP-date `retry-after` also gives `null`).
+
 With no models: production answers `422 no_models_configured`, other environments let the Python service use its
 `LLM_*` default. The global LLM cap applies only to that shared default key.
 The schema is the numbered SQL in `infra/sql/` (`pnpm db:migrate` from the repo root applies the pending files to the dev database; tests apply every file to `lumen_test` themselves). Design and reasons: `docs/DATABASE.md`. Upgrading drops `request_logs.tokens_in`, `tokens_out` and `cost_usd` without carrying them over: requests that have no `model_calls` rows (logged before the table existed) show null tokens and cost afterwards. `pnpm --filter @lumen/api auth:migrate` also enables RLS on Better Auth's tables (`infra/sql/auth/001_auth_tables_rls.sql`). In short: every tenant table points at `tenants(id)` with `ON DELETE CASCADE`; a request's sources are `request_sources` rows; chunk counts and a request's tokens and cost are the views `document_stats` and `request_usage`, not stored columns.
@@ -83,7 +98,7 @@ provider failed, so `cheap + expensive + none + failed` is the day's total):
   "latency_ms": { "median": 300, "p95": 1140 },
   "total_cost_usd": 0.031,
   "by_model": [{ "id": "uuid", "tier": "cheap", "position": 0, "provider": "openai_compatible", "model_id": "m1", "status": "connected",
-                 "rate_limits": null, "rate_limits_seen_at": null, "requests": 4, "tokens_in": 300, "tokens_out": 30,
+                 "rate_limits": null, "rate_limits_seen_at": null, "rate_limited_until": null, "requests": 4, "tokens_in": 300, "tokens_out": 30,
                  "failures": { "error": 1, "timeout": 1, "rate_limited": 0 }, "backup_uses": 0,
                  "median_latency_ms": 200, "cost_usd": 0.003 }]
 }
@@ -114,7 +129,7 @@ without it. Latency covers answered requests only (`status = ok`). `per_day[].co
 `api_key` is `null` for Try it requests, a deleted key, or a key that is not this tenant's. A source whose chunk is gone
 (re-ingested) has `chunk_id: null`, its `filename` and `passage: null`; a source whose document is gone has `document_id: null`,
 `chunk_id: null` and `document_deleted: true` (show "deleted document"). Source ids that were not this tenant's documents or chunks
-when the request was logged are stored as unknown (`null`) the same way. Tokens and cost are the sum over the request's `model_calls`. Failed requests have `route.tier: null` and `status: "provider_error"`.
+when the request was logged are stored as unknown (`null`) the same way. Tokens and cost are the sum over the request's `model_calls`. Failed requests have `route.tier: null` and `status: "provider_error"` or `"provider_rate_limited"`.
 
 Config keys added to `config.json` (each can be overridden by an upper-snake env var, e.g. `UNANSWERED_SCORE_BELOW`):
 `passageMaxChars` (300), `unansweredScoreBelow` (0.3, the same value as the Python router's `weak_score`),

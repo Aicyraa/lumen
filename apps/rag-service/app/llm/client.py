@@ -1,4 +1,5 @@
 import math
+import re
 import time
 from dataclasses import dataclass
 
@@ -23,6 +24,7 @@ class Attempt:
     latency_ms: int | None = None
     rate_limits: dict | None = None
     reported_cost_usd: float | None = None
+    retry_after_seconds: int | None = None  # 429 only: how long the provider says to wait
     text: str | None = None
 
     def public(self) -> dict:
@@ -43,6 +45,37 @@ def _rate_limit_headers(headers, cfg: dict) -> dict | None:
         if "ratelimit" in low.replace("-", "") or low == "retry-after":
             found[low] = str(value)[: cfg["max_header_value_chars"]]
     return dict(list(found.items())[: cfg["max_rate_limit_headers"]]) or None
+
+
+_DURATION = re.compile(r"(\d+(?:\.\d+)?)(ms|h|m|s)")
+_UNIT_SECONDS = {"ms": 0.001, "s": 1, "m": 60, "h": 3600}
+
+
+def _duration_seconds(text: str) -> float | None:
+    """'855', '2.5' or a Groq style '1h2m8.4s' / '250ms' as seconds; None when it is neither."""
+    text = text.strip()
+    try:
+        value = float(text)
+    except ValueError:
+        parts = _DURATION.findall(text)
+        if not parts or "".join(n + u for n, u in parts) != text:  # whole string must be parts
+            return None
+        value = sum(float(n) * _UNIT_SECONDS[u] for n, u in parts)
+    return value if math.isfinite(value) and value >= 0 else None
+
+
+def wait_seconds(headers) -> int | None:
+    """Whole seconds (rounded up) the provider asks us to wait: retry-after, else the slowest
+    x-ratelimit-reset-* header; None when no header gives a usable number."""
+    waits = [_duration_seconds(headers.get("retry-after", ""))]
+    if waits[0] is None:
+        waits = [
+            _duration_seconds(v)
+            for k, v in headers.items()
+            if k.lower().startswith("x-ratelimit-reset")
+        ]
+    waits = [w for w in waits if w is not None]
+    return math.ceil(max(waits)) if waits else None
 
 
 def _reported_cost(usage) -> float | None:
@@ -102,12 +135,17 @@ def call_model(m: dict, tier: str, system: str, user: str, cfg: dict, production
                 break
             except openai.RateLimitError as e:
                 headers = e.response.headers
-                if attempt_no == 2:
-                    a.outcome = "rate_limited"
+                wait = a.retry_after_seconds = wait_seconds(headers)
+                if attempt_no == 2 or (
+                    wait is not None and wait > cfg["rate_limit_max_wait_seconds"]
+                ):
+                    a.outcome = (
+                        "rate_limited"  # a long wait is not worth sleeping: let the caller move on
+                    )
                     return a
                 time.sleep(
-                    cfg["rate_limit_retry_seconds"]
-                )  # free tiers are tight: wait, then try once more
+                    cfg["rate_limit_retry_seconds"] if wait is None else wait
+                )  # short wait: sleep it, then try once more
         resp = raw.parse()
         a.text = resp.choices[0].message.content or ""
         a.tokens_in = resp.usage.prompt_tokens if resp.usage else 0  # never estimated

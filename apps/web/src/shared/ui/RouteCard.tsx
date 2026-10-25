@@ -2,8 +2,10 @@ import { fmtScore, routeWhy, tierLabel } from "../lib/format";
 
 export function RouteCard({
   route,
+  status,
   big = false,
 }: {
+  status?: string;
   route: {
     tier: string | null;
     k: number | null;
@@ -19,9 +21,9 @@ export function RouteCard({
       <div
         className={`route-tier ${big ? "big" : ""} ${route.tier === "expensive" ? "lime" : route.tier === "none" ? "muted-2" : ""}`}
       >
-        {tierLabel(route.tier)}
+        {tierLabel(route.tier, status)}
       </div>
-      <div className="small muted-2">{routeWhy(route)}</div>
+      <div className="small muted-2">{routeWhy({ ...route, status })}</div>
       <dl className="kv">
         <div>
           <dt>K</dt>

@@ -35,6 +35,9 @@ describe("text contrast (small text must reach 4.5:1)", () => {
 
 describe("Try it layout", () => {
   const css = readFileSync("src/shared/styles/styles.css", "utf8");
+  it("stacks the answer and the side cards on narrow screens (the with-side rule is outranked otherwise)", () => {
+    expect(css).toMatch(/\.try-grid\.with-side,[^{]*\{[^}]*grid-template-columns:\s*1fr/);
+  });
   it("is centred in the content area within a comfortable max width", () => {
     expect(css).toMatch(/\.try-grid\s*\{[^}]*max-width:\s*\d+px[^}]*margin-inline:\s*auto/);
   });

@@ -172,3 +172,40 @@ describe("Requests", () => {
     });
   });
 });
+
+describe("Requests provider rate limit", () => {
+  const limitedRow = item("rl", "throttled", null, {
+    status: "provider_rate_limited",
+    cost_usd: null,
+  });
+  it("labels a provider_rate_limited request 'rate limited' in the list, not 'failed'", async () => {
+    mockFetch(() => ({
+      items: [limitedRow, item("f", "broke", null, { status: "provider_error", cost_usd: null })],
+      next_cursor: null,
+    }));
+    renderWithProviders(<Requests />);
+    await screen.findByText("throttled");
+    expect(screen.getByText("rate limited")).toBeInTheDocument();
+    expect(screen.getAllByText("failed")).toHaveLength(1);
+  });
+
+  it("says 'Rate limited' in the detail drawer", async () => {
+    mockFetch((url) =>
+      url.includes("/requests/rl")
+        ? {
+            ...detail,
+            id: "rl",
+            status: "provider_rate_limited",
+            route: { tier: null, k: null, escalated: null, difficulty: null, top_score: null },
+            sources: [],
+          }
+        : { items: [limitedRow], next_cursor: null },
+    );
+    renderWithProviders(<Requests />);
+    await userEvent.click(await screen.findByRole("button", { name: /throttled/ }));
+    const dlg = await screen.findByRole("dialog");
+    expect(await within(dlg).findByText("Rate limited")).toBeInTheDocument();
+    expect(within(dlg).getByText(/rate limiting this workspace/)).toBeInTheDocument();
+    expect(within(dlg).queryByText("Failed")).not.toBeInTheDocument();
+  });
+});

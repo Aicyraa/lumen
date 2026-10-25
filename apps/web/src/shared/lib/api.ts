@@ -4,12 +4,19 @@ export class ApiError extends Error {
     public status: number,
     public code: string,
     message: string,
+    public retryAfterSeconds?: number,
   ) {
     super(message);
   }
 }
 
 import { apiBase } from "./config";
+
+// Whole seconds only (an HTTP-date Retry-After is ignored).
+const wholeSeconds = (v: unknown) => {
+  const n = typeof v === "string" && /^\d+$/.test(v) ? Number(v) : v;
+  return typeof n === "number" && Number.isInteger(n) && n >= 0 ? n : undefined;
+};
 
 export async function api<T = void>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
@@ -30,6 +37,8 @@ export async function api<T = void>(path: string, init: RequestInit = {}): Promi
       res.status,
       body?.error?.code ?? "error",
       body?.error?.message ?? `Request failed (${res.status}).`,
+      wholeSeconds(body?.error?.retry_after_seconds) ??
+        wholeSeconds(res.headers.get("retry-after")),
     );
   return body as T;
 }

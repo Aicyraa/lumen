@@ -54,6 +54,7 @@ export interface ModelUsage {
   status: "connected" | "failing";
   rate_limits: Record<string, unknown> | null;
   rate_limits_seen_at: string | null;
+  rate_limited_until: string | null;
   requests: number;
   tokens_in: number;
   tokens_out: number;
