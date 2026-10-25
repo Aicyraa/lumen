@@ -1,0 +1,41 @@
+{
+  "name": "@lumen/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "NODE_ENV=${NODE_ENV:-development} tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "test": "tsc -b && vitest run",
+    "typecheck": "tsc -b",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "clean": "rm -rf node_modules/.cache",
+    "auth:migrate": "tsx scripts/migrate.ts"
+  },
+  "dependencies": {
+    "@better-auth/api-key": "^1.7.12",
+    "better-auth": "^1.7.12",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "multer": "^2.4.0",
+    "nodemailer": "^10.2.1",
+    "pg": "^8.23.1",
+    "pino": "^10.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.3.0",
+    "@types/node": "^26.6.5",
+    "@types/nodemailer": "^8.0.2",
+    "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.3.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

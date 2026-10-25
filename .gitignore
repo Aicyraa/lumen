@@ -7,10 +7,22 @@ node_modules/
 __pycache__/
 *.pyc
 uploads/
-
+apps/rag-service/app/models/
+docs/
 # Per-worktree generated navigation output
 graphify-out/
 .serena/logs/
 
 # Disposable setup probes; do not commit
 setup-smoke/
+
+# Turborepo
+.turbo/
+
+# Evaluation tool run outputs (tools/eval/.env is covered by .env above)
+tools/eval/results.csv
+tools/eval/verdicts.csv
+tools/eval/.eval_state.json
+tools/eval/review-run/
+tools/eval/.pytest_cache/
+tools/eval/.ruff_cache/

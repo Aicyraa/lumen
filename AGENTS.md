@@ -1,9 +1,33 @@
 # Lumen project instructions
 
-Read `AI build brief.md` fully before application work. It is the authoritative
+Read `docs/AI_BUILD_BRIEF.md` fully before application work. It is the authoritative
 product brief, including hard rules, stack, contracts, phase boundaries, and
-acceptance checks. Read `Project workflow.md` for supporting workflow context;
-the build brief wins if they disagree. Do not start a build phase unless asked.
+acceptance checks. Read `docs/PROJECT_WORKFLOW.md` for supporting workflow context
+`docs/WEBSITE_GUIDE.md` for what each page and tab does, and `docs/DESIGN.md` before building any screen; the build brief wins if they
+disagree. Do not start a build phase unless asked.
+
+## Money comes last
+
+Lumen has no pricing of its own: no Lumen prices, savings figures, calculator,
+pricing page or pricing copy anywhere, and `config.yaml` has no prices (Phase 7,
+Lumen pricing, is on hold: reconsidering). The one exception, decided 2026-10-23:
+the tenant's own provider spend. A tenant may enter the input and output price per
+1M tokens of each of their own models in the Models tab; Lumen then stores and shows
+an estimated provider cost per request, per model and in total, always labelled
+"estimated provider cost" (a provider-reported cost is used when its response has
+one). Those prices live in the database per tenant model, never in code or config.
+Token counts, latency, and request, document and rate limits stay in scope, read
+from environment variables.
+
+## Agent team
+
+The main session is the lead. Run a phase with the `lumen-phase` skill (for
+example "run phase 1"). It delegates to the project agents in `.claude/agents/`:
+`rag-engineer` (apps/rag-service), `api-engineer` (apps/api), `web-engineer` (apps/web),
+`eval-engineer` (tools/eval) and the read-only `lumen-reviewer`. The lead
+verifies acceptance checks itself and never merges or pushes without approval.
+The team works test-first: a failing test is committed (`test:`) and shown red
+before the code that makes it pass (`feat:` or `fix:`).
 
 ## Coding workflow
 
@@ -18,6 +42,32 @@ the build brief wins if they disagree. Do not start a build phase unless asked.
   output or a stateful Serena server across different worktrees.
 - A review does not authorize merge. Never merge without the user's approval.
 - Report behavior changes, checks actually run, and anything still unverified.
+
+## Available tools
+
+Use the connected tools instead of guessing or relying on memory. Prefer them
+over generic search or shell when they fit.
+
+- **Context7**: before writing or changing code that uses a library, framework,
+  SDK, API, or CLI, fetch current docs (`resolve-library-id`, then
+  `query-docs`). Do this even for well-known libraries; versions drift.
+- **Serena**: call `initial_instructions` first. Use it for symbol lookup,
+  references, and symbol-level edits and renames instead of grep and manual
+  edits.
+- **Graphify**: see the graphify section below. Query before grepping.
+- **Ponytail**: apply to every coding task (smallest complete change, reuse
+  existing helpers).
+- **Vercel MCP**: deployments, build and runtime logs, env vars, domains, and
+  project settings. Inspect build logs for failed deploys and runtime errors
+  for production issues. Never print secrets.
+- **Supabase MCP**: inspect tables, advisors, and logs before schema changes;
+  apply schema changes as migrations, not ad-hoc SQL. Load the `supabase` and
+  `supabase-postgres-best-practices` skills before database, auth, or RLS work.
+  Run security advisors after DDL changes.
+- Confirm with the user before destructive or outward-facing actions on
+  external services (deleting projects or branches, production deploys,
+  rollbacks, migrations against production data).
+- If a tool is unavailable or errors, say so and fall back to native tools.
 
 ## Setup-only verification
 

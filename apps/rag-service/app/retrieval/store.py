@@ -1,0 +1,171 @@
+import numpy as np
+
+from app.core.config import load_config
+from app.retrieval.db import connection as _connect
+
+
+class DocumentMissing(LookupError):
+    """The tenant has no such document."""
+
+
+class DocumentNotIngestable(RuntimeError):
+    """The document was marked failed (for example the ingest timed out); its chunks must not be saved."""
+
+
+def ensure_tenant(tenant_id: str) -> None:
+    """Create the tenants row if missing. Only the local CLI calls this; in production the API inserts it first."""
+    with _connect() as conn:
+        conn.execute("INSERT INTO tenants (id) VALUES (%s) ON CONFLICT DO NOTHING", (tenant_id,))
+
+
+def add_document(tenant_id: str, filename: str) -> str:
+    with _connect() as conn:  # the with-block commits on success
+        row = conn.execute(
+            "INSERT INTO documents (tenant_id, filename) VALUES (%s, %s) RETURNING id",
+            (tenant_id, filename),
+        ).fetchone()
+    return str(row[0])
+
+
+def document_status(tenant_id: str, document_id: str) -> str | None:
+    """The document's status, or None when this tenant has no such document."""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT status FROM documents WHERE id = %s AND tenant_id = %s",
+            (document_id, tenant_id),
+        ).fetchone()
+    return row[0] if row else None
+
+
+def add_chunks(tenant_id: str, document_id: str, chunks: list[str], vectors: np.ndarray) -> None:
+    # one transaction: a failure leaves no chunks. The composite FK rejects a document of another tenant.
+    with _connect() as conn:
+        # FOR SHARE: a concurrent "mark failed" waits for this commit, so no chunk lands on a failed document
+        row = conn.execute(
+            "SELECT status FROM documents WHERE id = %s AND tenant_id = %s FOR SHARE",
+            (document_id, tenant_id),
+        ).fetchone()
+        if row is None:
+            raise DocumentMissing(document_id)
+        if row[0] == "failed":
+            raise DocumentNotIngestable(document_id)
+        # re-ingesting the same document replaces its chunks instead of appending duplicates
+        conn.execute(
+            "DELETE FROM chunks WHERE tenant_id = %s AND document_id = %s", (tenant_id, document_id)
+        )
+        with conn.cursor() as cur:
+            cur.executemany(
+                "INSERT INTO chunks (tenant_id, document_id, content, embedding) VALUES (%s, %s, %s, %s)",
+                [(tenant_id, document_id, text, vec) for text, vec in zip(chunks, vectors)],
+            )
+
+
+def keyword_search(
+    tenant_id: str, query_vector: np.ndarray, query_text: str, k: int
+) -> list[tuple[int, str, str, float, float]]:
+    """Tenant-local BM25 hits, with cosine and BM25 scores kept separate."""
+    cfg = load_config()["retrieval"]
+    with _connect() as conn:
+        # shortcut: lengths and corpus size still scan the tenant's tsv column (ids and term stats only, no
+        # content or embeddings); term frequencies come from the chunks the GIN index says match the query.
+        rows = conn.execute(
+            """
+            WITH q AS (
+                SELECT tsvector_to_array(to_tsvector('english', %(query)s)) AS lexemes
+            ), qt AS (  -- lexemes are already stemmed, so 'simple' only builds the OR query
+                SELECT to_tsquery('simple', string_agg(quote_literal(l), ' | ')) AS tsq
+                FROM q CROSS JOIN LATERAL unnest(q.lexemes) l
+            ), stats AS (  -- average length = all term occurrences / chunk count, in one pass over the tsv column
+                SELECT count(*)::double precision AS n,
+                       (SELECT coalesce(sum(cardinality(t.positions)), 0)
+                        FROM chunks c2 CROSS JOIN LATERAL unnest(c2.tsv) t
+                        WHERE c2.tenant_id = %(tenant)s)::double precision / nullif(count(*), 0) AS avg_length
+                FROM chunks WHERE tenant_id = %(tenant)s
+            ), terms AS MATERIALIZED (
+                SELECT id, lexeme, tf, length FROM (
+                    SELECT c.id, t.lexeme, cardinality(t.positions)::double precision AS tf,
+                           sum(cardinality(t.positions)) OVER (PARTITION BY c.id)::double precision AS length
+                    FROM chunks c CROSS JOIN LATERAL unnest(c.tsv) t
+                    WHERE c.tenant_id = %(tenant)s AND c.tsv @@ (SELECT tsq FROM qt)
+                ) m WHERE lexeme = ANY(tsvector_to_array(to_tsvector('english', %(query)s)))
+            ), frequencies AS (
+                SELECT lexeme, count(*)::double precision AS n FROM terms GROUP BY lexeme
+            ), ranked AS (
+                SELECT t.id, sum(
+                    ln(1 + (s.n - f.n + 0.5) / (f.n + 0.5)) *
+                    (t.tf * (%(k1)s + 1)) /
+                    (t.tf + %(k1)s * (1 - %(b)s + %(b)s * t.length / nullif(s.avg_length, 0)))
+                ) AS bm25
+                FROM terms t JOIN frequencies f ON f.lexeme = t.lexeme CROSS JOIN stats s GROUP BY t.id
+            )
+            SELECT c.id, c.document_id, c.content, 1 - (c.embedding <=> %(vector)s), r.bm25
+            FROM ranked r JOIN chunks c ON c.id = r.id AND c.tenant_id = %(tenant)s
+            ORDER BY r.bm25 DESC, c.id LIMIT %(k)s
+            """,
+            {
+                "tenant": tenant_id,
+                "query": query_text,
+                "vector": query_vector,
+                "k": k,
+                "k1": cfg["bm25_k1"],
+                "b": cfg["bm25_b"],
+            },
+        ).fetchall()
+    return [(r[0], str(r[1]), r[2], float(r[3]), float(r[4])) for r in rows]
+
+
+def dense_search(
+    tenant_id: str, query_vector: np.ndarray, k: int
+) -> list[tuple[int, str, str, float]]:
+    """Top-k tenant chunks by cosine similarity (id, document_id, content, score)."""
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT id, document_id, content, 1 - (embedding <=> %s) AS score FROM chunks"
+            " WHERE tenant_id = %s ORDER BY embedding <=> %s, id LIMIT %s",
+            (query_vector, tenant_id, query_vector, k),
+        ).fetchall()
+    return [(r[0], str(r[1]), r[2], float(r[3])) for r in rows]
+
+
+def search(
+    tenant_id: str, query_vector: np.ndarray, k: int, *, query_text: str = "", dense=None
+) -> list[tuple[int, str, str, float]]:
+    """Top-k tenant chunks; BM25/vector rank fusion preserves exposed cosine scores.
+    `dense` is an earlier dense_search result for the same query (at least candidate_limit long); it is reused."""
+    if not query_text.strip():
+        return dense_search(tenant_id, query_vector, k)
+    cfg = load_config()["retrieval"]
+    limit = max(k, cfg["candidate_limit"])
+    dense = dense_search(tenant_id, query_vector, limit) if dense is None else dense[:limit]
+    sparse = keyword_search(tenant_id, query_vector, query_text, limit)
+    hits, ranks = {}, {}
+    for ranking in (dense, sparse):
+        for rank, hit in enumerate(ranking, 1):
+            hits[hit[0]] = hit[:4]
+            ranks[hit[0]] = ranks.get(hit[0], 0) + 1 / (cfg["rrf_rank_constant"] + rank)
+    return sorted(hits.values(), key=lambda h: (-ranks[h[0]], -h[3], h[0]))[:k]
+
+
+def delete_document(tenant_id: str, document_id: str) -> int:
+    """Delete a document (its chunks go via ON DELETE CASCADE). Returns how many chunks were removed."""
+    with _connect() as conn:
+        count = conn.execute(
+            "SELECT count(*) FROM chunks WHERE tenant_id = %s AND document_id = %s",
+            (tenant_id, document_id),
+        ).fetchone()[0]
+        conn.execute(
+            "DELETE FROM documents WHERE tenant_id = %s AND id = %s", (tenant_id, document_id)
+        )
+    return count
+
+
+def filenames(tenant_id: str, document_ids: list[str]) -> dict[str, str]:
+    """Filenames of this tenant's documents, {document_id: filename}; other tenants' ids are simply absent."""
+    if not document_ids:
+        return {}
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT id, filename FROM documents WHERE tenant_id = %s AND id = ANY(%s::uuid[])",
+            (tenant_id, document_ids),
+        ).fetchall()
+    return {str(r[0]): r[1] for r in rows}

@@ -1,0 +1,63 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "tasks": {
+    "@lumen/rag-service#build": {
+      "cache": false,
+      "passThroughEnv": ["HF_HOME", "HF_HUB_OFFLINE"]
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "src/**",
+        "index.html",
+        "vite.config.ts",
+        "tsconfig*.json",
+        "package.json",
+        "../../tsconfig.base.json"
+      ],
+      "outputs": ["dist/**"]
+    },
+    "typecheck": {
+      "inputs": [
+        "src/**",
+        "test/**",
+        "scripts/**",
+        "tsconfig*.json",
+        "vite.config.ts",
+        "vitest.config.ts",
+        "app/**",
+        "tests/**",
+        "pyproject.toml",
+        "../../tsconfig.base.json"
+      ]
+    },
+    "lint": {
+      "inputs": [
+        "src/**",
+        "test/**",
+        "scripts/**",
+        "app/**",
+        "tests/**",
+        "biome.json",
+        "pyproject.toml",
+        "../../biome.json"
+      ]
+    },
+    "format": {
+      "cache": false
+    },
+    "test": {
+      "cache": false
+    },
+    "bootstrap": {
+      "cache": false
+    },
+    "clean": {
+      "cache": false
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}
