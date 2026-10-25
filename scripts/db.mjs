@@ -1,5 +1,5 @@
 // pnpm db:up | db:down | db:psql | db:migrate | db:status
-// Local development database: pgvector in a Podman or Docker container (port 5433). Reads infra/.env.
+// Local development database: pgvector in a Podman or Docker container (127.0.0.1:5433 only). Reads infra/.env.
 // Migrations: every infra/sql/NNN_*.sql in order, each applied once (recorded in schema_migrations).
 import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
@@ -19,7 +19,7 @@ function up() {
   if (spawnSync(engine, ["start", NAME], { stdio: "ignore" }).status === 0) return console.log(`${NAME} started`);
   if (!infra.POSTGRES_PASSWORD) { console.error("Set POSTGRES_PASSWORD in infra/.env (pnpm env:init)."); process.exit(1); }
   run(["volume", "create", "lumen_db_data"], { stdio: "ignore" });
-  const r = run(["run", "-d", "--name", NAME, "-p", "5433:5432", "-e", `POSTGRES_PASSWORD=${infra.POSTGRES_PASSWORD}`, "-e", "POSTGRES_DB=lumen", "-v", "lumen_db_data:/var/lib/postgresql/data", "docker.io/pgvector/pgvector:pg16"]);
+  const r = run(["run", "-d", "--name", NAME, "-p", "127.0.0.1:5433:5432", "-e", `POSTGRES_PASSWORD=${infra.POSTGRES_PASSWORD}`, "-e", "POSTGRES_DB=lumen", "-v", "lumen_db_data:/var/lib/postgresql/data", "docker.io/pgvector/pgvector:pg16"]);
   process.exit(r.status ?? 1);
 }
 const down = () => { need(); process.exit(run(["stop", NAME]).status ?? 1); };
@@ -38,6 +38,8 @@ const files = () => readdirSync(join(ROOT, "infra/sql")).filter((f) => /^\d+_.*\
 async function migrate(statusOnly = false) {
   const c = await client();
   try {
+    // Session lock: a second `pnpm db:migrate` waits here until the first has finished, then finds nothing to do.
+    await c.query("SELECT pg_advisory_lock(hashtext('lumen:migrate'))");
     await c.query("CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())");
     const done = new Set((await c.query("SELECT name FROM schema_migrations")).rows.map((r) => r.name));
     // Databases created before this tracker: record a file as applied only when what it creates already exists
