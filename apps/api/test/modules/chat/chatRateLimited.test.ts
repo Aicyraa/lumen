@@ -173,7 +173,7 @@ describe("rate_limited_until on GET /api/dashboard/models/usage", () => {
   it("is retry-after after rate_limits_seen_at while still in the future, else null", async () => {
     const future = await ctx.seedModel(a, "cheap", "future");
     const past = await ctx.seedModel(a, "cheap", "past");
-    const none = await ctx.seedModel(a, "cheap", "none");
+    await ctx.seedModel(a, "cheap", "none");
     const noHeader = await ctx.seedModel(a, "cheap", "noHeader");
     const junk = await ctx.seedModel(a, "cheap", "junk");
     await set(future, { "retry-after": "120" }, "20 seconds");
