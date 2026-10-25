@@ -23,6 +23,7 @@ export function ProjectShell() {
   const [retry, setRetry] = useState(0);
   const mismatch = useProjectMismatch();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `retry` is the Retry button's trigger, not a value the effect reads
   useEffect(() => {
     if (!project) return;
     if (s.orgId === project.id) {

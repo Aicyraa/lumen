@@ -59,6 +59,7 @@ export function CountUp({
   const [ref, seen] = useInViewOnce<HTMLSpanElement>();
   const [shown, setShown] = useState(reduce ? value : 0);
   const first = useRef(true);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `shown` is only the animation start; re-running on every frame would restart it
   useEffect(() => {
     if (reduce || !Number.isFinite(value)) {
       setShown(value);
@@ -72,7 +73,6 @@ export function CountUp({
     });
     first.current = false;
     return () => c.stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, reduce, seen]);
   return <span ref={ref}>{format(reduce ? value : shown)}</span>;
 }

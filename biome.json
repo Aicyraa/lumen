@@ -32,7 +32,7 @@
       "includes": ["apps/web/**"],
       "linter": {
         "rules": {
-          "correctness": { "useExhaustiveDependencies": "off" },
+          "correctness": { "useExhaustiveDependencies": "warn" },
           "suspicious": { "noArrayIndexKey": "off" },
           "a11y": {
             "useSemanticElements": "off",

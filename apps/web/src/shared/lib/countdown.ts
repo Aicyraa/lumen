@@ -1,20 +1,22 @@
 import { useEffect, useState } from "react";
 
+const secondsLeft = (deadline: number) =>
+  Math.max(0, Math.ceil((deadline - performance.now()) / 1000));
+
 // Seconds left until a deadline measured on the monotonic clock (performance.now), so a changed
 // system clock cannot stretch or cut the wait. Counts down once per second and stops at 0.
 export function useCountdown(seconds: number): number {
   const [deadline] = useState(() => performance.now() + seconds * 1000);
-  const left = () => Math.max(0, Math.ceil((deadline - performance.now()) / 1000));
-  const [remaining, setRemaining] = useState(left);
+  const [remaining, setRemaining] = useState(() => secondsLeft(deadline));
   useEffect(() => {
-    if (remaining <= 0) return;
+    if (secondsLeft(deadline) <= 0) return;
     const t = setInterval(() => {
-      const n = left();
+      const n = secondsLeft(deadline);
       setRemaining(n);
       if (n <= 0) clearInterval(t);
     }, 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [deadline]);
   return remaining;
 }
 
