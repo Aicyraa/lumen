@@ -123,3 +123,11 @@ browser, and leaks that need data volumes (it uses six tiny documents; the reran
   `random.Random(f"{SEED}:{type}")` where `SEED = 20261024`, keep the first N: 3 easy, 3 hard, 2 multi-document,
   2 unanswerable (10 of 43). Code: `evalkit/heldout.py`; a test checks that `questions.csv` matches the rule.
   `cheap_ok` and `expensive_ok` stay empty (Phase 6).
+
+## Completed preserved rerun (2026-10-26)
+
+The revised-reference Groq-only comparison completed all 129 cases. See [RESULTS_REVIEW_RUN.md](RESULTS_REVIEW_RUN.md)
+for results and limitations. Raw outputs are in git-ignored `review-run/`; the original default outputs remain preserved.
+This run uses its original frozen pipeline and resume keys. It does not validate the later audit changes. One output
+validation failure is a completed failed test, not an unfinished case. References and disputed judge calls still need
+human approval; Phase 6 was not started.

@@ -1,5 +1,8 @@
 # Preliminary evaluation results (eval-run-1, final pass)
 
+The completed revised-reference rerun is in [RESULTS_REVIEW_RUN.md](RESULTS_REVIEW_RUN.md). This file preserves the
+original run; its numbers are not the revised-reference results.
+
 Historical first-run report. The 2026-10-25 source and verdict review is in
 [`EVALUATION_REVIEW.md`](EVALUATION_REVIEW.md), including corrections to the judge's award-combination explanations,
 the relative-date question, and the rerun status. The tables below describe the original run, not the revised dataset.

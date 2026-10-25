@@ -1,5 +1,10 @@
 # Evaluation review — 2026-10-25
 
+**Completion update, 2026-10-26:** the preserved Groq-only rerun finished all 129 cases after the user supplied a key
+from a different account. Raw scores: cheap 38/43, expensive 36/43, router 35/43; all three 9/10 held-out. All 27 not-found
+replies had zero sources. One router case failed output validation. The final results, cost methodology and limitations
+are in [RESULTS_REVIEW_RUN.md](RESULTS_REVIEW_RUN.md). The timestamped checkpoints below are historical.
+
 The original arithmetic is correct, but the results remain preliminary. All 43 references were checked against the
 eight PDFs (22 pages) in `/home/jee/Downloads`, and all 26 flagged verdicts plus all 22 incorrect verdicts were read
 using the **full answers** in the saved state, not the 300-character excerpts. This is agent review, not human approval.
@@ -190,3 +195,21 @@ records keep the original harness's accounting; the reported estimate is not a p
 The remaining 49 cheap-tier requests remain queued. `review-run/progress.json` records the latest completed count and
 retry deadlines, and `review-run/.eval_state.json` contains the saved answers. This timestamped checkpoint may lag the
 active job. Do not launch the original sequential runner concurrently against the same state file.
+
+At 11:31 UTC, the continuing Groq queue had saved **84/129** (cheap 18/43, expensive 43/43, rules 23/43), still with no
+recorded system/judge errors. New answer review is recorded in `review-run/JUDGE_REVIEW.md`. It identifies a false-negative
+judge verdict on the router's correct unapproved-12-unit renewal answer, plus a real expensive-model error inventing an
+exclusion of Discovery teams from extended lab hours. Raw verdicts were preserved; no prompt, reference or routing
+changes were made from these observed outputs.
+
+At approximately 15:06 UTC, the continuing run had **101/129** saved. One pending exchange-pathways request had twice
+generated a response but encountered quota during validation repair. Continuation now increases the repair cooldown
+so a whole request can finish, retains those charged attempts, and has passed the queue self-checks.
+
+The repository was updated while the process was running, including a new resume-key version and RAG changes. To
+preserve this experiment, the application/harness source is now frozen at **`3ce51ee`**, with the original revised
+questions. All 101 saved keys and the provider/model/judge/price settings were verified against it. Model weights are
+shared read-only; credentials remain in the environment. The active run therefore evaluates the **original pipeline**,
+including the sources fix, rather than the later audit changes. The updated product needs a separate future evaluation.
+See `review-run/README.md` for the current continuation procedure; the earlier generic CLI command is superseded for
+this historical state.
