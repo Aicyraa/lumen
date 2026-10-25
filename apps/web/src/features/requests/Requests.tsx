@@ -113,24 +113,29 @@ function Row({ r, onOpen }: { r: RequestRow; onOpen: () => void }) {
   const label = r.tier ?? (r.status === RATE_LIMITED ? "rate limited" : "failed");
   return (
     <div className="tr-wrap" role="row">
-      <button
-        type="button"
-        className="tr req-cols row-btn"
-        onClick={onOpen}
-        aria-haspopup="dialog"
-        aria-label={`${r.query} — open details`}
-      >
-        <span className="mono small muted-3">{fmtTime(r.time)}</span>
-        <span className="ellipsis">{r.query}</span>
-        <StatusDot tone={tierTone(r.tier)}>{label}</StatusDot>
-        <span className="mono muted-2">{r.k ?? "—"}</span>
-        <span className="mono muted-2">
-          {r.tier === "none" || (r.tier === null && r.cost_usd === null)
-            ? "—"
-            : fmtCost(r.cost_usd)}
-        </span>
-        <span className="mono muted-2">{fmtMs(r.latency_ms)}</span>
-      </button>
+      <div role="cell">
+        <button
+          type="button"
+          className="tr req-cols row-btn"
+          onClick={(e) => {
+            e.currentTarget.focus(); // Safari does not focus a clicked button; the drawer returns focus here on close
+            onOpen();
+          }}
+          aria-haspopup="dialog"
+          aria-label={`${r.query} — open details`}
+        >
+          <span className="mono small muted-3">{fmtTime(r.time)}</span>
+          <span className="ellipsis">{r.query}</span>
+          <StatusDot tone={tierTone(r.tier)}>{label}</StatusDot>
+          <span className="mono muted-2">{r.k ?? "—"}</span>
+          <span className="mono muted-2">
+            {r.tier === "none" || (r.tier === null && r.cost_usd === null)
+              ? "—"
+              : fmtCost(r.cost_usd)}
+          </span>
+          <span className="mono muted-2">{fmtMs(r.latency_ms)}</span>
+        </button>
+      </div>
     </div>
   );
 }
