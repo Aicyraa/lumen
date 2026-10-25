@@ -2,7 +2,15 @@ embedding:
   model: all-MiniLM-L6-v2   # 384 numbers; changing it means changing VECTOR(384) and re-embedding
   revision: 1110a243fdf4706b3f48f1d95db1a4f5529b4d41
 
+concurrency:
+  embed_max: 2              # simultaneous embedding calls per process (CPU bound)
+  rerank_max: 2             # simultaneous reranker calls per process
+  ingest_max: 1             # simultaneous uploads being embedded; smaller than embed_max so queries are not starved
+  ingest_wait_seconds: 10   # an upload waits this long for a slot, then gets 503 busy
+  retry_after_seconds: 5    # Retry-After on 503 busy
+
 database:
+  ready_timeout_seconds: 2   # /internal/ready waits this long for a database connection
   pool_min_size: 1
   pool_max_size: 10
   pool_timeout_seconds: 10       # wait for a free connection; then the request fails with 503 busy

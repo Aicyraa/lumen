@@ -30,3 +30,11 @@ def rerank(query: str, hits: list, k: int) -> list:
     except (OSError, RuntimeError, ValueError):
         log.warning("reranker unavailable; using fused retrieval order")
         return hits[:k]
+
+
+def load() -> None:  # stub for the red run
+    pass
+
+
+def is_loaded() -> bool:  # stub for the red run
+    return False
