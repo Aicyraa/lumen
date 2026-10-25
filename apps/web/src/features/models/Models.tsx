@@ -11,6 +11,7 @@ import type {
   Range,
   TenantModel,
 } from "../../shared/lib/types";
+import { ConfirmDialog } from "../../shared/ui/ConfirmDialog";
 import { Dialog } from "../../shared/ui/Dialog";
 import { InfoTip } from "../../shared/ui/InfoTip";
 import { StatusMessage } from "../../shared/ui/StatusMessage";
@@ -77,6 +78,7 @@ export function Models() {
   const org = useOrgId();
   const [range, setRange] = useState<Range>("7d");
   const [open, setOpen] = useState(false);
+  const [toRemove, setToRemove] = useState<TenantModel | null>(null);
   const models = useQuery({
     queryKey: ["models", org],
     enabled: !!org,
@@ -141,6 +143,20 @@ export function Models() {
           />
         </Dialog>
       )}
+      {toRemove && (
+        <ConfirmDialog
+          title="Remove this model?"
+          confirmLabel="Remove model"
+          pending={remove.isPending}
+          onCancel={() => setToRemove(null)}
+          onConfirm={() => {
+            remove.mutate(toRemove.id);
+            setToRemove(null);
+          }}
+        >
+          Lumen stops using "{toRemove.model_id}" for answers.
+        </ConfirmDialog>
+      )}
       <ErrorText>{rowError}</ErrorText>
       {usage.isError && (
         <div role="alert" className="error-text">
@@ -195,7 +211,7 @@ export function Models() {
                     first={i === 0}
                     last={i === rows.length - 1}
                     onMove={(direction) => move.mutate({ id: m.id, direction })}
-                    onRemove={() => remove.mutate(m.id)}
+                    onRemove={() => setToRemove(m)}
                   />
                 ))}
                 {allLimited && (

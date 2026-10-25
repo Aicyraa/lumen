@@ -3,6 +3,7 @@ import { type FormEvent, useState } from "react";
 import { authClient } from "../../shared/lib/auth-client";
 import { fmtDate } from "../../shared/lib/format";
 import { COPY_FAILED, useCopy } from "../../shared/lib/useCopy";
+import { ConfirmDialog } from "../../shared/ui/ConfirmDialog";
 import { Dialog } from "../../shared/ui/Dialog";
 import { StatusMessage } from "../../shared/ui/StatusMessage";
 import { ErrorText, PageHead } from "../../shared/ui/ui";
@@ -26,6 +27,7 @@ export function ApiKeys() {
   // The full key lives only in this state. It is never put in the query cache, storage or the list.
   const [fullKey, setFullKey] = useState("");
   const clip = useCopy();
+  const [toRevoke, setToRevoke] = useState<KeyRow | null>(null);
 
   const keys = useQuery({
     queryKey: ["api-keys", orgId],
@@ -131,7 +133,7 @@ export function ApiKeys() {
                   type="button"
                   className="link-btn red"
                   aria-label={`Revoke ${k.name ?? "key"}`}
-                  onClick={() => revoke.mutate(k.id)}
+                  onClick={() => setToRevoke(k)}
                 >
                   Revoke
                 </button>
@@ -141,6 +143,21 @@ export function ApiKeys() {
         </div>
       )}
 
+      {toRevoke && (
+        <ConfirmDialog
+          title="Revoke this key?"
+          confirmLabel="Revoke key"
+          pending={revoke.isPending}
+          onCancel={() => setToRevoke(null)}
+          onConfirm={() => {
+            revoke.mutate(toRevoke.id);
+            setToRevoke(null);
+          }}
+        >
+          Anything using "{toRevoke.name ?? "Untitled key"}" stops working right away. This cannot
+          be undone.
+        </ConfirmDialog>
+      )}
       {step === "name" && (
         <Dialog title="Name this key" label="NEW KEY" onClose={close}>
           <form onSubmit={submit} className="stack-sm">

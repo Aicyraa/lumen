@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { ApiError, api } from "../../shared/lib/api";
 import { fmtDate, fmtInt } from "../../shared/lib/format";
 import type { Doc, Usage } from "../../shared/lib/types";
+import { ConfirmDialog } from "../../shared/ui/ConfirmDialog";
 import { StatusMessage } from "../../shared/ui/StatusMessage";
 import { ErrorText, PageHead, StatusDot } from "../../shared/ui/ui";
 import { useOrgId } from "../auth/session";
@@ -19,6 +20,7 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
   const [drag, setDrag] = useState(false);
+  const [toDelete, setToDelete] = useState<Doc | null>(null);
 
   const docs = useQuery({
     queryKey: ["documents", org],
@@ -144,7 +146,7 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
                   type="button"
                   className="link-btn danger-hover"
                   aria-label={`Delete ${d.filename}`}
-                  onClick={() => remove.mutate(d.document_id)}
+                  onClick={() => setToDelete(d)}
                 >
                   Delete
                 </button>
@@ -152,6 +154,20 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
             </div>
           ))}
         </div>
+      )}
+      {toDelete && (
+        <ConfirmDialog
+          title="Delete this document?"
+          confirmLabel="Delete document"
+          pending={remove.isPending}
+          onCancel={() => setToDelete(null)}
+          onConfirm={() => {
+            remove.mutate(toDelete.document_id);
+            setToDelete(null);
+          }}
+        >
+          "{toDelete.filename}" is removed, and its passages are no longer used for answers.
+        </ConfirmDialog>
       )}
     </div>
   );
