@@ -2,6 +2,13 @@ embedding:
   model: all-MiniLM-L6-v2   # 384 numbers; changing it means changing VECTOR(384) and re-embedding
   revision: 1110a243fdf4706b3f48f1d95db1a4f5529b4d41
 
+database:
+  pool_min_size: 1
+  pool_max_size: 10
+  pool_timeout_seconds: 10       # wait for a free connection; then the request fails with 503 busy
+  connect_timeout_seconds: 5
+  statement_timeout_ms: 30000    # the server cancels any statement running longer
+
 retrieval:
   candidate_limit: 40
   rrf_rank_constant: 60
