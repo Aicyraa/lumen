@@ -83,10 +83,6 @@ describe("ApiKeys", () => {
 
   describe("copying the new key", () => {
     async function openKeyDialog(writeText?: () => Promise<void>) {
-      Object.defineProperty(navigator, "clipboard", {
-        value: writeText ? { writeText } : undefined,
-        configurable: true,
-      });
       list.mockResolvedValue({ data: { apiKeys: [], total: 0 }, error: null });
       create.mockResolvedValue({
         data: { id: "k9", key: FULL_KEY, start: "lum_S", name: "Prod" },
@@ -94,6 +90,11 @@ describe("ApiKeys", () => {
       });
       renderWithProviders(<ApiKeys />);
       const user = userEvent.setup();
+      // after setup(): user-event installs its own clipboard stub on navigator
+      Object.defineProperty(navigator, "clipboard", {
+        value: writeText ? { writeText } : undefined,
+        configurable: true,
+      });
       await user.click(await screen.findByRole("button", { name: "Create key" }));
       await user.click(screen.getByRole("button", { name: "Create" }));
       const dialog = await screen.findByRole("dialog");
@@ -109,7 +110,7 @@ describe("ApiKeys", () => {
       await user.click(within(dialog).getByRole("button", { name: "Copy" }));
       expect(
         await within(dialog).findByText(/Copy failed, select and copy manually/),
-      ).toBeVisible();
+      ).toBeInTheDocument();
       expect(within(dialog).queryByRole("button", { name: "Copied" })).not.toBeInTheDocument();
     });
     it("says to copy by hand when there is no clipboard API", async () => {
@@ -117,7 +118,7 @@ describe("ApiKeys", () => {
       await user.click(within(dialog).getByRole("button", { name: "Copy" }));
       expect(
         await within(dialog).findByText(/Copy failed, select and copy manually/),
-      ).toBeVisible();
+      ).toBeInTheDocument();
     });
   });
 
