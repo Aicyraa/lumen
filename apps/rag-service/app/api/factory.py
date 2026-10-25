@@ -9,11 +9,13 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api import routes
 from app.core.config import load_settings
 from app.core.errors import ApiError, error_response
+from app.core.logging import configure_logging
 from app.retrieval import db
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    configure_logging()
     app.state.settings = SimpleNamespace(
         **load_settings()
     )  # refuse to start when anything is missing
