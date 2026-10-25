@@ -117,12 +117,25 @@ describe("Models", () => {
     const patch = calls.find((c) => c.init?.method === "PATCH")!;
     expect(patch.url).toContain("/api/dashboard/models/b");
     expect(JSON.parse(String(patch.init!.body))).toEqual({ direction: "up" });
+    const isDelete = () =>
+      calls.some((c) => c.init?.method === "DELETE" && c.url.endsWith("/api/dashboard/models/b"));
     await user.click(
       within(screen.getByTestId("model-b")).getByRole("button", { name: "Remove model-b" }),
     );
-    expect(
-      calls.some((c) => c.init?.method === "DELETE" && c.url.endsWith("/api/dashboard/models/b")),
-    ).toBe(true);
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("model-b");
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
+    expect(isDelete()).toBe(false);
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(isDelete()).toBe(false);
+    await user.click(
+      within(screen.getByTestId("model-b")).getByRole("button", { name: "Remove model-b" }),
+    );
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Remove model" }),
+    );
+    await waitFor(() => expect(isDelete()).toBe(true));
   });
 
   async function fillForm(

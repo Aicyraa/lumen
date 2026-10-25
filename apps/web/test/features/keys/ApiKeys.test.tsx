@@ -141,7 +141,18 @@ describe("ApiKeys", () => {
       .mockResolvedValue({ data: { apiKeys: [], total: 0 }, error: null });
     del.mockResolvedValue({ data: { success: true }, error: null });
     renderWithProviders(<ApiKeys />);
-    await userEvent.click(await screen.findByRole("button", { name: "Revoke Staging" }));
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Revoke Staging" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Staging");
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(del).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Revoke Staging" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Revoke key" }),
+    );
     expect(del).toHaveBeenCalledWith({ keyId: "k1" });
     expect(await screen.findByText(/No keys/)).toBeInTheDocument();
   });

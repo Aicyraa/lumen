@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Documents } from "../../../src/features/documents/Documents";
@@ -137,7 +137,19 @@ describe("Documents", () => {
       return { documents: docs };
     });
     renderWithProviders(<Documents pollMs={40} />);
-    await userEvent.click(await screen.findByRole("button", { name: "Delete handbook.md" }));
+    const user = userEvent.setup();
+    const isDelete = () => calls.some((c) => c.init?.method === "DELETE");
+    await user.click(await screen.findByRole("button", { name: "Delete handbook.md" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("handbook.md");
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(isDelete()).toBe(false);
+    await user.click(screen.getByRole("button", { name: "Delete handbook.md" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Delete document" }),
+    );
     await waitFor(() => expect(screen.getByText(/No documents yet/)).toBeInTheDocument());
     expect(
       calls.some(
