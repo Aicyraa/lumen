@@ -1,11 +1,9 @@
-from pathlib import Path
-
 import numpy as np
-import yaml
 from sentence_transformers import SentenceTransformer
 
-_CONFIG = yaml.safe_load((Path(__file__).parents[1] / "config.yaml").read_text())
-_model = SentenceTransformer(_CONFIG["embedding"]["model"])  # loaded once, at import
+from app.core.config import model_path
+
+_model = SentenceTransformer(str(model_path("embedding")), local_files_only=True)
 
 
 def embed(texts: list[str]) -> np.ndarray:

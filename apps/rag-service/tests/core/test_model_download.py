@@ -9,7 +9,9 @@ from app.core import config
 
 
 @pytest.mark.parametrize("reranker_enabled", [True, False])
-def test_build_saves_pinned_models_and_skips_a_disabled_reranker(monkeypatch, tmp_path, reranker_enabled):
+def test_build_saves_pinned_models_and_skips_a_disabled_reranker(
+    monkeypatch, tmp_path, reranker_enabled
+):
     cfg = {
         "embedding": {"model": "embedding-repo", "revision": "embedding-revision"},
         "reranker": {
@@ -48,7 +50,7 @@ def test_embedding_runtime_loads_only_the_bundled_model(monkeypatch):
         "SentenceTransformer",
         lambda path, **kwargs: calls.append((path, kwargs)),
     )
-    runpy.run_module("app.retrieval.embeddings", run_name="offline_embedding_test")
+    runpy.run_path(str(Path(cli.__file__).parent / "retrieval" / "embeddings.py"))
     assert calls == [(str(config.model_path("embedding")), {"local_files_only": True})]
 
 

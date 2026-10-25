@@ -1,10 +1,12 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "tasks": {
+    "@lumen/rag-service#build": {
+      "cache": false,
+      "passThroughEnv": ["HF_HOME", "HF_HUB_OFFLINE"]
+    },
     "build": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "inputs": [
         "src/**",
         "index.html",
@@ -13,9 +15,7 @@
         "package.json",
         "../../tsconfig.base.json"
       ],
-      "outputs": [
-        "dist/**"
-      ]
+      "outputs": ["dist/**"]
     },
     "typecheck": {
       "inputs": [

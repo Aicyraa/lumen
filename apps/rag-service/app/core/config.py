@@ -11,6 +11,12 @@ def load_config() -> dict:
     return yaml.safe_load((Path(__file__).parents[1] / "config.yaml").read_text())
 
 
+def model_path(section: str) -> Path:
+    """Keep each bundled revision separate so a config change cannot load stale weights."""
+    cfg = load_config()[section]
+    return Path(__file__).parents[1] / "models" / section / cfg["revision"]
+
+
 def router_cfg() -> SimpleNamespace:
     """The router section with attribute access, as decide() expects (cfg.weak_score)."""
     return SimpleNamespace(**load_config()["router"])

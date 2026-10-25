@@ -32,7 +32,7 @@ Environment files live with their app: `apps/api/.env`, `apps/rag-service/.env`,
 | Command | What it does |
 | --- | --- |
 | `pnpm dev`, `dev:api`, `dev:web`, `dev:rag` | Start every app, or one |
-| `pnpm build` | Build the web app |
+| `pnpm build` | Build the web app and download the pinned RAG model files for offline runtime |
 | `pnpm test` | Every app's tests, one app at a time (the apps share the `lumen_test` database) |
 | `pnpm typecheck`, `lint`, `format` | TypeScript (tsc, Biome) and Python (ruff) checks |
 | `pnpm check` | typecheck + lint + test |

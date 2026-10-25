@@ -3,7 +3,7 @@
 import math
 from functools import lru_cache
 
-from app.core.config import load_config
+from app.core.config import load_config, model_path
 from app.core.logging import log
 
 
@@ -11,8 +11,7 @@ from app.core.logging import log
 def _model():
     from sentence_transformers import CrossEncoder
 
-    cfg = load_config()["reranker"]
-    return CrossEncoder(cfg["model"], revision=cfg["revision"], local_files_only=True)
+    return CrossEncoder(str(model_path("reranker")), local_files_only=True)
 
 
 def rerank(query: str, hits: list, k: int) -> list:

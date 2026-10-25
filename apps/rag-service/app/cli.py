@@ -6,7 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from app.core.config import REQUIRED_ENV, missing_env
+from app.core.config import REQUIRED_ENV, load_config, missing_env, model_path
 from app.core.env import load_env
 
 SERVICE_DIR = Path(__file__).resolve().parents[1]
@@ -20,6 +20,20 @@ def _run(*cmd: str) -> int:
 
 def test(args) -> int:
     return _run("pytest", *args.extra)
+
+
+def download_models(args) -> int:
+    from sentence_transformers import CrossEncoder, SentenceTransformer
+
+    cfg = load_config()
+    for section, model_class in (("embedding", SentenceTransformer), ("reranker", CrossEncoder)):
+        if section == "reranker" and not cfg[section]["enabled"]:
+            continue
+        model = model_class(cfg[section]["model"], revision=cfg[section]["revision"], device="cpu")
+        path = model_path(section)
+        model.save_pretrained(str(path))
+        print(f"Saved {section} model to {path}")
+    return 0
 
 
 def dev(args) -> int:
@@ -71,6 +85,9 @@ def build_parser() -> argparse.ArgumentParser:
         run=dev
     )
     sub.add_parser("test", help="pytest; extra arguments are passed through").set_defaults(run=test)
+    sub.add_parser("download-models", help="bundle pinned models for offline runtime").set_defaults(
+        run=download_models
+    )
     sub.add_parser("lint", help="ruff check").set_defaults(run=lambda a: _run("ruff", "check", "."))
     sub.add_parser("format", help="ruff format").set_defaults(
         run=lambda a: _run("ruff", "format", ".")

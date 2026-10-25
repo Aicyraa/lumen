@@ -26,7 +26,8 @@ Run from `apps/rag-service` (or `pnpm --filter @lumen/rag-service <script>`).
 
 | Script | What it does |
 | --- | --- |
-| `bootstrap` | creates `.venv` and runs `pip install -e ".[dev]"` |
+| `bootstrap` | creates `.venv`, installs dependencies and downloads the model files |
+| `build` | `python -m app.cli download-models`: saves the configured, pinned embedding and enabled reranker models inside `app/models/` |
 | `dev` | `python -m app.cli dev`: uvicorn with reload on `RAG_PORT` (default 8000) |
 | `test` | `python -m app.cli test`: pytest; extra args pass through (`pnpm test -- -k router`) |
 | `typecheck` | `ruff check` plus a syntax compile (no type checker) |
@@ -50,12 +51,40 @@ Tests use `TEST_DATABASE_URL`, or `DATABASE_URL` with the database name replaced
 
 The API combines tenant-local BM25 and vector candidates using reciprocal rank fusion, reranks up to the configured candidate count, then sends the selected passages to the tenant's chat model. Source scores remain cosine similarity. BM25 statistics use only the caller's tenant; new uploads and deletions are reflected without a separate search index or a database migration. This exact implementation computes corpus statistics per request; benchmark larger tenants before introducing a persistent index.
 
-The reranker uses the installed `sentence-transformers` library and a pinned model revision from `app/config.yaml`. Prefetch its weights once, from this directory, before starting a new deployment:
+The embedding model and reranker use the installed `sentence-transformers` library
+and pinned revisions from `app/config.yaml`. Download their files before starting
+the service or running tests:
 
 ```sh
-.venv/bin/python -c 'from app.core.config import load_config; from huggingface_hub import snapshot_download; c = load_config()["reranker"]; snapshot_download(c["model"], revision=c["revision"], allow_patterns=["config.json", "model.safetensors", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "vocab.txt"])'
+pnpm --filter @lumen/rag-service build  # from the repo root; pnpm build also runs this
 ```
 
-At request time the reranker loads cached weights only. Missing weights or invalid inference scores produce a warning and use fused retrieval order. Automated tests replace inference with deterministic fakes. `reranker.enabled` controls this step; model, revision, candidate count and batch size are configuration values. The CLI `ask` displays fused retrieval without reranking.
+`bootstrap` does this automatically on first setup. The command downloads from
+Hugging Face (or reuses already cached weights) and saves self-contained copies in
+`app/models/<embedding|reranker>/<revision>/`. These generated files are ignored by
+Git and included in Python package data. Run this build command before packaging
+the service. `pyproject.toml` registers the same command as the Vercel Python build
+hook; any dashboard or service-level build override must retain it. A failed download
+fails the build. Models are rebuilt without Turborepo task caching so an absent
+local artifact cannot be mistaken for a successful cached build.
+
+Runtime loads only those bundled files and makes no Hugging Face requests. A
+missing embedding model prevents startup; rebuild to restore it. Missing reranker
+weights or invalid inference scores retain the existing warning and fused-order
+fallback. A disabled reranker is not downloaded. Automated tests replace reranker
+inference with deterministic fakes. `reranker.enabled` controls this step; model,
+revision, candidate count and batch size are configuration values. The CLI `ask`
+displays fused retrieval without reranking.
+
+For an offline check after building, run from `apps/rag-service`:
+
+```sh
+HF_HUB_OFFLINE=1 .venv/bin/python -c 'from app.retrieval.embeddings import embed; assert embed(["offline check"]).shape == (1, 384)'
+```
+
+Changing either model or revision requires rebuilding its files. Changing the
+embedding model still requires re-embedding stored documents; bundling does not
+change the model, vector dimensions or existing data. Vercel bundle limits still
+apply to the weights plus Python dependencies, including PyTorch.
 
 Chat models return claims with passage ids and exact evidence quotes. The service validates the quotes, tolerating whitespace and equivalent PDF typography, and renders ASCII citations itself. A quote assigned to the wrong passage is corrected only when it matches exactly one other provided passage. Invalid evidence gets one format-repair attempt, then `502 provider_error`; every attempt contributes to recorded usage. Empty claims produce the configured not-found message. Quote verification checks text presence, not logical entailment: a real quote does not by itself prove every interpretation of a claim.

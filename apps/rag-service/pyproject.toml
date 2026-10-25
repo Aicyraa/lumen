@@ -28,7 +28,10 @@ build-backend = "setuptools.build_meta"
 include = ["app*"]
 
 [tool.setuptools.package-data]
-app = ["config.yaml"]
+app = ["config.yaml", "models/**/*"]
+
+[tool.vercel.scripts]
+build = "python -m app.cli download-models"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

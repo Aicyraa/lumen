@@ -2,7 +2,8 @@
   "name": "@lumen/rag-service",
   "private": true,
   "scripts": {
-    "bootstrap": "python -m venv .venv && .venv/bin/pip install -e \".[dev]\"",
+    "bootstrap": "python -m venv .venv && .venv/bin/pip install -e \".[dev]\" && .venv/bin/python -m app.cli download-models",
+    "build": ".venv/bin/python -m app.cli download-models",
     "dev": ".venv/bin/python -m app.cli dev",
     "test": ".venv/bin/python -m app.cli test",
     "typecheck": ".venv/bin/ruff check . && .venv/bin/python -m compileall -q app tests",
