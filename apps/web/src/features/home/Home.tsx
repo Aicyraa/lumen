@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { COPY_FAILED, useCopy } from "../../shared/lib/useCopy";
 import { Reveal } from "../../shared/motion/motion";
 import { LogoMark } from "../../shared/ui/Logo";
 import { CodeBlock, PublicLayout, SectionLabel } from "../../shared/ui/PublicLayout";
@@ -79,12 +80,7 @@ type CodeId = keyof typeof CODE;
 
 export function Home() {
   const [tab, setTab] = useState<CodeId>("curl");
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    void navigator.clipboard?.writeText(CODE[tab]).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
+  const clip = useCopy(1500);
   // CSS scroll-snap (proximity) only on this page, so the dashboard and docs scroll normally.
   useEffect(() => {
     document.documentElement.classList.add("snap-home");
@@ -208,13 +204,22 @@ export function Home() {
                 value={tab}
                 onChange={(t) => {
                   setTab(t);
-                  setCopied(false);
+                  clip.reset();
                 }}
                 plain
               />
-              <button type="button" className="btn btn-outline btn-sm mono" onClick={copy}>
-                {copied ? "Copied" : "Copy"}
+              <button
+                type="button"
+                className="btn btn-outline btn-sm mono"
+                onClick={() => void clip.copy(CODE[tab])}
+              >
+                {clip.state === "copied" ? "Copied" : "Copy"}
               </button>
+              {clip.state === "failed" && (
+                <span role="alert" className="small red">
+                  {COPY_FAILED}
+                </span>
+              )}
             </div>
             <CodeBlock testId="code">{CODE[tab]}</CodeBlock>
           </div>

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { authClient } from "../../shared/lib/auth-client";
 import { fmtDate } from "../../shared/lib/format";
+import { COPY_FAILED, useCopy } from "../../shared/lib/useCopy";
 import { Dialog } from "../../shared/ui/Dialog";
 import { StatusMessage } from "../../shared/ui/StatusMessage";
 import { ErrorText, PageHead } from "../../shared/ui/ui";
@@ -24,7 +25,7 @@ export function ApiKeys() {
   const [error, setError] = useState("");
   // The full key lives only in this state. It is never put in the query cache, storage or the list.
   const [fullKey, setFullKey] = useState("");
-  const [copied, setCopied] = useState(false);
+  const clip = useCopy();
 
   const keys = useQuery({
     queryKey: ["api-keys", orgId],
@@ -63,7 +64,7 @@ export function ApiKeys() {
   const close = () => {
     setStep("closed");
     setFullKey("");
-    setCopied(false);
+    clip.reset();
     setName("");
     setError("");
   };
@@ -71,10 +72,6 @@ export function ApiKeys() {
     e.preventDefault();
     setError("");
     create.mutate();
-  };
-  const copy = () => {
-    void navigator.clipboard?.writeText(fullKey).catch(() => {});
-    setCopied(true);
   };
   const list = keys.data ?? [];
 
@@ -175,11 +172,22 @@ export function ApiKeys() {
             It won't be shown again. If you lose it, revoke it and create a new one.
           </p>
           <div className="keybox">
-            <span className="mono keytext">{fullKey}</span>
-            <button type="button" className="btn btn-primary btn-sm" onClick={copy}>
-              {copied ? "Copied" : "Copy"}
+            <span className="mono keytext" tabIndex={0}>
+              {fullKey}
+            </span>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => void clip.copy(fullKey)}
+            >
+              {clip.state === "copied" ? "Copied" : "Copy"}
             </button>
           </div>
+          {clip.state === "failed" && (
+            <p role="alert" className="error-text">
+              {COPY_FAILED}
+            </p>
+          )}
           <div className="row-end">
             <button type="button" className="btn btn-outline" onClick={close}>
               I've saved it

@@ -107,13 +107,17 @@ describe("ApiKeys", () => {
     it("says to copy by hand when the clipboard write is refused", async () => {
       const { user, dialog } = await openKeyDialog(() => Promise.reject(new Error("denied")));
       await user.click(within(dialog).getByRole("button", { name: "Copy" }));
-      expect(await within(dialog).findByText(/Copy failed, select and copy manually/)).toBeVisible();
+      expect(
+        await within(dialog).findByText(/Copy failed, select and copy manually/),
+      ).toBeVisible();
       expect(within(dialog).queryByRole("button", { name: "Copied" })).not.toBeInTheDocument();
     });
     it("says to copy by hand when there is no clipboard API", async () => {
       const { user, dialog } = await openKeyDialog(undefined);
       await user.click(within(dialog).getByRole("button", { name: "Copy" }));
-      expect(await within(dialog).findByText(/Copy failed, select and copy manually/)).toBeVisible();
+      expect(
+        await within(dialog).findByText(/Copy failed, select and copy manually/),
+      ).toBeVisible();
     });
   });
 

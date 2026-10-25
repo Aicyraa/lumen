@@ -1017,6 +1017,7 @@ label.btn:focus-within {
   flex: 1;
   font-size: 13px;
   word-break: break-all;
+  user-select: all; /* one click selects the whole key, for when Copy fails */
 }
 
 /* public pages */
