@@ -77,6 +77,40 @@ describe("Requests", () => {
     expect(q.options.maxPages).toBe(20);
   });
 
+  describe("keyboard and screen readers", () => {
+    const rows = () => ({
+      items: [item(ID1, "Compare fall and spring refunds", "expensive")],
+      next_cursor: null,
+    });
+    const route = (url: string) => (url.includes(`/requests/${ID1}`) ? detail : rows());
+
+    it("each log row is a row whose cell holds the button that opens it", async () => {
+      mockFetch(route);
+      renderWithProviders(<Requests />);
+      const open = await screen.findByRole("button", {
+        name: "Compare fall and spring refunds — open details",
+      });
+      expect(open.closest('[role="cell"]')?.closest('[role="row"]')).toBeInTheDocument();
+      expect(open).toHaveAttribute("aria-haspopup", "dialog");
+    });
+
+    it.each(["{Enter}", " "])(
+      "opens with the %j key and returns focus to the row on Escape",
+      async (key) => {
+        mockFetch(route);
+        renderWithProviders(<Requests />);
+        const user = userEvent.setup();
+        const open = await screen.findByRole("button", { name: /open details/ });
+        open.focus();
+        await user.keyboard(key);
+        expect(await screen.findByRole("dialog")).toBeInTheDocument();
+        await user.keyboard("{Escape}");
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+        expect(open).toHaveFocus();
+      },
+    );
+  });
+
   it("filters by tier through the API (all, cheap, expensive, none)", async () => {
     const { calls } = mockFetch(() => ({
       items: [item(ID1, "When does enrollment close?", "cheap")],
