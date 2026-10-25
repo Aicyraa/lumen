@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { ApiError, api } from "../../shared/lib/api";
+import { friendlyError } from "../../shared/lib/errors";
 import { fmtDate, fmtInt } from "../../shared/lib/format";
 import type { Doc, Usage } from "../../shared/lib/types";
 import { ConfirmDialog } from "../../shared/ui/ConfirmDialog";
@@ -49,7 +50,7 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
   const remove = useMutation({
     mutationFn: (id: string) => api(`/api/dashboard/documents/${id}`, { method: "DELETE" }),
     onSuccess: refresh,
-    onError: (e: Error) => setError(e.message),
+    onError: (e: Error) => setError(friendlyError(e)),
   });
 
   async function addFiles(list: FileList | null) {
@@ -58,7 +59,8 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
       try {
         await upload.mutateAsync(f);
       } catch (e) {
-        setError(e instanceof ApiError ? e.message : "Upload failed.");
+        setError(friendlyError(e, "Upload failed."));
+        if (e instanceof ApiError && e.status === 429) break; // the rest would be refused too
       }
     }
     if (fileRef.current) fileRef.current.value = "";

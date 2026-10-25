@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { api, post } from "../../shared/lib/api";
+import { friendlyError } from "../../shared/lib/errors";
 import { fmtCost, fmtDate, fmtInt, fmtMs } from "../../shared/lib/format";
 import type {
   ModelsGrouped,
@@ -103,12 +104,12 @@ export function Models() {
     mutationFn: ({ id, direction }: { id: string; direction: "up" | "down" }) =>
       api(`/api/dashboard/models/${id}`, { method: "PATCH", body: JSON.stringify({ direction }) }),
     onSuccess: refresh,
-    onError: (e: Error) => setRowError(e.message),
+    onError: (e: Error) => setRowError(friendlyError(e)),
   });
   const remove = useMutation({
     mutationFn: (id: string) => api(`/api/dashboard/models/${id}`, { method: "DELETE" }),
     onSuccess: refresh,
-    onError: (e: Error) => setRowError(e.message),
+    onError: (e: Error) => setRowError(friendlyError(e)),
   });
 
   return (
@@ -382,7 +383,7 @@ function AddModel({ onDone, onCancel }: { onDone: () => void; onCancel: () => vo
     mutationFn: (body: Record<string, unknown>) => post("/api/dashboard/models", body),
     gcTime: 0,
     onSuccess: onDone,
-    onError: (e: Error) => setError(e.message),
+    onError: (e: Error) => setError(friendlyError(e)),
     onSettled: () => queueMicrotask(() => save.reset()),
   });
 
