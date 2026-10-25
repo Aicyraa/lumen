@@ -7,23 +7,32 @@ import { CodeBlock, PublicLayout, SectionLabel, TermDots } from "../../shared/ui
 import { Segmented } from "../../shared/ui/ui";
 import { DotGrid, LineIcon } from "./art";
 import { RouteExplorer } from "./RouteFlow";
+import { SecurityOrbit } from "./SecurityOrbit";
 
 const STEPS = [
   ["01", "Upload documents"],
   ["02", "Create an API key"],
   ["03", "Call /v1/chat"],
 ] as const;
-const FACTS = [
-  ["1", "endpoint to call", "POST /v1/chat answers from your documents."],
-  ["3", "file types", "PDF, plain text and Markdown."],
-  ["2", "model tiers", "Cheap and expensive, each with your own models and backups."],
-  ["3", "steps to a first answer", "Upload, create a key, call the endpoint."],
-] as const;
 const AUDIENCE = [
-  "Teams that run a chatbot or help widget and want it to answer from their own documents.",
-  "Developers who prefer one HTTP call to building retrieval, routing and logging themselves.",
-  "Anyone who brings their own model provider keys and wants control over which model answers what.",
-];
+  [
+    "TEAMS",
+    "Teams that run a chatbot or a help widget and want it to answer from their own handbooks, policies and guides (PDF, plain text or Markdown), with a source for every answer, instead of from whatever the model remembers.",
+  ],
+  [
+    "DEVELOPERS",
+    "Developers who would rather make one HTTP call than build and maintain retrieval, routing, rate limits and request logging themselves, and who want the answer back as plain JSON.",
+  ],
+  [
+    "YOUR KEYS",
+    "Anyone who brings their own model provider keys and wants control over which model answers which question and in what order the backups step in when one of them fails.",
+  ],
+] as const;
+const RESPONSE = `{
+  "answer": "Enrollment closes on 15 March. [1]",
+  "route": { "model_tier": "cheap", "k": 3 },
+  "usage": { "latency_ms": 620 }
+}`;
 const FEATURE_ICONS = ["route", "shield", "models", "honest", "cited", "chart"] as const;
 const SECURITY_ICONS = ["boxes", "key", "nolog", "data"] as const;
 const FEATURES = [
@@ -56,27 +65,35 @@ const SECURITY = [
   [
     "Isolated per workspace",
     "Every stored passage carries its owner, and every query is filtered by it.",
+    "Isolated",
   ],
   [
     "Keys shown once",
     "API keys are stored as hashes and shown once. Your model provider keys are stored encrypted and never shown again.",
+    "Keys once",
   ],
   [
     "No document text in logs",
     "Logs keep the question, route and metadata. Passages and keys are never written to them.",
+    "No logs",
   ],
   [
     "Documents treated as data",
     "Passages are sent to the model as data, not instructions, and the assistant is told to ignore instructions inside them.",
+    "As data",
   ],
-];
+] as const;
 
+// The three snippets are all nine lines long, so the quickstart box is full whichever tab is open.
 const CODE = {
   curl: `curl -X POST $LUMEN_URL/v1/chat \\\n  -H "x-api-key: $LUMEN_API_KEY" \\\n  -H "content-type: application/json" \\\n  -d '{\n    "query": "When does enrollment close?",\n    "session_id": "visitor-42"\n  }'\n\n# { "answer": "Enrollment closes on 15 March. [1]", ... }`,
   node: `const res = await fetch(process.env.LUMEN_URL + "/v1/chat", {\n  method: "POST",\n  headers: {\n    "x-api-key": process.env.LUMEN_API_KEY,\n    "content-type": "application/json",\n  },\n  body: JSON.stringify({ query, session_id }),\n});\nconst { answer, sources, route } = await res.json();`,
   python: `import os, requests\n\nr = requests.post(\n    os.environ["LUMEN_URL"] + "/v1/chat",\n    headers={"x-api-key": os.environ["LUMEN_API_KEY"]},\n    json={"query": "When does enrollment close?"},\n)\ndata = r.json()\nprint(data["answer"], data["route"]["model_tier"])`,
 };
 type CodeId = keyof typeof CODE;
+const LANG = { curl: "bash", node: "js", python: "python" } as const;
+// a snippet shorter than the longest still gets its height, so changing tabs never moves the page below
+const CODE_LINES = Math.max(...Object.values(CODE).map((c) => c.split("\n").length));
 
 export function Home() {
   const [tab, setTab] = useState<CodeId>("curl");
@@ -84,16 +101,12 @@ export function Home() {
   // CSS scroll-snap (proximity) only on this page, so the dashboard and docs scroll normally.
   useEffect(() => {
     document.documentElement.classList.add("snap-home");
-// The three snippets are all nine lines long, so the quickstart box is full whichever tab is open.
     return () => document.documentElement.classList.remove("snap-home");
   }, []);
 
   return (
     <PublicLayout>
       <main className="home">
-const LANG = { curl: "bash", node: "js", python: "python" } as const;
-// a snippet shorter than the longest still gets its height, so changing tabs never moves the page below
-const CODE_LINES = Math.max(...Object.values(CODE).map((c) => c.split("\n").length));
         <section className="snap-section hero" aria-labelledby="hero-h">
           <GridArt />
           <SectionLabel>RAG API FOR YOUR CHATBOT — 01</SectionLabel>
@@ -117,52 +130,57 @@ const CODE_LINES = Math.max(...Object.values(CODE).map((c) => c.split("\n").leng
           </div>
         </section>
 
-        <section className="snap-section deco-host" aria-label="What Lumen is">
+        <section id="what" className="snap-section deco-host" aria-label="What Lumen is">
           <DotGrid id="dg-what" />
-          <div className="sec-head">
+          <Reveal className="sec-head">
             <SectionLabel>WHAT LUMEN IS — 02</SectionLabel>
             <h2 className="h2">
               A retrieval API that answers from your documents and picks the model for each
               question.
             </h2>
-          </div>
+          </Reveal>
           <div className="what-grid">
             <Reveal className="stack-sm">
               <div className="label">WHO IT'S FOR</div>
               <ul className="audience">
-                {AUDIENCE.map((t) => (
-                  <li key={t} className="body muted-2">
-                    {t}
+                {AUDIENCE.map(([tag, t]) => (
+                  <li key={tag}>
+                    <span className="aud-tag">{tag}</span>
+                    <span className="body muted-2">{t}</span>
                   </li>
                 ))}
               </ul>
-              <ol className="mini-steps">
-                {STEPS.map(([n, t]) => (
-                  <li key={n}>
-                    <span className="num">{n}</span> {t}
-                  </li>
-                ))}
-              </ol>
             </Reveal>
-            <ul className="facts">
-              {FACTS.map(([n, t, b], i) => (
-                <Reveal as="li" key={t} delay={i * 0.08} className="fact">
-                  <div className="fact-num">{n}</div>
-                  <div className="fact-title">{t}</div>
-                  <div className="small muted-2">{b}</div>
-                </Reveal>
-              ))}
-            </ul>
+            <div className="stack-sm what-right">
+              <Reveal delay={0.1} className="term resp">
+                <div className="term-bar">
+                  <TermDots />
+                  <span className="term-title mono">200 OK · a response</span>
+                </div>
+                <CodeBlock lang="json">{RESPONSE}</CodeBlock>
+              </Reveal>
+              <Reveal delay={0.2} className="stack-sm">
+                <div className="label">FIRST ANSWER IN THREE STEPS</div>
+                <ol className="mini-steps">
+                  {STEPS.map(([n, t]) => (
+                    <li key={n}>
+                      <span className="num">{n}</span>
+                      {t}
+                    </li>
+                  ))}
+                </ol>
+              </Reveal>
+            </div>
           </div>
         </section>
 
         <section id="how" className="snap-section" aria-label="How routing works">
-          <div className="sec-head">
+          <Reveal className="sec-head">
             <SectionLabel>HOW ROUTING WORKS — 03</SectionLabel>
             <h2 className="h2">
               Cheap first, expensive when needed, an error rather than a guess.
             </h2>
-          </div>
+          </Reveal>
           <RouteExplorer />
         </section>
 
@@ -171,12 +189,10 @@ const CODE_LINES = Math.max(...Object.values(CODE).map((c) => c.split("\n").leng
           <div className="feature-grid">
             {FEATURES.map(([t, b], i) => (
               <Reveal key={t} delay={(i % 3) * 0.08} className="feature-card">
-                <div className="row-between">
-                  <span className="icon-tile">
-                    <LineIcon name={FEATURE_ICONS[i]} />
-                  </span>
-                  <span className="mono muted-3">0{i + 1}</span>
-                </div>
+                <span className="mono muted-3">0{i + 1}</span>
+                <span className="icon-tile">
+                  <LineIcon name={FEATURE_ICONS[i]} />
+                </span>
                 <h3 className="feature-title">{t}</h3>
                 <div className="body muted-2">{b}</div>
               </Reveal>
@@ -234,23 +250,13 @@ const CODE_LINES = Math.max(...Object.values(CODE).map((c) => c.split("\n").leng
           </Reveal>
         </section>
 
-        <section className="snap-section deco-host" aria-label="Security">
+        <section className="snap-section deco-host seam" aria-label="Security">
           <DotGrid id="dg-sec" />
-          <div className="sec-head">
+          <Reveal className="sec-head">
             <SectionLabel>SECURITY — 07</SectionLabel>
             <h2 className="h2">Your documents stay yours.</h2>
-          </div>
-          <ul className="cols-4">
-            {SECURITY.map(([t, b], i) => (
-              <Reveal as="li" key={t} delay={i * 0.08} className="sec-card">
-                <span className="icon-tile">
-                  <LineIcon name={SECURITY_ICONS[i]} />
-                </span>
-                <h3 className="card-title-sm">{t}</h3>
-                <div className="small muted-2">{b}</div>
-              </Reveal>
-            ))}
-          </ul>
+          </Reveal>
+          <SecurityOrbit items={SECURITY} icons={SECURITY_ICONS} />
         </section>
 
         <section className="snap-section cta deco-host" aria-label="Closing">

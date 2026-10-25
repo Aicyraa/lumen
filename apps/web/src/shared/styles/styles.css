@@ -1247,11 +1247,6 @@ label.btn:focus-within {
   letter-spacing: -0.03em;
   line-height: 1.1;
 }
-.cols-4 {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 32px;
-}
 .card-title-sm {
   font-size: 21px;
   font-weight: 500;
@@ -1403,14 +1398,14 @@ label.btn:focus-within {
     flex-wrap: wrap;
     align-items: center;
     gap: 12px 20px;
-  .side-top {
-    flex: 1 1 200px;
-    margin-bottom: 0;
-  }
     padding: 16px 20px;
   }
   .logo-sm {
     padding: 0;
+  }
+  .side-top {
+    flex: 1 1 200px;
+    margin-bottom: 0;
   }
   .nav {
     flex-direction: row;
@@ -1619,14 +1614,14 @@ html.snap-home {
 }
 .doc-scroll {
   flex: 1;
-/* the last sections of a long page need room to scroll up into the scroll-spy band, so they can become current */
-.doc-spy {
-  padding-bottom: 50dvh;
-}
   min-height: 0;
   overflow-y: auto;
   padding: clamp(24px, 4vw, 48px) 28px 64px 0; /* the gap keeps the scrollbar clear of the dividers and tables */
   overscroll-behavior: contain;
+}
+/* the last sections of a long page need room to scroll up into the scroll-spy band, so they can become current */
+.doc-spy {
+  padding-bottom: 50dvh;
 }
 .doc-scroll:focus-visible {
   outline: 2px solid var(--lime);
@@ -1643,12 +1638,12 @@ html.snap-home {
   gap: 12px;
 }
 .doc-toc ul {
-  position: relative;
   display: flex;
   flex-direction: column;
   border-left: 1px solid var(--line);
 }
 .doc-toc a {
+  position: relative;
   display: block;
   padding: 6px 0 6px 14px;
   margin-left: -1px;
@@ -1888,12 +1883,12 @@ html.snap-home {
   background: var(--text);
   border-radius: 999px;
   z-index: -1;
-/* biome-ignore lint/style/noDescendingSpecificity: sets animation only; the earlier row-line rule sets border-top */
 }
 .segmented.pills button.on .seg-pill {
   border-radius: 999px;
 }
 .model-row,
+/* biome-ignore lint/style/noDescendingSpecificity: sets animation only; the earlier row-line rule sets border-top */
 .tr,
 /* biome-ignore lint/style/noDescendingSpecificity: sets animation only; the earlier .card .source sets grid and font size */
 .source,
@@ -1931,13 +1926,13 @@ html.snap-home {
     border-left: 0;
     border: 1px solid var(--line-strong);
     border-radius: 999px;
-  .toc-ind {
-    display: none;
-  }
     margin: 0;
   }
   .doc-toc a[aria-current="true"] {
     border-color: var(--lime);
+  }
+  .toc-ind {
+    display: none;
   }
   .frame-nav {
     gap: 14px;
@@ -1958,13 +1953,13 @@ html.snap-home {
 }
 .doc-content ul.doc-list {
   list-style: disc;
-.doc-content table.data {
-  min-width: 0;
-}
   padding-left: 22px;
 }
 .doc-content .endpoint {
   color: var(--text-2);
+}
+.doc-content table.data {
+  min-width: 0;
 }
 
 /* status message: centred in the free content area */
@@ -2092,6 +2087,11 @@ html.snap-home {
   grid-template-columns:
     minmax(0, 1.3fr) minmax(0, 1.6fr) minmax(130px, 0.8fr) minmax(0, 1.3fr)
     104px;
+  gap: 16px 32px;
+  align-items: start;
+  padding: 24px 0;
+  font-size: 13px;
+}
 .model-row:last-child {
   padding-bottom: 0;
 }
@@ -2099,14 +2099,14 @@ html.snap-home {
 .model-row:not(.model-head) + .model-row {
   border-top: 1px solid var(--line-soft);
 }
-  gap: 16px 32px;
-  align-items: start;
-  padding: 24px 0;
-  font-size: 13px;
-}
 .model-head {
   align-items: end;
   padding: 4px 0 12px;
+  border-bottom: 1px solid var(--line);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.1em;
+  color: var(--text-4);
+}
 .model-usage {
   grid-column: 1 / 3;
 }
@@ -2116,11 +2116,6 @@ html.snap-home {
 .tier-hint {
   padding-top: 16px;
 }
-  border-bottom: 1px solid var(--line);
-  font: 500 11px var(--mono);
-  letter-spacing: 0.1em;
-  color: var(--text-4);
-}
 .model-cell {
   display: flex;
   flex-direction: column;
@@ -2129,19 +2124,24 @@ html.snap-home {
 }
 .model-cell .rank {
   flex: none;
-  justify-content: center;
 }
 .model-actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
 .model-actions .link-btn {
   flex-basis: 100%;
   text-align: center;
 }
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
 .span-2 {
+  grid-column: 1 / -1;
+}
+.modal .stack-sm {
+  gap: 12px;
+}
 .modal-wide {
   max-width: 640px;
   padding: 32px 36px;
@@ -2167,11 +2167,6 @@ html.snap-home {
 .field input::placeholder {
   color: var(--text-4);
 }
-  grid-column: 1 / -1;
-}
-.modal .stack-sm {
-  gap: 12px;
-}
 .grid-2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2182,14 +2177,14 @@ html.snap-home {
 }
 @media (max-width: 1100px) {
   .model-head {
-  .model-usage,
-  .model-limits {
-    grid-column: 1 / -1;
-  }
     display: none;
   }
   .model-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .model-usage,
+  .model-limits {
+    grid-column: 1 / -1;
   }
 }
 @media (max-width: 520px) {
@@ -2241,6 +2236,11 @@ html.snap-home {
 }
 .home .lead {
   font-size: clamp(19px, 1.6vw, 24px);
+  max-width: 620px;
+}
+.home .body {
+  font-size: 17px;
+}
 .home .term .code {
   --code-pad: clamp(14px, min(2vw, 3vh), 28px);
   font-size: clamp(12px, min(0.95vw, 1.8vh), 15px);
@@ -2254,11 +2254,6 @@ html.snap-home {
 .home .resp .code {
   --code-pad: 16px;
   font-size: 13px;
-}
-  max-width: 620px;
-}
-.home .body {
-  font-size: 17px;
 }
 .hero {
   position: relative;
@@ -2274,62 +2269,68 @@ html.snap-home {
 }
 .what-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 56px;
-  align-items: start;
+  align-items: center;
+}
+.what-right {
+  gap: 48px;
+}
+#what {
+  padding-block: clamp(32px, 5vh, 56px);
+}
+#what .h2 {
+  font-size: clamp(32px, min(3.6vw, 6vh), 56px);
 }
 .audience {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
+  max-width: 560px;
   border-left: 1px solid var(--line-strong);
   padding-left: 24px;
 }
 .audience li {
-  font-size: clamp(18px, 1.7vw, 24px);
-  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: clamp(17px, 1.3vw, 18px);
+  line-height: 1.4;
+}
+.aud-tag {
+  font: 500 11px var(--mono);
+  letter-spacing: 0.14em;
+  color: var(--lime);
+}
+.audience .body {
+  font-size: inherit;
 }
 .mini-steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  font-size: 16px;
+  border-top: 1px solid var(--line-strong);
+  font-size: 17px;
   color: var(--text-2);
 }
 .mini-steps li {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
-  padding: 16px 18px;
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-}
-.facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-.fact {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
-  padding: 16px 18px;
-  display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 4px;
+  padding: 20px 8px 0;
+  text-align: center;
 }
-.fact-num {
-  font-size: clamp(40px, 4.2vw, 64px);
-  font-weight: 500;
-  letter-spacing: -0.05em;
-  line-height: 0.95;
-  color: var(--lime);
-}
-.fact-title {
-  font-size: 16px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+.mini-steps li::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  width: 7px;
+  height: 7px;
+  margin-left: -3.5px;
+  border-radius: 50%;
+  background: var(--lime);
 }
 @keyframes rf-node {
   from {
@@ -2352,26 +2353,21 @@ html.snap-home {
   }
 }
 .feature-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-.feature-card {
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface);
-  padding: 28px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+}
+.feature-card {
+  display: grid;
+  grid-template-columns: 32px 52px minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: 24px;
+  align-items: center;
+  padding: 14px 0;
+}
+.feature-card + .feature-card {
+  border-top: 1px solid var(--line);
 }
 .feature-card .feature-title {
   font-size: clamp(22px, 2vw, 30px);
-}
-@media (max-width: 520px) {
-  .facts {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 /* short windows: tighter sidebar so it still never scrolls */
@@ -2496,6 +2492,29 @@ html.snap-home {
   transform: translateY(-50%);
   opacity: 0.1;
 }
+/* the break between Quickstart and Security: a dashed rule with a diamond on it. Pseudo-elements, so it is not in the DOM and takes no space */
+.seam::before,
+.seam::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+.seam::before {
+  top: 24px;
+  left: var(--pad);
+  right: var(--pad);
+  border-top: 1px dashed var(--line-dashed);
+}
+.seam::after {
+  top: 19px;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  margin-left: -5px;
+  border: 1px solid var(--lime);
+  background: var(--bg);
+  transform: rotate(45deg);
+}
 .icon-tile {
   display: inline-flex;
   align-items: center;
@@ -2507,17 +2526,132 @@ html.snap-home {
   background: var(--bg);
   color: var(--lime);
 }
-.sec-card {
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface);
-  padding: 24px;
+/* security: the guarantees as a list, their icons circling a shield on a flat ellipse (all 2D so it stays sharp) */
+.sec-orbit {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 56px;
+  align-items: center;
+}
+.sec-item {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  column-gap: 20px;
+  row-gap: 4px;
+  padding: 20px 0;
+}
+.sec-item + .sec-item {
+  border-top: 1px solid var(--line);
+}
+.sec-item:first-child {
+  padding-top: 0;
+}
+.sec-item:last-child {
+  padding-bottom: 0;
+}
+.sec-item .icon-tile {
+  grid-row: 1 / span 2;
+  align-self: start;
+}
+.sec-item p {
+  margin: 0;
+}
+.orbit-stage {
+  --s: clamp(300px, 34vw, 460px);
+  --rx: calc(var(--s) / 2);
+  --ry: calc(var(--s) * 0.27);
+  position: relative;
+  width: var(--s);
+  height: calc(var(--ry) * 2 + 140px);
+  margin-inline: auto;
+}
+.orbit-ring {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: var(--s);
+  height: calc(var(--ry) * 2);
+  margin-top: calc(var(--ry) * -1);
+  border: 1px solid var(--line-dashed);
+  border-radius: 50%;
+}
+.orbit-ring.orbit-ring-in {
+  left: 25%;
+  width: 50%;
+  height: var(--ry);
+  margin-top: calc(var(--ry) / -2);
+  border-style: dashed;
+  border-color: var(--line-strong);
+}
+.orbit-core.icon-tile {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  width: 76px;
+  height: 76px;
+  border-radius: 18px;
+}
+.orbit-core svg {
+  width: 38px;
+  height: 38px;
+}
+/* a node's sideways and up-down moves are a quarter turn apart (sine easing), so together they trace the ellipse; --f is its
+   place on the ring as a fraction of a turn. The boxes are as wide (x) and as tall (y) as the ellipse, so ±50% is the radius and
+   the keyframes need no variables. The static translate is the same place, so reduced motion keeps the layout. */
+.orbit-node {
+  --sine: cubic-bezier(0.37, 0, 0.63, 1);
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: var(--s);
+  height: 0;
+  translate: calc(cos(var(--f) * 360deg) * 50%) 0;
+  animation: orbit-x 24s var(--sine) calc(var(--f) * -48s) infinite alternate;
+  will-change: translate;
+}
+.orbit-node-y {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 0;
+  height: calc(var(--ry) * 2);
+  margin-top: calc(var(--ry) * -1);
+  translate: 0 calc(sin(var(--f) * 360deg) * 50%);
+  animation: orbit-y 24s var(--sine) calc((var(--f) + 0.25) * -48s) infinite alternate;
+  will-change: translate;
+}
+.orbit-node-body {
+  position: absolute;
+  left: 0;
+  top: 50%;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+  transform: translate(-50%, -50%);
 }
-.cols-4 {
-  gap: 16px;
+.orbit-tag {
+  font-size: 12px;
+  white-space: nowrap;
+}
+@keyframes orbit-x {
+  from {
+    translate: 50% 0;
+  }
+  to {
+    translate: -50% 0;
+  }
+}
+@keyframes orbit-y {
+  from {
+    translate: 0 -50%;
+  }
+  to {
+    translate: 0 50%;
+  }
 }
 
 @supports (background: color-mix(in srgb, red, blue)) {
@@ -2530,15 +2664,17 @@ html.snap-home {
 .side-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 12px;
+  gap: 10px;
+  padding: 0 0 0 12px;
+  margin-bottom: 12px;
 }
 .side-mark {
   width: 30px;
   height: 30px;
 }
 .project-label {
-  padding: 8px 12px 10px;
+  flex: 1;
+  min-width: 0;
   font-size: 15px;
   font-weight: 500;
   letter-spacing: -0.01em;
@@ -2562,23 +2698,21 @@ html.snap-home {
 }
 
 /* routing explorer */
+#how {
+  padding-block: clamp(32px, 5vh, 56px);
+}
+#how .h2 {
+  font-size: clamp(32px, min(3.6vw, 6vh), 56px);
+}
 .route-explorer {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 820px) minmax(260px, 1fr);
+  gap: 32px;
+  align-items: center;
 }
 .route-main {
-  padding: 24px;
-  gap: 16px;
-}
-.route-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.route-bar .chip.on {
-  background: var(--text);
-  color: var(--bg);
+  padding: 20px;
+  gap: 12px;
 }
 .route-flow {
   width: 100%;
@@ -2608,23 +2742,12 @@ html.snap-home {
 .route-flow .rf-node.rf-error.rf-on rect {
   stroke: var(--red);
 }
-/* biome-ignore lint/style/noDescendingSpecificity: the earlier error rule has higher specificity and wins in either order */
-.route-flow .rf-node:focus-visible rect {
-  stroke: var(--text);
-}
-/* biome-ignore lint/style/noDescendingSpecificity: the earlier error rule has higher specificity and wins in either order */
-.route-flow .rf-node:hover rect {
-  stroke: var(--text);
-}
-.route-flow .rf-node:focus {
-  outline: none;
-}
 .rf-title {
-  font: 500 20px var(--sans);
+  font: 500 19px var(--sans);
   fill: var(--text);
 }
 .rf-sub {
-  font: 13px var(--mono);
+  font: 14px var(--mono);
   fill: var(--text-3);
 }
 .rf-edge {
@@ -2643,7 +2766,7 @@ html.snap-home {
   fill: var(--surface);
 }
 .rf-label {
-  font: 13px var(--mono);
+  font: 14px var(--mono);
   fill: var(--text-3);
 }
 .rf-label-on {
@@ -2677,44 +2800,64 @@ html.snap-home {
 .route-flow.is-out .rf-chip {
   animation: none;
 }
-.route-desc {
-  min-height: 3.2em;
-}
 .route-items {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+}
+.route-items li + li {
+  border-top: 1px solid var(--line);
 }
 .route-item {
   width: 100%;
-  height: 100%;
   text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 20px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: clamp(8px, 1.4vh, 12px) 16px;
+  border: 0;
+  border-radius: 0;
   background: transparent;
-  color: var(--text);
+  color: var(--text-2);
   font: inherit;
   cursor: pointer;
 }
+.route-item .card-title-sm {
+  color: var(--text);
+  font-size: clamp(15px, 2.2vh, 18px);
+}
+.route-item .small {
+  grid-column: 2;
+  font-size: clamp(12px, 1.8vh, 14px);
+}
 .route-item:hover {
-  border-color: var(--line-strong);
+  background: var(--hover-row);
 }
 .route-item[aria-pressed="true"] {
   background: var(--surface);
-  border-color: var(--lime);
+}
+/* square wherever an edge meets a divider line; rounded only on the free outer edge of the first and last */
+.route-items li:first-child .route-item {
+  border-radius: 10px 10px 0 0;
+}
+.route-items li:last-child .route-item {
+  border-radius: 0 0 10px 10px;
 }
 @media (max-width: 900px) {
   .what-grid,
-  .feature-grid,
-  .route-items {
+  .route-explorer {
     grid-template-columns: minmax(0, 1fr);
   }
-  .mini-steps {
-    grid-template-columns: minmax(0, 1fr);
+  .feature-card {
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 8px 16px;
+  }
+  .feature-card > .mono {
+    display: none;
+  }
+  .feature-card > .feature-title,
+  .feature-card > .body {
+    grid-column: 2;
   }
   .route-flow {
     min-width: 640px;
@@ -2723,8 +2866,57 @@ html.snap-home {
     overflow-x: auto;
   }
 }
+@media (max-width: 900px) {
+  .sec-orbit {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+  .orbit-stage {
+    --s: min(84vw, 440px);
+  }
+}
+@media (max-width: 520px) {
+  .home .term-dots {
+    display: none;
+  }
+}
 @media (min-width: 901px) and (max-width: 1100px) {
-  .route-items {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .route-explorer {
+    grid-template-columns: minmax(0, 1fr) 240px;
+    gap: 20px;
+  }
+}
+
+/* light entrance motion, opacity and transform only, each under 0.5 s (the reduced-motion reset above removes all of it):
+   the blocks of a dashboard page rise in turn (rows, cards and buttons already animate above), long pages reveal each section as it scrolls in */
+.content .stack > * {
+  animation: fade 0.4s ease both;
+}
+.content .stack > :nth-child(2) {
+  animation-delay: 0.05s;
+}
+.content .stack > :nth-child(3) {
+  animation-delay: 0.1s;
+}
+.content .stack > :nth-child(4) {
+  animation-delay: 0.15s;
+}
+.content .stack > :nth-child(5) {
+  animation-delay: 0.2s;
+}
+.content .stack > :nth-child(6) {
+  animation-delay: 0.25s;
+}
+.hero .label {
+  animation: fade 0.5s both;
+}
+.hero-foot {
+  animation: fade 0.5s 0.25s both;
+}
+@supports (animation-timeline: view()) {
+  .doc-content section {
+    animation: fade linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 35%;
   }
 }
