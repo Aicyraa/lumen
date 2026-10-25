@@ -38,6 +38,7 @@ vi.mock("../../src/shared/lib/auth-client", () => ({
 }));
 
 import { App } from "../../src/app/App";
+import { flagProjectMismatch, setActiveProjectId } from "../../src/shared/lib/activeProject";
 import { mockFetch, reply } from "../helpers";
 
 const P1 = {
@@ -137,6 +138,17 @@ describe("project routes", () => {
     mount("/projects/my-project/documents");
     expect(await screen.findByText("Drop files to upload")).toBeInTheDocument();
     expect(setActive).not.toHaveBeenCalled();
+  });
+
+  it("entering a project does not update a subscribed component during render", async () => {
+    setActiveProjectId("stale"); // a different active project whose mismatch flag is set
+    flagProjectMismatch();
+    mockFetch(api());
+    mount("/projects/my-project/documents");
+    expect(await screen.findByText("Drop files to upload")).toBeInTheDocument();
+    const logged = vi.mocked(console.error).mock.calls.flat().join(" ");
+    expect(logged).not.toMatch(/Cannot update a component/);
+    expect(screen.queryByText(/project changed in another tab/)).not.toBeInTheDocument();
   });
 
   it("an unknown project slug says so and links back to Projects", async () => {

@@ -2,10 +2,16 @@ import pytest
 
 from app.core.config import load_config
 from app.retrieval import db, embeddings, reranker
+from tests.conftest import AUTH
 
 
-def test_ready_needs_no_secret_and_reports_each_check(client):
+def test_ready_without_the_secret_is_401(client):
     resp = client.get("/internal/ready")
+    assert resp.status_code == 401 and resp.json()["error"]["code"] == "unauthorized"
+
+
+def test_ready_reports_each_check(client):
+    resp = client.get("/internal/ready", headers=AUTH)
     assert resp.status_code == 200
     assert resp.json() == {
         "status": "ready",
@@ -18,7 +24,7 @@ def test_ready_is_503_when_the_database_pool_cannot_answer(client, monkeypatch):
         raise RuntimeError("database down; password must not leak")
 
     monkeypatch.setattr(db, "connection", broken)
-    resp = client.get("/internal/ready")
+    resp = client.get("/internal/ready", headers=AUTH)
     assert resp.status_code == 503
     assert resp.json()["status"] == "not_ready" and resp.json()["checks"]["database"] is False
     assert "password" not in resp.text
@@ -26,19 +32,19 @@ def test_ready_is_503_when_the_database_pool_cannot_answer(client, monkeypatch):
 
 def test_ready_is_503_when_the_reranker_is_enabled_but_not_loaded(client, monkeypatch):
     monkeypatch.setattr(reranker, "is_loaded", lambda: False)
-    resp = client.get("/internal/ready")
+    resp = client.get("/internal/ready", headers=AUTH)
     assert resp.status_code == 503 and resp.json()["checks"]["reranker"] is False
 
 
 def test_ready_ignores_the_reranker_when_it_is_disabled(client, monkeypatch):
     monkeypatch.setitem(load_config()["reranker"], "enabled", False)
     monkeypatch.setattr(reranker, "is_loaded", lambda: False)
-    assert client.get("/internal/ready").status_code == 200
+    assert client.get("/internal/ready", headers=AUTH).status_code == 200
 
 
 def test_ready_is_503_when_the_embedder_is_not_loaded(client, monkeypatch):
     monkeypatch.setattr(embeddings, "is_loaded", lambda: False)
-    resp = client.get("/internal/ready")
+    resp = client.get("/internal/ready", headers=AUTH)
     assert resp.status_code == 503 and resp.json()["checks"]["embedder"] is False
 
 
