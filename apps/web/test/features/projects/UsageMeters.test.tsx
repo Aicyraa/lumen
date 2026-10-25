@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { UsageMeters } from "../../../src/features/projects/UsageMeters";
-import { mockFetch, renderWithProviders } from "../../helpers";
+import { mockFetch, renderWithProviders, reply } from "../../helpers";
 
 const usage = (d: [number, number], r: [number, number], m: [number, number]) => ({
   documents: { used: d[0], max: d[1] },
@@ -31,5 +31,18 @@ describe("UsageMeters", () => {
       "ok",
     );
     expect(screen.getByRole("meter", { name: "This month" })).toHaveAttribute("data-level", "ok");
+  });
+
+  it("stops polling once the API says this tab's project is stale", async () => {
+    mockFetch(() => reply(409, { error: { code: "project_mismatch", message: "m" } }));
+    const { client } = renderWithProviders(<UsageMeters />);
+    await vi.waitFor(() =>
+      expect(
+        client.getQueryCache().find({ queryKey: ["usage", "org_1"] })?.state.error,
+      ).toBeTruthy(),
+    );
+    const query = client.getQueryCache().find({ queryKey: ["usage", "org_1"] })!;
+    const interval = query.options.refetchInterval as (q: typeof query) => number | false;
+    expect(interval(query)).toBe(false);
   });
 });

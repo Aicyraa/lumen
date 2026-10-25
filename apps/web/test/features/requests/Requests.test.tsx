@@ -52,6 +52,31 @@ const detail = {
 vi.mock("../../../src/features/auth/session", () => ({ useOrgId: () => "org_1" }));
 
 describe("Requests", () => {
+  it("keeps the rows on screen while a new filter loads, and bounds how many pages it holds", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const { fn } = mockFetch(() => ({
+      items: [item(ID1, "When does enrollment close?", "cheap")],
+      next_cursor: null,
+    }));
+    const orig = fn.getMockImplementation()!;
+    fn.mockImplementation(async (input, init) => {
+      if (String(input).includes("tier=none")) await gate;
+      return orig(input, init);
+    });
+    const { client } = renderWithProviders(<Requests />);
+    await screen.findByText("When does enrollment close?");
+    await userEvent.click(screen.getByRole("button", { name: "NO ANSWER" }));
+    expect(screen.getByText("When does enrollment close?")).toBeInTheDocument();
+    expect(screen.queryByText("Loading requests…")).not.toBeInTheDocument();
+    release();
+    const q = client
+      .getQueryCache()
+      .getAll()
+      .find((x) => (x.queryKey as string[])[2] === "none")!;
+    expect(q.options.maxPages).toBe(20);
+  });
+
   it("filters by tier through the API (all, cheap, expensive, none)", async () => {
     const { calls } = mockFetch(() => ({
       items: [item(ID1, "When does enrollment close?", "cheap")],
