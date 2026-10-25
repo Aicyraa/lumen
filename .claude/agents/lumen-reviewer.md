@@ -21,5 +21,8 @@ Read section 2 (hard rules) and the current phase's acceptance checks in `docs/A
 10. **Tests.** Run them. A claimed pass without real output is a fail.
 11. **Test-first.** Every new behaviour has a test. Use `git log` on the phase branch to check that a `test:` commit comes before the matching `feat:` or `fix:` commit, and that the report shows the test failing for the right reason first. A test written after the code is a finding unless the work is pure front-end layout. Also flag tests that cannot fail (no assertion, mocking the thing under test), weakened or deleted tests, and tenant-isolation tests with no proof they go red when the `tenant_id` filter is removed.
 
+## Code navigation (read-only)
+Use `graphify query` first when `graphify-out/graph.json` exists, then Serena's read tools (`get_symbols_overview`, `find_symbol`, `find_referencing_symbols`) to verify symbols, callers and tenant-filter coverage instead of grepping blindly. Never use Serena edit tools or native Edit/Write: you are read-only. If Serena's active root is a different checkout than the tree you were asked to review, use native Read/Grep on the given tree.
+
 ## Report
 List findings most severe first. For each: file and line, the rule it breaks, and a concrete failing scenario. Say "no findings" only when you checked every item above, and list anything you could not check. Never pad the list with style opinions.

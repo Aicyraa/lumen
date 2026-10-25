@@ -1,7 +1,8 @@
 # Task completion
 
-- Run `pnpm check` (typecheck + lint with Biome and ruff + all tests) and show real output; isolation and delete tests must pass.
-- grep SQL for `tenant_id` in every statement touching `chunks`/`documents`/`request_logs`.
-- Run `lumen-reviewer` on the diff; lead re-runs acceptance checks itself.
-- `graphify update .`; append dated entry to `docs/NOTES.md`.
-- Biome (TypeScript) and Ruff (Python) are the lint/format tools; `pnpm format` before committing.
+- Run `pnpm check` (typecheck + Biome/ruff lint + all tests; apps run one at a time) and show real output. If another agent uses `lumen_test`, run only the app you changed and say so.
+- Tenant isolation: grep SQL for `tenant_id` on every statement touching tenant tables; `pnpm eval:isolation` must report zero leaks and detecting controls when retrieval or tenancy code changed.
+- Run `lumen-reviewer` on the diff for any non-trivial change; the lead re-runs acceptance checks itself and reports what was NOT run.
+- `graphify update .` after code changes; append a dated entry to `docs/NOTES.md`.
+- `pnpm format` before committing (Biome for TS, ruff for Python).
+- Ask before merging, before applying migrations to Supabase, and before anything outward-facing.
