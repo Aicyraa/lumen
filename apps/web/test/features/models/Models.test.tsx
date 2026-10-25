@@ -591,4 +591,92 @@ describe("Models provider rate limits", () => {
     await screen.findAllByText(/Rate limited until/);
     expect(screen.queryByText(HINT)).not.toBeInTheDocument();
   });
+
+  describe("row actions", () => {
+    function gated(onPatch: (init: RequestInit) => void, deleteReply?: () => unknown) {
+      let release!: () => void;
+      const gate = new Promise<void>((r) => (release = r));
+      const { fn } = mockFetch(router());
+      const orig = fn.getMockImplementation()!;
+      fn.mockImplementation(async (input, init) => {
+        if (init?.method === "PATCH") {
+          onPatch(init);
+          await gate;
+          return new Response(JSON.stringify(base), {
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (init?.method === "DELETE" && deleteReply) {
+          const r = deleteReply() as ReturnType<typeof reply>;
+          if (r)
+            return new Response(JSON.stringify(r.body), {
+              status: r.status,
+              headers: { "content-type": "application/json" },
+            });
+        }
+        return orig(input, init);
+      });
+      return release;
+    }
+
+    it("disables move and remove while a move is in flight, so a double click sends one request", async () => {
+      let patches = 0;
+      const release = gated(() => patches++);
+      renderWithProviders(<Models />);
+      const user = userEvent.setup();
+      const up = async () =>
+        within(await screen.findByTestId("model-b")).getByRole("button", {
+          name: "Move model-b up",
+        });
+      await user.click(await up());
+      await waitFor(async () => expect(await up()).toBeDisabled());
+      await user.click(await up());
+      expect(patches).toBe(1);
+      expect(
+        within(screen.getByTestId("model-b")).getByRole("button", { name: "Remove model-b" }),
+      ).toBeDisabled();
+      release();
+      await waitFor(async () => expect(await up()).toBeEnabled());
+    });
+
+    it("clears a row error as soon as the user tries again", async () => {
+      let fail = true;
+      const release = gated(
+        () => {},
+        () =>
+          fail ? reply(500, { error: { code: "error", message: "Could not remove." } }) : undefined,
+      );
+      renderWithProviders(<Models />);
+      const user = userEvent.setup();
+      const remove = async () => {
+        await user.click(
+          within(await screen.findByTestId("model-b")).getByRole("button", {
+            name: "Remove model-b",
+          }),
+        );
+        await user.click(
+          within(await screen.findByRole("dialog")).getByRole("button", { name: "Remove model" }),
+        );
+      };
+      await remove();
+      expect(await screen.findByRole("alert")).toHaveTextContent("Could not remove.");
+      fail = false;
+      await user.click(
+        within(screen.getByTestId("model-b")).getByRole("button", { name: "Move model-b up" }),
+      );
+      expect(screen.queryByText("Could not remove.")).not.toBeInTheDocument();
+      release();
+    });
+  });
+
+  it("drops the rate-limited chip by itself once rate_limited_until has passed", async () => {
+    withUsage({ a: { rate_limited_until: new Date(Date.now() + 600).toISOString() } });
+    renderWithProviders(<Models />);
+    const a = await screen.findByTestId("model-a");
+    await within(a).findByText(/Rate limited until/);
+    await waitFor(() => expect(within(a).getByText("Connected")).toBeInTheDocument(), {
+      timeout: 3000,
+    });
+    expect(screen.queryByText(/Rate limited until/)).not.toBeInTheDocument();
+  });
 });
