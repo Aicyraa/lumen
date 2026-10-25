@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { apiKey } from "@better-auth/api-key";
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
@@ -64,11 +65,22 @@ export function createAuth({
     max: config.verificationResendPerEmailMax,
   });
   const createLock = new KeyedLock();
-  const held = new Map<string, () => void>();
+  // Whoever holds a user's lock is recorded with a token. A release only counts for the token it was made with, so a create
+  // that outlives the lock's TTL cannot release the lock of the one that took over. The token travels from the hook that takes
+  // the lock to the hook (or route) that releases it in an AsyncLocalStorage scope opened per create call (projectLockScope).
+  type Holder = { token: object; release: () => void };
+  const held = new Map<string, Holder>();
+  const scope = new AsyncLocalStorage<{ token?: object }>();
   const releaseProjectLock = (userId: string) => {
-    held.get(userId)?.();
+    const store = scope.getStore();
+    const holder = held.get(userId);
+    if (!holder || (store && holder.token !== store.token)) return; // in a scope: only the lock this call took
+
+    holder.release();
     held.delete(userId);
   };
+  // shortcut: a create call outside a scope (none today) releases whatever the user's current holder is, as before.
+  const projectLockScope = <T>(fn: () => T): T => scope.run({}, fn);
 
   const auth = betterAuth({
     database: pool,
@@ -127,7 +139,13 @@ export function createAuth({
           // The cap holds for every way of creating a project, including the client's organization.create call.
           beforeCreateOrganization: async ({ user }) => {
             if (!user?.id) return;
-            held.set(user.id, await createLock.acquire(user.id, config.projectCreateLockMs));
+            const token = {};
+            held.set(user.id, {
+              token,
+              release: await createLock.acquire(user.id, config.projectCreateLockMs),
+            });
+            const store = scope.getStore();
+            if (store) store.token = token;
             if (
               (await ownedProjectCount(pool, user.id).catch((err) => {
                 releaseProjectLock(user.id);
@@ -166,5 +184,5 @@ export function createAuth({
     ],
   });
   createOrganization = (body) => auth.api.createOrganization({ body }) as Promise<{ id: string }>;
-  return Object.assign(auth, { releaseProjectLock });
+  return Object.assign(auth, { releaseProjectLock, projectLockScope });
 }

@@ -46,7 +46,9 @@ export function createApp({
         sendError(res, 429, "rate_limited", "Too many requests. Try again in a minute."),
     }),
   );
-  app.all("/api/auth/*splat", toNodeHandler(auth)); // Express 5 syntax; must come before express.json() (rule 5)
+  const authHandler = toNodeHandler(auth);
+  // Express 5 syntax; must come before express.json() (rule 5). The scope lets the create hooks release only their own lock.
+  app.all("/api/auth/*splat", (req, res) => auth.projectLockScope(() => authHandler(req, res)));
   app.use(express.json());
   // Public API: every /v1 route needs a valid key, so unknown paths also answer 401 first.
   const deps = { pool, rag, config, log, pending, resolveHost };
