@@ -501,3 +501,57 @@ describe("Models", () => {
     expect(dlg.textContent).not.toMatch(/fallback/i);
   });
 });
+
+describe("Models provider rate limits", () => {
+  const inMin = (n: number) => new Date(Date.now() + n * 60_000).toISOString();
+  const withUsage = (over: Record<string, object>) =>
+    mockFetch(
+      router((url) =>
+        url.includes("/models/usage")
+          ? {
+              ...usageBody,
+              models: usageBody.models.map((x) => ({ ...x, ...(over[x.id] ?? {}) })),
+            }
+          : undefined,
+      ),
+    );
+
+  it("shows 'Rate limited until HH:MM' with the remaining time instead of Connected, and keeps the provider limits", async () => {
+    withUsage({ a: { rate_limited_until: inMin(10) } });
+    renderWithProviders(<Models />);
+    const a = await screen.findByTestId("model-a");
+    await within(a).findByText(/limit-requests 30/);
+    const chip = within(a).getByText(/Rate limited until \d{1,2}:\d{2}/);
+    expect(chip.closest("[title]")).toHaveAttribute("title", expect.stringMatching(/10 minutes/));
+    expect(within(a).queryByText("Connected")).not.toBeInTheDocument();
+    expect(within(screen.getByTestId("model-b")).getByText("Connected")).toBeInTheDocument();
+  });
+
+  it("treats a past or null rate_limited_until as Connected", async () => {
+    withUsage({ a: { rate_limited_until: inMin(-5) } });
+    renderWithProviders(<Models />);
+    const a = await screen.findByTestId("model-a");
+    await within(a).findByText(/limit-requests 30/);
+    expect(within(a).getByText("Connected")).toBeInTheDocument();
+    expect(screen.queryByText(/Rate limited until/)).not.toBeInTheDocument();
+  });
+
+  const HINT =
+    "Every model in this tier is rate limited. Add a backup model from another provider to keep answering.";
+  it("hints under a tier only when it has models and all are rate limited", async () => {
+    withUsage({ a: { rate_limited_until: inMin(5) }, b: { rate_limited_until: inMin(7) } });
+    renderWithProviders(<Models />);
+    await screen.findAllByText(/Rate limited until/);
+    expect(screen.getAllByText(HINT)).toHaveLength(1);
+    expect(
+      within(screen.getByRole("region", { name: "Cheap" })).getByText(HINT),
+    ).toBeInTheDocument();
+  });
+
+  it("no hint when one model is still available, or the tier is empty", async () => {
+    withUsage({ a: { rate_limited_until: inMin(5) } });
+    renderWithProviders(<Models />);
+    await screen.findAllByText(/Rate limited until/);
+    expect(screen.queryByText(HINT)).not.toBeInTheDocument();
+  });
+});
