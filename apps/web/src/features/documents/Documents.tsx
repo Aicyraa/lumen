@@ -11,9 +11,12 @@ import { useOrgId } from "../auth/session";
 
 export const DOC_POLL_MS = 2000;
 
-// Refetch while anything is still processing; stop as soon as every document is ready or failed.
-export const docPollInterval = (docs: Doc[] | undefined, ms: number) =>
-  docs?.some((d) => d.status === "processing") ? ms : false;
+// Refetch while anything is still processing, a little slower each time (x1.5, up to 5x the base); stop as soon as
+// every document is ready or failed. `attempt` counts the polls so far.
+export const docPollInterval = (docs: Doc[] | undefined, ms: number, attempt: number) =>
+  docs?.some((d) => d.status === "processing")
+    ? Math.min(ms * 5, Math.round(ms * 1.5 ** attempt))
+    : false;
 
 export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
   const qc = useQueryClient();
@@ -21,13 +24,15 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
   const [drag, setDrag] = useState(false);
+  const [progress, setProgress] = useState("");
+  const polls = useRef(0);
   const [toDelete, setToDelete] = useState<Doc | null>(null);
 
   const docs = useQuery({
     queryKey: ["documents", org],
     enabled: !!org,
     queryFn: () => api<{ documents: Doc[] }>("/api/dashboard/documents").then((r) => r.documents),
-    refetchInterval: (q) => docPollInterval(q.state.data, pollMs),
+    refetchInterval: (q) => docPollInterval(q.state.data, pollMs, polls.current++),
   });
   const usage = useQuery({
     queryKey: ["usage", org],
@@ -35,6 +40,7 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
     queryFn: () => api<Usage>("/api/dashboard/usage"),
   });
   const refresh = () => {
+    polls.current = 0; // a new or deleted document starts the backoff again
     qc.invalidateQueries({ queryKey: ["documents", org] });
     qc.invalidateQueries({ queryKey: ["usage", org] });
   };
@@ -55,10 +61,14 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
 
   async function addFiles(list: FileList | null) {
     setError("");
+    setProgress("");
     for (const f of Array.from(list ?? [])) {
+      setProgress(`Uploading ${f.name}…`);
       try {
         await upload.mutateAsync(f);
+        setProgress(`Uploaded ${f.name}. It is being processed.`);
       } catch (e) {
+        setProgress("");
         setError(friendlyError(e, "Upload failed."));
         if (e instanceof ApiError && e.status === 429) break; // the rest would be refused too
       }
@@ -108,6 +118,9 @@ export function Documents({ pollMs = DOC_POLL_MS }: { pollMs?: number }) {
             onChange={(e) => void addFiles(e.target.files)}
           />
         </label>
+      </div>
+      <div className="small muted-3" aria-live="polite">
+        {progress}
       </div>
       <ErrorText>{error}</ErrorText>
       {docs.isPending && <StatusMessage state="loading">Loading documents…</StatusMessage>}
