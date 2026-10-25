@@ -1,6 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { ProjectContext, type Workspace } from "../../../src/features/projects/projectsContext";
 import { TryIt } from "../../../src/features/try-it/TryIt";
 import { mockFetch, renderWithProviders, reply } from "../../helpers";
 
@@ -28,12 +29,29 @@ const result = (cost: number | null) => ({
   usage: { tokens_in: 812, tokens_out: 64, latency_ms: 620, cost_usd: cost },
 });
 
+const project: Workspace = {
+  id: "org_1",
+  name: "Acme",
+  slug: "acme",
+  description: null,
+  role: "owner",
+  created_at: "2026-01-01T00:00:00Z",
+  documents: 0,
+  requests_this_month: 0,
+};
+const renderTryIt = () =>
+  renderWithProviders(
+    <ProjectContext.Provider value={project}>
+      <TryIt />
+    </ProjectContext.Provider>,
+  );
+
 vi.mock("../../../src/features/auth/session", () => ({ useOrgId: () => "org_1" }));
 
 describe("TryIt", () => {
   it("asks through POST /api/dashboard/try and shows answer citations, sources, route and usage", async () => {
     const { calls } = mockFetch(() => result(0.0004));
-    renderWithProviders(<TryIt />);
+    renderTryIt();
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Question"), "When does enrollment close?");
     await user.click(screen.getByRole("button", { name: "Ask" }));
@@ -51,14 +69,14 @@ describe("TryIt", () => {
 
   it("says 'no price set' when the answering model has no price", async () => {
     mockFetch(() => result(null));
-    renderWithProviders(<TryIt />);
+    renderTryIt();
     await userEvent.type(screen.getByLabelText("Question"), "hi{enter}");
     expect(await screen.findByText("no price set")).toBeInTheDocument();
   });
 
   it("sends Helpful? Yes/No to POST /api/dashboard/feedback with the request id", async () => {
     const { calls } = mockFetch((url) => (url.includes("/feedback") ? reply(204) : result(null)));
-    renderWithProviders(<TryIt />);
+    renderTryIt();
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Question"), "hi{enter}");
     await user.click(await screen.findByRole("button", { name: "No" }));
@@ -78,12 +96,12 @@ describe("TryIt", () => {
         },
       }),
     );
-    renderWithProviders(<TryIt />);
+    renderTryIt();
     await userEvent.type(screen.getByLabelText("Question"), "hi{enter}");
     expect(await screen.findByRole("alert")).toHaveTextContent("Add a model in the Models tab");
     expect(
       within(screen.getByRole("alert")).getByRole("link", { name: "Models tab" }),
-    ).toHaveAttribute("href", "/dashboard/models");
+    ).toHaveAttribute("href", "/projects/acme/models");
   });
 
   it("clamps the score bar to 0-100% even for an out-of-range score", async () => {
@@ -91,7 +109,7 @@ describe("TryIt", () => {
     r.sources[0].score = 1.2;
     r.sources[1].score = -0.1;
     mockFetch(() => r);
-    const { container } = renderWithProviders(<TryIt />);
+    const { container } = renderTryIt();
     await userEvent.type(screen.getByLabelText("Question"), "hi{enter}");
     await screen.findByText(/Enrollment closes/);
     const widths = Array.from(container.querySelectorAll<HTMLElement>(".score-fill")).map(
@@ -103,7 +121,7 @@ describe("TryIt", () => {
   describe("status messages", () => {
     it("starts with an empty-state message", () => {
       mockFetch(() => result(null));
-      renderWithProviders(<TryIt />);
+      renderTryIt();
       expect(screen.getByRole("status")).toHaveTextContent(/Ask a question to see the answer/);
     });
     it("shows a loading message while asking, and the empty message is gone after the answer", async () => {
@@ -117,7 +135,7 @@ describe("TryIt", () => {
         await gate;
         return orig(i, init);
       });
-      renderWithProviders(<TryIt />);
+      renderTryIt();
       await userEvent.type(screen.getByLabelText("Question"), "Hello?");
       await userEvent.click(screen.getByRole("button", { name: "Ask" }));
       expect(await screen.findByRole("status")).toHaveTextContent(/routing/i);
@@ -129,7 +147,7 @@ describe("TryIt", () => {
       mockFetch(() =>
         reply(502, { error: { code: "provider_error", message: "All models failed." } }),
       );
-      renderWithProviders(<TryIt />);
+      renderTryIt();
       await userEvent.type(screen.getByLabelText("Question"), "Hello?");
       await userEvent.click(screen.getByRole("button", { name: "Ask" }));
       expect(await screen.findByRole("alert")).toHaveTextContent("All models failed.");
@@ -140,7 +158,7 @@ describe("TryIt", () => {
   describe("centred layout", () => {
     it("is a single centred column until there is an answer, then adds the side column", async () => {
       mockFetch(() => result(0.0004));
-      const { container } = renderWithProviders(<TryIt />);
+      const { container } = renderTryIt();
       const grid = container.querySelector(".try-grid")!;
       expect(grid).not.toHaveClass("with-side");
       await userEvent.type(screen.getByLabelText("Question"), "When does enrollment close?");
@@ -170,7 +188,7 @@ describe("TryIt provider rate limit", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
       mockFetch(() => limited(702));
-      renderWithProviders(<TryIt />);
+      renderTryIt();
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       await user.type(screen.getByLabelText("Question"), "hi{enter}");
       const alert = await screen.findByRole("alert");
@@ -196,7 +214,7 @@ describe("TryIt provider rate limit", () => {
     mockFetch(() =>
       reply(502, { error: { code: "provider_error", message: "Every model failed." } }),
     );
-    renderWithProviders(<TryIt />);
+    renderTryIt();
     await userEvent.type(screen.getByLabelText("Question"), "hi{enter}");
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Every model failed.");
