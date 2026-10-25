@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { Documents } from "../../../src/features/documents/Documents";
+import { Documents, docPollInterval } from "../../../src/features/documents/Documents";
 import { mockFetch, renderWithProviders, reply } from "../../helpers";
 
 const doc = (over: object) => ({
@@ -59,6 +59,45 @@ describe("Documents", () => {
     const n = calls.length;
     await new Promise((r) => setTimeout(r, 200));
     expect(calls.length).toBe(n);
+  });
+
+  it("polling backs off from the base interval up to five times it, and stops when nothing is processing", () => {
+    const busy = [doc({})] as never;
+    expect(docPollInterval(busy, 2000, 0)).toBe(2000);
+    expect(docPollInterval(busy, 2000, 1)).toBeGreaterThan(2000);
+    expect(docPollInterval(busy, 2000, 2)).toBeGreaterThan(
+      docPollInterval(busy, 2000, 1) as number,
+    );
+    expect(docPollInterval(busy, 2000, 50)).toBe(10000);
+    expect(docPollInterval([doc({ status: "ready" })] as never, 2000, 0)).toBe(false);
+    expect(docPollInterval(undefined, 2000, 0)).toBe(false);
+  });
+
+  it("says what an upload is doing: uploading, then uploaded, in a live region", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const { fn } = mockFetch((url) => (url.endsWith("/usage") ? usage : { documents: [] }));
+    const orig = fn.getMockImplementation()!;
+    fn.mockImplementation(async (input, init) => {
+      if (init?.method === "POST") {
+        await gate;
+        return new Response(JSON.stringify({ document_id: "d9", status: "processing" }), {
+          status: 202,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return orig(input, init);
+    });
+    renderWithProviders(<Documents />);
+    await screen.findByText(/No documents yet/);
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await userEvent.upload(input, new File(["x"], "notes.md", { type: "text/markdown" }));
+    const live = await screen.findByText("Uploading notes.md…");
+    expect(live.closest("[aria-live]")).toBeInTheDocument();
+    release();
+    expect(
+      await screen.findByText("Uploaded notes.md. It is being processed."),
+    ).toBeInTheDocument();
   });
 
   it("shows the counter with the limit from the API", async () => {
