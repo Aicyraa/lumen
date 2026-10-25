@@ -53,9 +53,10 @@ def is_open() -> bool:
     return _pool is not None
 
 
-def connection():
-    """Context manager: commits on success, rolls back on error, returns the connection to the pool."""
-    return (_pool or open_pool()).connection()
+def connection(timeout: float | None = None):
+    """Context manager: commits on success, rolls back on error, returns the connection to the pool.
+    `timeout` overrides how long to wait for a free connection (default: database.pool_timeout_seconds)."""
+    return (_pool or open_pool()).connection(timeout=timeout)
 
 
 atexit.register(close_pool)  # CLI commands and tests never call close_pool; avoids a noisy exit

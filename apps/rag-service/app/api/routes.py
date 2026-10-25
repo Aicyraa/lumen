@@ -8,16 +8,18 @@ from uuid import UUID, uuid4
 
 import numpy as np
 from fastapi import APIRouter, Depends, Form, UploadFile
+from fastapi.responses import JSONResponse
 
 from app.api.deps import get_caller, require_secret
 from app.api.schemas import QueryRequest, TenantModels
+from app.core import limits
 from app.core.config import is_production, load_config, router_cfg
 from app.core.errors import ApiError
 from app.core.logging import log
 from app.ingest.chunking import chunk
 from app.ingest.extract import DocumentTooLarge, UnreadableDocument, extract_text
 from app.llm.prompt import build_prompt, render_answer
-from app.retrieval import store
+from app.retrieval import db, embeddings, reranker, store
 from app.retrieval.embeddings import (
     embed,  # loads the model at import, before the server starts listening
 )
@@ -57,6 +59,23 @@ def embed_checked(tenant_id: str, document_id: str, chunks: list[str]) -> np.nda
     return np.vstack(parts)
 
 
+@public.get("/internal/ready")  # no secret, like health; plain def because it uses the database
+def ready():
+    checks = {"database": False, "embedder": embeddings.is_loaded(), "reranker": True}
+    try:
+        with db.connection(timeout=load_config()["database"]["ready_timeout_seconds"]) as conn:
+            conn.execute("SELECT 1")
+        checks["database"] = True
+    except Exception:  # any failure means not ready; the reason stays out of the response
+        pass
+    if load_config()["reranker"]["enabled"]:
+        checks["reranker"] = reranker.is_loaded()
+    ok = all(checks.values())
+    return JSONResponse(
+        {"status": "ready" if ok else "not_ready", "checks": checks}, status_code=200 if ok else 503
+    )
+
+
 @internal.post("/ingest")
 def ingest(
     tenant_id: Annotated[str, Form(min_length=1)],
@@ -87,7 +106,17 @@ def ingest(
         raise ApiError(422, "no_text_extracted", "No text could be extracted from the file.")
     if len(chunks) > load_config()["ingest"]["max_chunks"]:  # before any embedding work
         raise too_large()
-    vectors = embed_checked(tenant_id, str(document_id), chunks)
+    cfg = load_config()
+    try:  # uploads queue for a slot; over the wait the caller gets 503 and may retry
+        with limits.slot("ingest", wait=cfg["concurrency"]["ingest_wait_seconds"]):
+            vectors = embed_checked(tenant_id, str(document_id), chunks)
+    except limits.Busy:
+        raise ApiError(
+            503,
+            "busy",
+            "The service is busy. Try again shortly.",
+            headers={"Retry-After": str(cfg["concurrency"]["retry_after_seconds"])},
+        )
     try:  # one transaction: a failure leaves no chunks
         store.add_chunks(tenant_id, str(document_id), chunks, vectors)
     except store.DocumentMissing:

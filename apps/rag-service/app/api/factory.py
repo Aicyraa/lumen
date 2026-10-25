@@ -7,10 +7,10 @@ from psycopg_pool import PoolTimeout
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import routes
-from app.core.config import load_settings
+from app.core.config import load_config, load_settings
 from app.core.errors import ApiError, error_response
 from app.core.logging import configure_logging
-from app.retrieval import db
+from app.retrieval import db, reranker
 
 
 @asynccontextmanager
@@ -20,6 +20,8 @@ async def lifespan(app: FastAPI):
         **load_settings()
     )  # refuse to start when anything is missing
     db.open_pool(wait=True)  # fail at startup, not on the first request, when the database is down
+    if load_config()["reranker"]["enabled"]:
+        reranker.load()  # with the embedder (loaded on import), so no query pays for it
     try:
         yield
     finally:

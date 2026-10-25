@@ -63,12 +63,9 @@ def test_reranker_runtime_loads_only_the_bundled_model(monkeypatch):
         "CrossEncoder",
         lambda path, **kwargs: calls.append((path, kwargs)),
     )
-    reranker._model.cache_clear()
-    try:
-        reranker._model()
-        assert calls == [(str(config.model_path("reranker")), {"local_files_only": True})]
-    finally:
-        reranker._model.cache_clear()
+    monkeypatch.setattr(reranker, "_loaded", None)  # force a load; restored after the test
+    reranker._model()
+    assert calls == [(str(config.model_path("reranker")), {"local_files_only": True})]
 
 
 def test_a_failed_download_fails_the_build(monkeypatch):
