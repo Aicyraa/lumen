@@ -19,9 +19,15 @@ export interface Reply {
   __reply: true;
   status: number;
   body?: unknown;
+  headers?: Record<string, string>;
 }
 // Explicit non-200 reply (a plain body can have its own "status" field).
-export const reply = (status: number, body?: unknown): Reply => ({ __reply: true, status, body });
+export const reply = (status: number, body?: unknown, headers?: Record<string, string>): Reply => ({
+  __reply: true,
+  status,
+  body,
+  headers,
+});
 
 // Stubs global fetch. A handler gets the path (without the API base) and returns a body or { status, body }.
 export function mockFetch(handler: Handler) {
@@ -35,7 +41,7 @@ export function mockFetch(handler: Handler) {
     const body = isReply ? (out as Reply).body : out;
     return new Response(status === 204 ? null : JSON.stringify(body ?? {}), {
       status,
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...(isReply ? (out as Reply).headers : {}) },
     });
   });
   vi.stubGlobal("fetch", fn);
