@@ -1,6 +1,6 @@
-# Preliminary evaluation results (eval-run-1, second pass)
+# Preliminary evaluation results (eval-run-1, third pass)
 
-**PRELIMINARY. Do not use these numbers for decisions.** The expected answers are agent-drafted from the PDFs and
+**PRELIMINARY. Do not use these numbers for decisions.** 7 of 129 runs are still failed system errors. The expected answers are agent-drafted from the PDFs and
 unverified by the human (`DRAFT_ANSWERS_REVIEW.md`); one judge model, one run, free-tier models.
 
 ## What ran
@@ -16,39 +16,41 @@ unverified by the human (`DRAFT_ANSWERS_REVIEW.md`); one judge model, one run, f
 
 ## Completion
 
-- **118 of 129 runs produced an answer. 11 runs failed with `provider_error` (system errors) and are counted wrong in
-  `results.csv`:** the Groq daily token quota ran out partway through the last chunk and was exhausted again when I retried
-  (the retry stopped cleanly on a long retry-after). Affected: always_expensive 3 (one multi-document, two unanswerable),
-  always_cheap 3 (one multi-document, two unanswerable), rule_router 5 (two multi-document, three unanswerable).
-  They are all train rows; no held-out run failed. Resume later with `python tools/eval/run_eval.py --resume`; only
-  those 11 pairs will run.
-- Because of this, the `results.csv` accuracies for train are **lower bounds** (failed runs counted as wrong). The tables
-  below also give accuracy over answered runs.
+- **122 of 129 runs produced an answer. 7 runs still failed with `provider_error` (system errors) and are counted wrong in
+  `results.csv`:** the Groq free-tier token quota was still throttling (about one completed pair per 5 to 10 minutes) when I
+  stopped after about 20 minutes of bounded retrying across two chunks. Still failing, all train rows:
+  always_expensive on the exchange-pathways multi-document question; and, for all three setups, the unanswerable questions
+  "Does the university offer a Master of Business Administration program?" and "What is the bus schedule from the city
+  center to the campus?" (6 runs). 4 of the 11 earlier failures were completed in this pass. No held-out run failed.
+  Resume later with `python tools/eval/run_eval.py --resume`; the state treats the 7 failed pairs as pending (it re-runs any
+  record with an error) and only they run.
+- Train accuracies in `results.csv` are therefore **lower bounds**. The tables also give accuracy over answered runs.
 
-## results.csv (counts: train 33 questions, held_out 10, per setup)
+## results.csv (train 33 questions, held_out 10, per setup)
 
 | setup | split | accuracy (failures counted wrong) | accuracy over answered runs | median latency ms | escalation rate | unanswerable_handled | est. cost per query (USD) |
 |---|---|---|---|---|---|---|---|
-| always_cheap | train | 0.727 (24/33) | 0.800 (24/30) | 2718 | 0.00 | 0.571 (4/7) | empty in csv (a failed run has no cost); 0.000296 mean over the 40 priced runs, all splits |
-| always_cheap | held_out | 0.900 (9/10) | 0.900 (9/10) | 2449 | 0.00 | 1.000 (2/2) | 0.000280 |
-| always_expensive | train | 0.727 (24/33) | 0.800 (24/30) | 2956 | 0.91 (30/33) | 0.571 (4/7) | empty in csv; 0.000613 mean over the 40 priced runs |
-| always_expensive | held_out | 0.900 (9/10) | 0.900 (9/10) | 2634 | 1.00 | 1.000 (2/2) | 0.000516 |
-| rule_router | train | 0.697 (23/33) | 0.821 (23/28) | 2681 | 0.091 (3/33) | 0.429 (3/7) | empty in csv; 0.000334 mean over the 38 priced runs |
-| rule_router | held_out | 0.900 (9/10) | 0.900 (9/10) | 2605 | 0.100 (1/10) | 1.000 (2/2) | 0.000334 |
+| always_cheap | train | 0.727 (24/33) | 0.774 (24/31) | 2763 | 0.00 | 0.571 (4/7) | empty in csv (failed runs have no cost); mean 0.000302 over 41 priced runs, all splits |
+| always_cheap | held_out | 0.900 (9/10) | 0.900 | 2449 | 0.00 | 1.000 (2/2) | 0.000280 |
+| always_expensive | train | 0.727 (24/33) | 0.800 (24/30) | 2956 | 0.91 (30/33) | 0.571 (4/7) | empty in csv; mean 0.000613 over 40 priced runs |
+| always_expensive | held_out | 0.900 (9/10) | 0.900 | 2634 | 1.00 | 1.000 (2/2) | 0.000516 |
+| rule_router | train | 0.758 (25/33) | 0.806 (25/31) | 2683 | 0.121 (4/33) | 0.571 (4/7) | empty in csv; mean 0.000348 over 41 priced runs |
+| rule_router | held_out | 0.900 (9/10) | 0.900 | 2605 | 0.100 (1/10) | 1.000 (2/2) | 0.000334 |
 
-(`unanswerable_handled` denominators include failed runs: 7 train and 2 held-out unanswerable questions.
-Always-expensive escalation is 0.91 on train, not 1.0, because 3 failed runs report no tier; the questions answered
-with no model call, the not-found shortcut, count as not escalated.) The router escalated 4 questions in total: the Merit
-Excellence vs Mobility comparison, the Applied AI lab closure, the AOG laboratory budget and the 3D-printer serial number.
+(`unanswerable_handled` denominators include failed runs: 7 train and 2 held-out unanswerable questions. Always-expensive
+escalation is 0.91 on train because the 3 failed runs report no tier.) The router escalated 5 of 43 questions: the Merit
+Excellence vs Mobility comparison, the Applied AI lab closure, the AOG laboratory budget, the internship comparison and the
+3D-printer serial number.
 
-By type, correct / answered (failed runs excluded): easy cheap 9/13, expensive 10/13, router 10/13; hard 12/12, 11/12,
-12/12; multi-document 6/8, 6/8, 5/7; unanswerable 6/7, 6/7, 5/6.
+By type, correct / answered (failures excluded): easy cheap 9/13, expensive 10/13, router 10/13; hard 12/12, 11/12, 12/12;
+multi-document 6/9, 6/8, 6/9; unanswerable 6/7, 6/7, 6/7.
 
 ## Not-found answers that still listed sources
 
-**20 of the 20 correctly graded not-found answers listed sources** (always_cheap 7, always_expensive 7, rule_router 6),
-so the service returns retrieved sources even when it says it could not find the answer. Under the old brief rule every one
-of these would have been wrong.
+**All 18 correctly graded not-found answers listed sources** (6 per setup; the console line says 18). The `unanswerable_with_sources`
+column shows `yes` on 21 rows because it also marks the 3 wrong answers to the maintenance question, which listed sources too.
+So the service returns retrieved sources even when it says it could not find the answer. Under the old brief rule each of
+the 18 would have been wrong.
 
 ## Wrong answers (answered runs)
 
@@ -64,7 +66,7 @@ of these would have been wrong.
   ambiguous relative to a 2027 document, so this is a drafting problem as much as a system one. I did not change it
   after seeing the output; the human should decide.
 
-## Confident and wrong (answer judged wrong, top_score >= 0.5): 18 cases
+## Confident and wrong (answer judged wrong, top_score >= 0.5): 19 cases
 
 Tuition (3 setups, 0.66), library Saturdays (3, 0.56), emergency grant (3, 0.63), semester-exchange tuition and travel
 costs (3, 0.63), maintenance closures next year (3, 0.61), INT-027 54-unit on always_expensive (0.56), Global Mobility
@@ -73,8 +75,7 @@ drafted qualifier (see the read).
 
 ## Rows flagged for human review
 
-`verdicts.csv`: 35 of 129 rows flagged (a seeded random 20 percent plus none from judge failure; 12 unanswerable, 8 easy,
-8 hard, 7 multi-document). Also read every wrong verdict and the 11 system errors' questions.
+`verdicts.csv`: 32 of 129 rows flagged (a seeded random 20 percent, plus every system error and judge failure). Also read every wrong verdict and the questions of the 7 system errors.
 
 ## Honest read
 
@@ -82,9 +83,9 @@ drafted qualifier (see the read).
   questions of each other on train and identical on the 10 held-out rows (9/10 each). The held-out set is 10 questions; one
   question is 10 points.
 - **Cost and speed are the consistent differences:** always-expensive costs about 2.1 times the cheap tier per query and
-  is slower at the median; the rule router costs about 13 percent more than always-cheap, escalating 4 of 43 questions. That
+  is slower at the median; the rule router costs about 15 percent more than always-cheap, escalating 5 of 43 questions. That
   fits the cost-saving idea, but the accuracy data cannot show the router is not losing quality on harder questions,
-  because the 11 failed runs fall on exactly the multi-document and unanswerable rows where a difference would show.
+  because the 7 failed runs fall on exactly the multi-document and unanswerable rows where a difference would show.
 - **The judge is strict about qualifiers**, and my drafted answers include many of them; some "wrong" answers are a
   judge-and-draft artifact. Human verification of the drafts (and of the judge on the flagged rows) is the next step.
 - **The unanswerable set is small (9) and one of its questions looks defective**; the not-found behaviour of the service
