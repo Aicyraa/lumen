@@ -106,7 +106,7 @@ def test_full_run_writes_exact_results_and_verdicts(env, capsys):
     res = read(tmp / "results.csv")
     assert list(res[0]) == [
         "setup", "split", "accuracy", "median_latency_ms", "escalation_rate",
-        "unanswerable_handled", "estimated_cost_per_query_usd",
+        "unanswerable_handled", "estimated_cost_per_query_usd", "errors",
     ]  # fmt: skip
     got = {(r["setup"], r["split"]): r for r in res}
     assert set(got) == {(s, p) for s in ("always_cheap", "always_expensive", "rule_router")
@@ -228,11 +228,11 @@ def test_a_failing_service_counts_as_wrong_and_is_reported(env, server, capsys):
     envp.write_text(envp.read_text().replace(rag.url, bad.url))
     assert main(args(env, "--limit", "1")) == 0
     got = {r["setup"]: r for r in read(tmp / "results.csv")}
-    assert (
-        got["always_cheap"]["accuracy"] == "0.0" and got["always_cheap"]["median_latency_ms"] == ""
-    )
+    assert got["always_cheap"]["accuracy"] == "" and got["always_cheap"]["errors"] == "1"
+    assert got["always_cheap"]["median_latency_ms"] == ""
     assert "provider_error" in read(tmp / "verdicts.csv")[0]["reason"]
-    assert "3 system errors" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "3 system errors" in out and "accuracy over 0 answered of 3" in out
 
 
 def test_resume_retries_pairs_that_failed(env, server):
@@ -304,7 +304,7 @@ def test_unreachable_service_is_a_system_error_not_a_crash(env, capsys):
     assert all(r["flagged_for_review"] == "yes" for r in v)
     res = read(tmp / "results.csv")
     assert len(res) == 6 and all(
-        r["accuracy"] == "0.0" and r["median_latency_ms"] == "" for r in res
+        r["accuracy"] == "" and r["errors"] == "1" and r["median_latency_ms"] == "" for r in res
     )
     assert "6 system errors" in capsys.readouterr().out
 
@@ -453,3 +453,47 @@ def test_changing_the_grading_rule_version_reruns_only_rule_graded_rows(env, mon
     monkeypatch.setattr(cli, "GRADING_RULES", "some-other-rule")
     main(args(env, "--resume"))
     assert len(rag.calls) == 9  # the three Q2 (unanswerable) runs again, the judged Q1 runs reused
+
+
+# ---- the resume key covers what the run depends on; errors are not accuracy ----
+
+
+def test_changed_model_under_test_reruns(env):
+    q, envp, rag, judge, tmp = env
+    main(args(env, "--limit", "1"))
+    envp.write_text(envp.read_text().replace("EVAL_MODEL_CHEAP=small", "EVAL_MODEL_CHEAP=small2"))
+    main(args(env, "--limit", "1", "--resume"))
+    assert len(rag.calls) == 6
+
+
+def test_changed_provider_reruns(env):
+    q, envp, rag, judge, tmp = env
+    main(args(env, "--limit", "1"))
+    envp.write_text(envp.read_text().replace("EVAL_PROVIDER=openai", "EVAL_PROVIDER=google"))
+    main(args(env, "--limit", "1", "--resume"))
+    assert len(rag.calls) == 6
+
+
+def test_changed_router_config_reruns(env):
+    q, envp, rag, judge, tmp = env
+    rc = tmp / "config.yaml"
+    rc.write_text("a: 1\nrouter:\n  k: 5\nother: 2\n")
+    envp.write_text(envp.read_text() + f"\nEVAL_ROUTER_CONFIG={rc}\n")
+    main(args(env, "--limit", "1"))
+    main(args(env, "--limit", "1", "--resume"))
+    assert len(rag.calls) == 3  # same config: reused
+    rc.write_text("a: 1\nrouter:\n  k: 8\nother: 2\n")
+    main(args(env, "--limit", "1", "--resume"))
+    assert len(rag.calls) == 6
+    rc.write_text("a: 9\nrouter:\n  k: 8\nother: 2\n")  # outside the router section
+    main(args(env, "--limit", "1", "--resume"))
+    assert len(rag.calls) == 6
+
+
+def test_state_file_from_before_the_key_change_is_stale_not_a_crash(env, capsys):
+    q, envp, rag, judge, tmp = env
+    (tmp / ".eval_state.json").write_text(json.dumps({"abc": {"verdict": "correct", "error": ""}}))
+    assert main(args(env, "--limit", "1", "--resume")) == 0
+    assert len(rag.calls) == 3
+    out = capsys.readouterr()
+    assert "older resume key" in out.err and "Traceback" not in out.err

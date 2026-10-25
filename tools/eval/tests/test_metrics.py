@@ -2,14 +2,14 @@ from evalkit.metrics import RESULT_COLUMNS, Result, confident_wrong, cost_of, su
 
 
 def res(setup="always_cheap", split="train", qtype="easy", correct=True, latency=100,
-        tier="cheap", top=0.8, cost=0.001, query="q"):  # fmt: skip
-    return Result(setup, split, qtype, correct, latency, tier, top, cost, query)
+        tier="cheap", top=0.8, cost=0.001, query="q", errored=False):  # fmt: skip
+    return Result(setup, split, qtype, correct, latency, tier, top, cost, query, errored)
 
 
 def test_columns_are_exact():
     assert RESULT_COLUMNS == [
         "setup", "split", "accuracy", "median_latency_ms", "escalation_rate",
-        "unanswerable_handled", "estimated_cost_per_query_usd",
+        "unanswerable_handled", "estimated_cost_per_query_usd", "errors",
     ]  # fmt: skip
 
 
@@ -67,3 +67,17 @@ def test_confident_and_wrong_needs_wrong_and_high_top_score():
         res(correct=False, top=None, query="d"),
     ]
     assert [r.query for r in confident_wrong(rs, 0.5)] == ["a"]
+
+
+def test_errors_are_counted_apart_and_leave_the_accuracy_denominator():
+    rs = [res(correct=True), res(correct=False),
+          res(correct=False, latency=None, tier="", top=None, cost=None, errored=True)]  # fmt: skip
+    (row,) = summarize(rs)
+    assert row["errors"] == 1
+    assert row["accuracy"] == 0.5  # 1 of the 2 answered, not 1 of 3
+    assert row["estimated_cost_per_query_usd"] == 0.001  # an errored run has no cost to be unknown
+
+
+def test_all_errors_leave_accuracy_empty():
+    (row,) = summarize([res(correct=False, latency=None, cost=None, errored=True)])
+    assert row["errors"] == 1 and row["accuracy"] == ""
