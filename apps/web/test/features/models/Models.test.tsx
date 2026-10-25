@@ -215,6 +215,30 @@ describe("Models", () => {
     expect(screen.getByLabelText("API key")).toHaveValue("");
   });
 
+  it("Test & save: 422 model_limit and 429 rate_limited show friendly messages", async () => {
+    let next: ReturnType<typeof reply> = reply(422, {
+      error: { code: "model_limit", message: "You can add at most 5 models to each tier." },
+    });
+    mockFetch(router((_url, init) => (init?.method === "POST" ? next : undefined)));
+    renderWithProviders(<Models />);
+    const user = userEvent.setup();
+    await fillForm(user);
+    await user.click(screen.getByRole("button", { name: "Test & save" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "You can add at most 5 models to each tier. Remove one to add another.",
+    );
+    next = reply(
+      429,
+      { error: { code: "rate_limited", message: "Too many requests. Try again in a minute." } },
+      { "retry-after": "42" },
+    );
+    await user.type(screen.getByLabelText("API key"), SECRET);
+    await user.click(screen.getByRole("button", { name: "Test & save" }));
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(/Too many requests.*42 seconds/),
+    );
+  });
+
   it("validates optional prices: negative or non-numeric prices are not sent", async () => {
     const { calls } = mockFetch(router());
     renderWithProviders(<Models />);

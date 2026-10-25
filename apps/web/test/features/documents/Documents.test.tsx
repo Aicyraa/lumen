@@ -92,6 +92,40 @@ describe("Documents", () => {
     ).toBeInTheDocument();
   });
 
+  it.each([
+    ["upload_rate_limited", 7, /uploading too fast.*7 seconds/],
+    ["ingest_limit", 10, /still being processed.*10 seconds/],
+  ])("429 %s tells the user how long to wait", async (code, wait, re) => {
+    mockFetch((url, init) => {
+      if (url.endsWith("/usage")) return usage;
+      if (init?.method === "POST")
+        return reply(
+          429,
+          { error: { code, message: "server text", retry_after_seconds: wait } },
+          {
+            "retry-after": String(wait),
+          },
+        );
+      return { documents: [] };
+    });
+    renderWithProviders(<Documents />);
+    await screen.findByText(/No documents yet/);
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await userEvent.upload(input, new File(["x"], "a.md", { type: "text/markdown" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(re);
+  });
+
+  it("shows the failure reason from the API exactly as sent", async () => {
+    const reason = "unreadable_document: The PDF is encrypted or damaged.";
+    mockFetch((url) =>
+      url.endsWith("/usage")
+        ? usage
+        : { documents: [doc({ filename: "x.pdf", status: "failed", error: reason })] },
+    );
+    renderWithProviders(<Documents />);
+    expect(await screen.findByText(reason)).toBeInTheDocument();
+  });
+
   it("sends any file to the server and shows its 415 or 413 message: no type or size decision in the front end", async () => {
     let status = 415;
     const msgs: Record<number, string> = {
