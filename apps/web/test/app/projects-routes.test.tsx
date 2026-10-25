@@ -166,6 +166,37 @@ describe("project routes", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Projects" })).toBeInTheDocument();
   });
 
+  it("sends X-Project-Id on project calls and not on /workspaces", async () => {
+    const { calls } = mockFetch(api());
+    mount("/projects/my-project/documents");
+    expect(await screen.findByText("Drop files to upload")).toBeInTheDocument();
+    const header = (path: string) =>
+      new Headers(calls.find((c) => c.url.endsWith(path))!.init?.headers).get("x-project-id");
+    expect(header("/api/dashboard/documents")).toBe("p1");
+    expect(header("/api/dashboard/usage")).toBe("p1");
+    expect(header("/api/dashboard/workspaces")).toBeNull();
+  });
+
+  it("409 project_mismatch shows a persistent banner with Reload", async () => {
+    const reload = vi.fn();
+    vi.stubGlobal("location", { ...window.location, reload });
+    mockFetch(
+      api((url) =>
+        url.endsWith("/documents")
+          ? reply(409, {
+              error: { code: "project_mismatch", message: "The active project changed." },
+            })
+          : undefined,
+      ),
+    );
+    mount("/projects/my-project/documents");
+    const banner = await screen.findByText("This tab's project changed in another tab. Reload.");
+    expect(banner.closest("[role=alert]")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Reload" }));
+    expect(reload).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
   it("the sidebar shows the current project as a plain label and the way to switch is the Projects page", async () => {
     mockFetch(api());
     mount("/projects/my-project/requests");
