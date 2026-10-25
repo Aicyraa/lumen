@@ -10,7 +10,7 @@ from app.core.config import REQUIRED_ENV, load_config, missing_env, model_path
 from app.core.env import load_env
 
 SERVICE_DIR = Path(__file__).resolve().parents[1]
-OPTIONAL_ENV = ["NODE_ENV", "RAG_PORT", "TEST_DATABASE_URL", "LLM_BASE_URL", "LLM_API_KEY",
+OPTIONAL_ENV = ["RAG_PORT", "TEST_DATABASE_URL", "LLM_BASE_URL", "LLM_API_KEY",
                 "LLM_MODEL_CHEAP", "LLM_MODEL_EXPENSIVE"]  # fmt: skip
 
 
@@ -39,6 +39,8 @@ def download_models(args) -> int:
 def dev(args) -> int:
     import uvicorn  # imported here so other commands stay fast
 
+    if not os.environ.get("NODE_ENV"):  # local dev only; an explicit value wins
+        os.environ["NODE_ENV"] = "development"
     uvicorn.run("app.main:app", port=int(os.environ.get("RAG_PORT") or 8000), reload=True)
     return 0
 
