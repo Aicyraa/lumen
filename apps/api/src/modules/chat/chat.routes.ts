@@ -111,18 +111,27 @@ export function chatHandler(
       const failedId = randomUUID();
       // The service's 429 is passed on only with a valid wait; otherwise it stays an ordinary provider failure.
       const wait = err instanceof RagError ? err.retryAfterSeconds : undefined;
+      // The service's 503 busy is load, not a provider failure: its own log status and a 503 busy answer.
+      const busy = err instanceof RagError && err.status === 503 && err.code === "busy";
       const { attempts } = priceAttempts(
         err instanceof RagError ? err.attempts : [],
         known,
         config,
       );
       await insertLog(req, failedId, q, {
-        status: wait ? "provider_rate_limited" : "provider_error",
+        status: busy ? "busy" : wait ? "provider_rate_limited" : "provider_error",
         usage: { latency_ms: Date.now() - started },
       }).catch((e: Error) => log.error({ err: e.message }, "request_logs insert failed"));
       await book(failedId, attempts);
       log.warn({ code: (err as { code?: string }).code }, "chat failed");
       if (err instanceof ApiError) throw err;
+      if (busy)
+        throw new ApiError(
+          503,
+          "busy",
+          "The service is busy. Try again shortly.",
+          err.busyRetryAfterSeconds,
+        );
       if (wait)
         throw new ApiError(
           429,

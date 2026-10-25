@@ -49,7 +49,7 @@ NODE_ENV=production LOG_LEVEL=INFO RAG_WORKERS=2 .venv/bin/python -m app.cli ser
 # or: .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 2
 ```
 
-No `--reload`, and bind to 127.0.0.1: only the Express API calls this service. Every worker loads the embedder and the reranker and has its own database pool (`database.pool_max_size`) and its own model semaphores, so size workers by memory and CPU. Liveness: `GET /internal/health`; readiness (database connection and models loaded): `GET /internal/ready`. Neither needs the secret.
+No `--reload`, and bind to 127.0.0.1: only the Express API calls this service. Every worker loads the embedder and the reranker and has its own database pool (`database.pool_max_size`) and its own model semaphores, so size workers by memory and CPU. Liveness: `GET /internal/health`; readiness (database connection and models loaded): `GET /internal/ready` (sends `X-Internal-Secret`). Only health is public.
 
 ## Logging
 

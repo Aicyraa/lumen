@@ -59,7 +59,7 @@ def embed_checked(tenant_id: str, document_id: str, chunks: list[str]) -> np.nda
     return np.vstack(parts)
 
 
-@public.get("/internal/ready")  # no secret, like health; plain def because it uses the database
+@internal.get("/ready")  # secret required, only health is public; plain def: it uses the database
 def ready():
     checks = {"database": False, "embedder": embeddings.is_loaded(), "reranker": True}
     try:

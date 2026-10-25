@@ -37,10 +37,9 @@ describe("rag 503 busy on /v1/chat", () => {
       "busy",
       "3",
     ]);
-    const { rows } = await ctx.pool.query(
-      "SELECT status FROM request_logs WHERE tenant_id = $1",
-      [a.tenantId],
-    );
+    const { rows } = await ctx.pool.query("SELECT status FROM request_logs WHERE tenant_id = $1", [
+      a.tenantId,
+    ]);
     expect(rows.map((r) => r.status)).not.toContain("provider_error");
   });
 

@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { setActiveProjectId, useProjectMismatch } from "../../shared/lib/activeProject";
 import { authClient } from "../../shared/lib/auth-client";
@@ -22,6 +22,11 @@ export function ProjectShell() {
   const [busy, setBusy] = useState(false);
   const [retry, setRetry] = useState(0);
   const mismatch = useProjectMismatch();
+
+  // A layout effect runs before the page's query effects (X-Project-Id is set in time) and, unlike render, may emit.
+  useLayoutEffect(() => {
+    if (project && s.orgId === project.id) setActiveProjectId(project.id);
+  }, [project, s.orgId]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `retry` is the Retry button's trigger, not a value the effect reads
   useEffect(() => {
@@ -84,7 +89,6 @@ export function ProjectShell() {
       </div>
     );
   if (busy || s.orgId !== project.id) return <Loading label="Opening project…" />;
-  setActiveProjectId(project.id); // before the page's queries run (they start in effects, after this render)
   return (
     <ProjectContext.Provider value={project}>
       {mismatch && (
