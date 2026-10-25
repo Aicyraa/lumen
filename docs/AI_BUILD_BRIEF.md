@@ -360,11 +360,13 @@ Ingest is synchronous in Python. Express calls it in the background after answer
 **Flow inside `POST /internal/query`** (updated 2026-10-24 from the `codex_rag` work)
 
 1. Embed the question.
-2. Run a probe search (top 1, filtered by `tenant_id`) to get `best_score` (cosine similarity). If the tenant has no chunks at all, return a clear "no documents uploaded" answer with `model_tier: "none"`.
+2. Run one dense (vector) search, filtered by `tenant_id` and deep enough for the later fusion; its top hit gives `best_score` (cosine similarity) and the same result is reused for the fusion in step 5 (no separate probe query). If the tenant has no chunks at all, return a clear "no documents uploaded" answer with `model_tier: "none"`.
 3. If `best_score < no_answer_score` and a tenant-local keyword (BM25) search finds no match either, skip the model, return the not-found message, and log `model_tier: "none"`. A positive BM25 match rescues a question the vector score alone would reject.
 4. Otherwise call `decide(...)` below to get the tier and `k`.
-5. Retrieve candidates: tenant-local BM25 (term frequency, document length and inverse document frequency; `k1` and `b` from config, computed from the tenant's own chunks only) and vector search, fused by reciprocal rank fusion, up to `retrieval.candidate_limit`. When the reranker is enabled, a local cross-encoder (model and pinned revision from config, weights prefetched, loaded from cache only) reranks `reranker.candidate_limit` candidates and the top `k` are kept; if its weights are missing or its scores are invalid the fused order is used and a warning is logged. The public `score` of a source stays the cosine similarity.
-6. Build the prompt and call the tenant's models as described in Tenant models below. The model returns claims with passage ids and exact evidence quotes (JSON); the service validates every passage id and quote against the retrieved passages (whitespace and equivalent PDF typography tolerated, a unique wrong passage number corrected), then renders the answer text and the ASCII `[n]` citations itself. If validation fails, one repair attempt is made (`llm.answer_repair_attempts`); if it still fails the request returns `502 provider_error`. Empty claims mean the not-found message. Every attempt, including the repair, is counted in `attempts`, and `usage` tokens are the sum over all attempts of the request.
+5. Retrieve candidates: tenant-local BM25 (term frequency, document length and inverse document frequency; `k1` and `b` from config, computed from the tenant's own chunks only, over the stored `chunks.tsv` tsvector column with a GIN index from `infra/sql/011_chunks_tsvector.sql`) and vector search, fused by reciprocal rank fusion, up to `retrieval.candidate_limit`. When the reranker is enabled, a local cross-encoder (model and pinned revision from config, weights prefetched, loaded from cache only) reranks `reranker.candidate_limit` candidates and the top `k` are kept; the reranker loads at startup together with the embedder; if its weights are missing or its scores are invalid the fused order is used and a warning naming the exception class (never the text) is logged. Embedding and reranking run behind bounded semaphores (`concurrency.embed_max`, `concurrency.rerank_max`). The public `score` of a source stays the cosine similarity.
+6. Build the prompt and call the tenant's models as described in Tenant models below. The model returns claims with passage ids and exact evidence quotes (JSON); the service validates every passage id and quote against the retrieved passages (whitespace and equivalent PDF typography tolerated, a unique wrong passage number corrected; a quote shorter than `llm.min_quote_chars` or `llm.min_quote_words` is rejected unless the whole passage is shorter), then renders the answer text and the ASCII `[n]` citations itself. If validation fails, one repair attempt is made (`llm.answer_repair_attempts`); if it still fails the request returns `502 provider_error`. Empty claims mean the not-found message. Every attempt, including the repair, is counted in `attempts`, and `usage` tokens are the sum over all attempts of the request.
+
+**Ingest** (`POST /internal/ingest`, updated 2026-10-25). The document row is locked (`FOR SHARE`) in the same transaction as the chunk insert, and its status is re-read between embedding batches (`ingest.status_check_every_batches`): a document Express already marked `failed` (ingest timeout) gets no chunks and the call returns `409 document_not_ingestable` (`404 not_found` when the row is missing). Other errors: `422 document_too_large` (pages or chunks over the limit, checked before embedding), `422 unreadable_document` (corrupt or encrypted PDF), `422 no_text_extracted`, `415 unsupported_type`, `503 busy` with `Retry-After` (upload slot not free within `concurrency.ingest_wait_seconds`; also when no database connection is free). `GET /internal/ready` (no secret) checks a database connection and that the models are loaded; `GET /internal/health` stays a plain liveness check. `NODE_ENV` must be `development` or `test` for the dev shortcuts (LLM_* default model, http://localhost endpoints); anything else, including unset, is production.
 
 **Tenant models** (from docs/WEBSITE_GUIDE.md, Models tab). Each tenant supplies its own provider keys; Lumen supplies only the embedding model. Express loads the tenant's `tenant_models`, decrypts the keys for this one request and passes them in `models`. Step 6 of the flow then works like this:
 
@@ -400,9 +402,17 @@ router:
   no_answer_score: 0.15   # below this (and no BM25 match), do not call any model
   escalate_at: 0.25       # low on purpose: a missed escalation costs more than an extra one
   hard_at: 0.50           # at or above this the question is clearly hard
+ingest:
+  max_pages: 200        # 422 document_too_large above this (also max_chunks); max_chunk_tokens splits over-long chunks
+concurrency:
+  embed_max: 2          # also rerank_max, ingest_max; an upload over its limit waits, then 503 busy
+database:
+  pool_max_size: 10     # one psycopg_pool per process (also pool_min_size, timeouts, statement_timeout_ms)
 llm:
   max_output_tokens: 2048
   answer_repair_attempts: 1
+  min_quote_chars: 12
+  min_quote_words: 2
   # plus connect and read timeouts, temperature and the retry wait (see the file)
 # No prices anywhere in this file. Tenants enter prices per model; the service never computes cost.
 ```
