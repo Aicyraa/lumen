@@ -7,7 +7,7 @@ node_modules/
 __pycache__/
 *.pyc
 uploads/
-apps/rag-service/app/models/
+apps/rag-service/app/models
 docs/
 # Per-worktree generated navigation output
 graphify-out/
