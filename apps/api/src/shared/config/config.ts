@@ -73,7 +73,7 @@ const required = z.object({
     .refine((v) => v?.trim().toLowerCase() !== "true"), // `true` would trust any client's X-Forwarded-For
 });
 
-export interface OAuthCredentials {
+interface OAuthCredentials {
   clientId?: string;
   clientSecret?: string;
 }

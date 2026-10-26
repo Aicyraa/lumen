@@ -1,7 +1,7 @@
 import { ApiError } from "./errors.js";
 
 const DAYS = { "7d": 7, "30d": 30 } as const;
-export type Range = keyof typeof DAYS;
+type Range = keyof typeof DAYS;
 
 // `?range=` is 7d (default) or 30d; anything else is a 422.
 export function parseRange(v: unknown): { range: Range; days: number } {

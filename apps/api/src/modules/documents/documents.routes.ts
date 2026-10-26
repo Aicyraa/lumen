@@ -14,7 +14,7 @@ import type { Deps } from "../../shared/types/types.js";
 const ALLOWED = new Set([".pdf", ".txt", ".md"]);
 const isUuid = (v: string) => z.uuid().safeParse(v).success;
 // What the dashboard shows for a document the service could not ingest (documents.error); anything else is "code: message".
-export const INGEST_FAILURE_REASONS: Record<string, string> = {
+const INGEST_FAILURE_REASONS: Record<string, string> = {
   document_too_large:
     "This document is too large to process. Split it into smaller files and upload them again.",
   unreadable_document:
