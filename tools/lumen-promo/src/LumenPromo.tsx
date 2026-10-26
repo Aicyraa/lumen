@@ -1,8 +1,6 @@
 import { staticFile, useVideoConfig } from "remotion";
 import { Audio } from "@remotion/media";
 import { TransitionSeries, linearTiming } from "@remotion/transitions";
-import { slide } from "@remotion/transitions/slide";
-import { wipe } from "@remotion/transitions/wipe";
 import { fade } from "@remotion/transitions/fade";
 import { Opening } from "./Opening";
 import { Integration } from "./Integration";
@@ -10,13 +8,14 @@ import { RagService } from "./RagService";
 import { Routing } from "./Routing";
 import { Response } from "./Response";
 import { Closing } from "./Closing";
+import { SceneMotion } from "./motion";
 export const LumenPromo = () => {
   const { fps } = useVideoConfig();
   // 63 seconds of scenes minus five 0.6-second overlaps = 60 seconds.
   return (
     <>
       <Audio
-        name="Original electronic score"
+        name="Warm downtempo keys"
         src={staticFile("lumen-score.wav")}
         volume={0.75}
         premountFor={fps}
@@ -27,10 +26,12 @@ export const LumenPromo = () => {
           durationInFrames={8 * fps}
           premountFor={fps}
         >
-          <Opening />
+          <SceneMotion seconds={8}>
+            <Opening />
+          </SceneMotion>
         </TransitionSeries.Sequence>
         <TransitionSeries.Transition
-          presentation={wipe({ direction: "from-right" })}
+          presentation={fade()}
           timing={linearTiming({ durationInFrames: 0.6 * fps })}
         />
         <TransitionSeries.Sequence
@@ -38,21 +39,25 @@ export const LumenPromo = () => {
           durationInFrames={10 * fps}
           premountFor={fps}
         >
-          <Integration />
+          <SceneMotion seconds={10}>
+            <Integration />
+          </SceneMotion>
         </TransitionSeries.Sequence>
         <TransitionSeries.Transition
-          presentation={slide({ direction: "from-bottom" })}
+          presentation={fade()}
           timing={linearTiming({ durationInFrames: 0.6 * fps })}
         />
         <TransitionSeries.Sequence
-          name="Exploded RAG engine"
+          name="Continuous RAG journey"
           durationInFrames={11 * fps}
           premountFor={fps}
         >
-          <RagService />
+          <SceneMotion seconds={11}>
+            <RagService />
+          </SceneMotion>
         </TransitionSeries.Sequence>
         <TransitionSeries.Transition
-          presentation={wipe({ direction: "from-left" })}
+          presentation={fade()}
           timing={linearTiming({ durationInFrames: 0.6 * fps })}
         />
         <TransitionSeries.Sequence
@@ -60,10 +65,12 @@ export const LumenPromo = () => {
           durationInFrames={14 * fps}
           premountFor={fps}
         >
-          <Routing />
+          <SceneMotion seconds={14}>
+            <Routing />
+          </SceneMotion>
         </TransitionSeries.Sequence>
         <TransitionSeries.Transition
-          presentation={slide({ direction: "from-right" })}
+          presentation={fade()}
           timing={linearTiming({ durationInFrames: 0.6 * fps })}
         />
         <TransitionSeries.Sequence
@@ -71,7 +78,9 @@ export const LumenPromo = () => {
           durationInFrames={12 * fps}
           premountFor={fps}
         >
-          <Response />
+          <SceneMotion seconds={12}>
+            <Response />
+          </SceneMotion>
         </TransitionSeries.Sequence>
         <TransitionSeries.Transition
           presentation={fade()}
@@ -82,7 +91,9 @@ export const LumenPromo = () => {
           durationInFrames={8 * fps}
           premountFor={fps}
         >
-          <Closing />
+          <SceneMotion seconds={8}>
+            <Closing />
+          </SceneMotion>
         </TransitionSeries.Sequence>
       </TransitionSeries>
     </>

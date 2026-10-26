@@ -1,88 +1,224 @@
-import { useCurrentFrame, useVideoConfig } from "remotion";
-import { C, Frame, Label, Reveal, Title, mono } from "./design";
-import { DocumentRig } from "./Depth";
+import {
+  interpolate,
+  interpolateColors,
+  useCurrentFrame,
+  useVideoConfig,
+} from "remotion";
+import { C, Frame, Reveal, mono } from "./design";
+import { glide } from "./motion";
+
+// One continuous camera move replaces the four-cell highlight grid.
 export const RagService = () => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const step = Math.min(3, Math.floor(Math.max(0, f / fps - 1) / 2));
+  const t = f / fps;
+  const position = interpolate(
+    t,
+    [0, 1.8, 3.15, 4.25, 5.6, 6.7, 8.05, 11],
+    [0, 0, 1, 1, 2, 2, 3, 3],
+    glide,
+  );
+  const stages = ["Chunk", "Embed", "Retrieve", "Rerank"];
+  const copy = [
+    "Break documents into useful passages.",
+    "Turn meaning into searchable vectors.",
+    "Combine vector search with keywords.",
+    "Bring the most relevant context forward.",
+  ];
   return (
     <Frame>
-      <div style={{ position: "absolute", left: 100, top: 220, width: 850 }}>
-        <Reveal>
-          <Label>THE ENGINE UNDER THE ANSWER</Label>
-          <Title size={108}>
-            The RAG service.
-            <br />
-            <span style={{ color: C.lime }}>In motion.</span>
-          </Title>
-        </Reveal>
-        <div
-          style={{
-            marginTop: 50,
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 26,
-          }}
-        >
-          {[
-            "Chunk documents",
-            "Embed meaning",
-            "Retrieve context",
-            "Rerank matches",
-          ].map((s, i) => (
-            <Reveal
-              key={s}
-              at={0.5 + i * 0.3}
+      <Reveal
+        at={0.15}
+        style={{
+          position: "absolute",
+          left: 120,
+          top: 100,
+          ...mono,
+          color: C.lime,
+          fontSize: 26,
+        }}
+      >
+        THE RAG SERVICE
+      </Reveal>
+      <Reveal
+        at={0.3}
+        style={{
+          position: "absolute",
+          left: 120,
+          top: 155,
+          fontSize: 64,
+          letterSpacing: -3,
+        }}
+      >
+        From documents to relevant context.
+      </Reveal>
+      <div
+        style={{
+          position: "absolute",
+          left: 460,
+          top: 310,
+          width: 1000,
+          height: 445,
+          translate: -position * 1420 + "px 0px",
+        }}
+      >
+        {stages.map((name, i) => {
+          const w = Math.max(0, 1 - Math.abs(position - i));
+          return (
+            <div
+              key={name}
               style={{
-                borderTop: "2px solid " + (step === i ? C.lime : C.line),
-                paddingTop: 20,
+                position: "absolute",
+                left: i * 1420,
+                width: 1000,
+                height: 445,
+                opacity: 0.15 + 0.85 * w,
+                scale: 0.9 + 0.1 * w,
               }}
             >
               <div
                 style={{
-                  ...mono,
-                  color: step === i ? C.lime : C.muted,
-                  fontSize: 21,
+                  fontSize: 100,
+                  fontWeight: 500,
+                  letterSpacing: -5,
+                  textAlign: "center",
+                  color: interpolateColors(w, [0, 1], [C.muted, C.text]),
                 }}
               >
-                0{i + 1} / {step === i ? "ACTIVE" : "RAG"}
+                {name}
+                <span style={{ color: C.lime }}>.</span>
               </div>
-              <div style={{ fontSize: 31, marginTop: 14 }}>{s}</div>
-            </Reveal>
-          ))}
-        </div>
-        <Reveal
-          at={7.6}
-          style={{
-            marginTop: 40,
-            fontSize: 29,
-            color: C.muted,
-            lineHeight: 1.4,
-          }}
-        >
-          Hybrid vector + keyword retrieval.
-          <br />
-          Context scoped to your project.
-        </Reveal>
+              <svg
+                width="1000"
+                height="280"
+                viewBox="0 0 1000 280"
+                style={{ marginTop: 35 }}
+              >
+                {i === 0 &&
+                  [0, 1, 2, 3, 4].map((j) => (
+                    <g
+                      key={j}
+                      style={{
+                        translate: Math.sin(t * 0.65 + j) * 7 + "px 0px",
+                      }}
+                    >
+                      <rect
+                        x={120 + j * 150}
+                        y={65 + (j % 2) * 30}
+                        width="115"
+                        height="120"
+                        rx="4"
+                        fill={C.surface}
+                        stroke={C.line}
+                      />
+                      {[0, 1, 2, 3].map((k) => (
+                        <rect
+                          key={k}
+                          x={138 + j * 150}
+                          y={85 + (j % 2) * 30 + k * 20}
+                          width={k % 2 ? 55 : 78}
+                          height="4"
+                          fill={k === 1 ? C.lime : C.muted}
+                        />
+                      ))}
+                    </g>
+                  ))}
+                {i === 1 &&
+                  Array.from({ length: 45 }, (_, j) => (
+                    <circle
+                      key={j}
+                      cx={125 + (j % 15) * 54}
+                      cy={
+                        65 +
+                        Math.floor(j / 15) * 70 +
+                        Math.sin(t + j * 0.45) * 15
+                      }
+                      r={6 + (j % 4) * 2}
+                      fill={j % 4 === 0 ? C.lime : C.muted}
+                    />
+                  ))}
+                {i === 2 &&
+                  [0, 1, 2, 3].map((j) => (
+                    <g key={j}>
+                      <path
+                        d={"M130 " + (50 + j * 55) + "H860"}
+                        stroke={C.line}
+                        strokeWidth="2"
+                      />
+                      <rect
+                        x={130 + ((t * 90 + j * 130) % 650)}
+                        y={43 + j * 55}
+                        width="75"
+                        height="14"
+                        fill={j === 1 ? C.lime : C.muted}
+                      />
+                    </g>
+                  ))}
+                {i === 3 &&
+                  [0, 1, 2].map((j) => (
+                    <g
+                      key={j}
+                      style={{
+                        translate:
+                          (j === 0 ? Math.sin(t * 0.5) * 8 : 0) + "px 0px",
+                      }}
+                    >
+                      <rect
+                        x={210 + j * 225}
+                        y={j === 0 ? 35 : 65}
+                        width="180"
+                        height={j === 0 ? 170 : 140}
+                        rx="4"
+                        fill={j === 0 ? C.lime : C.surface}
+                        stroke={j === 0 ? C.lime : C.line}
+                      />
+                      {[0, 1, 2].map((k) => (
+                        <rect
+                          key={k}
+                          x={235 + j * 225}
+                          y={(j === 0 ? 75 : 100) + k * 27}
+                          width={k === 2 ? 85 : 130}
+                          height="5"
+                          fill={j === 0 ? C.bg : C.muted}
+                        />
+                      ))}
+                    </g>
+                  ))}
+              </svg>
+            </div>
+          );
+        })}
       </div>
-      <div style={{ position: "absolute", left: 970, top: 220, scale: 1.1 }}>
-        <DocumentRig engine />
-      </div>
-      <Reveal
-        at={1.5}
-        style={{
-          position: "absolute",
-          left: 1070,
-          top: 875,
-          width: 650,
-          borderTop: "1px solid " + C.line,
-          paddingTop: 20,
-        }}
+      {copy.map((text, i) => {
+        const w = Math.max(0, 1 - 2 * Math.abs(position - i));
+        return (
+          <div
+            key={text}
+            style={{
+              position: "absolute",
+              left: 250,
+              right: 250,
+              top: 825,
+              textAlign: "center",
+              fontSize: 39,
+              letterSpacing: -1,
+              color: C.muted,
+              opacity: w,
+              translate: "0px " + (1 - w) * 40 * (position > i ? -1 : 1) + "px",
+            }}
+          >
+            {text}
+          </div>
+        );
+      })}
+      <svg
+        width="460"
+        height="12"
+        style={{ position: "absolute", left: 730, top: 958 }}
       >
-        <div style={{ ...mono, color: C.lime, fontSize: 22 }}>
-          RAG SERVICE / INTERNAL FASTAPI
-        </div>
-      </Reveal>
+        <path d="M0 6H460" stroke={C.line} strokeWidth="2" />
+        <circle cx={10 + position * 146} cy="6" r="5" fill={C.lime} />
+      </svg>
     </Frame>
   );
 };

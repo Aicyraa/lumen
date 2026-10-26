@@ -1,92 +1,139 @@
-// Original, deterministic electronic score. No samples or external music assets.
+// Original warm, piano-led downtempo bed. Deterministic synthesis; no sampled music.
 import {
   existsSync,
   mkdirSync,
+  readFileSync,
   writeFileSync,
   statSync,
-  readFileSync,
 } from "node:fs";
 import { fileURLToPath } from "node:url";
 const destination = fileURLToPath(
   new URL("../public/lumen-score.wav", import.meta.url),
 );
+const version = "5-warm-keys-master",
+  marker = destination + ".version";
 const rate = 24000,
   seconds = 60,
-  count = rate * seconds;
-const marker = destination + ".version";
+  count = rate * seconds,
+  channels = 2;
 if (
   existsSync(destination) &&
-  statSync(destination).size === 44 + count * 2 &&
+  statSync(destination).size === 44 + count * channels * 2 &&
   existsSync(marker) &&
-  readFileSync(marker, "utf8") === "2"
+  readFileSync(marker, "utf8") === version
 )
   process.exit(0);
 mkdirSync(fileURLToPath(new URL("../public/", import.meta.url)), {
   recursive: true,
 });
-const pcm = new Float64Array(count);
-const tau = 2 * Math.PI;
-const hz = (midi) => 440 * 2 ** ((midi - 69) / 12);
+const left = new Float64Array(count),
+  right = new Float64Array(count);
+const tau = 2 * Math.PI,
+  beat = 60 / 90,
+  hz = (n) => 440 * 2 ** ((n - 69) / 12);
 const chords = [
-  [45, 52, 57, 60, 64],
-  [41, 48, 53, 57, 60],
-  [48, 55, 60, 64, 67],
-  [43, 50, 55, 59, 62],
+  [50, 57, 60, 64, 69],
+  [46, 53, 57, 60, 65],
+  [53, 60, 64, 67, 72],
+  [48, 55, 59, 62, 67],
 ];
-const beat = 60 / 110;
-for (let i = 0; i < count; i++) {
-  const t = i / rate;
-  const chord = chords[Math.floor(t / (beat * 8)) % 4];
-  let sample = 0;
-  // Slow, warm chord bed; low amplitude leaves room for the rhythm.
-  for (const note of chord.slice(1))
-    sample +=
-      0.016 *
-      Math.sin(tau * hz(note) * t) *
-      (0.75 + 0.25 * Math.sin(tau * 0.15 * t));
-  const step = Math.floor(t / (beat / 2));
-  const age = t - (step * beat) / 2;
-  const note = chord[[1, 3, 2, 4, 1, 2, 3, 4][step % 8]] + 12;
-  sample +=
-    0.09 *
-    Math.exp(-age * 11) *
-    (Math.sin(tau * hz(note) * age) + 0.2 * Math.sin(tau * hz(note) * 2 * age));
-  const bassAge = t % beat;
-  sample += 0.09 * Math.exp(-bassAge * 6) * Math.sin(tau * hz(chord[0]) * t);
-  const kickAge = t % (beat * 2);
-  sample +=
-    0.13 *
-    Math.exp(-kickAge * 23) *
-    Math.sin(tau * (46 * kickAge + 1.8 * (1 - Math.exp(-kickAge * 45))));
-  // Short tonal ticks replace noisy hi-hats for a calm, precise texture.
-  sample += 0.012 * Math.exp(-age * 85) * Math.sin(tau * 5300 * age);
-  // Original transition sweeps, aligned with the five overlapping scene changes.
-  for (const cut of [7.4, 16.8, 27.2, 40.6, 52]) {
-    const sweep = t - cut;
-    if (sweep >= 0 && sweep < 0.6) {
-      const envelope = Math.sin((Math.PI * sweep) / 0.6) ** 2;
-      sample +=
-        0.055 * envelope * Math.sin(tau * (180 * sweep + 1000 * sweep * sweep));
-    }
+const add = (start, duration, fn, pan = 0.5) => {
+  const first = Math.floor(start * rate),
+    last = Math.min(count, Math.floor((start + duration) * rate));
+  for (let i = Math.max(0, first); i < last; i++) {
+    const v = fn((i - first) / rate);
+    left[i] += v * Math.sqrt(1 - pan);
+    right[i] += v * Math.sqrt(pan);
   }
-  const fade = Math.min(1, t / 1.5, (seconds - t) / 3);
-  pcm[i] = Math.tanh(sample) * Math.max(0, fade);
+};
+for (let step = 0; (step * beat) / 2 < seconds; step++) {
+  const start = (step * beat) / 2,
+    chord = chords[Math.floor(start / (beat * 8)) % 4];
+  const note = chord[[1, 3, 2, 4, 2, 3, 1, 4][step % 8]],
+    freq = hz(note);
+  const strength = [1, 0.5, 0.7, 0.55, 0.85, 0.45, 0.65, 0.5][step % 8];
+  const voice = (age) =>
+    0.105 *
+    strength *
+    (1 - Math.exp(-age * 90)) *
+    Math.exp(-age * 3.4) *
+    (Math.sin(tau * freq * age) +
+      0.18 * Math.exp(-age * 2) * Math.sin(tau * 2 * freq * age) +
+      0.035 * Math.sin(tau * 3 * freq * age));
+  add(start, 1.5, voice, 0.35 + 0.3 * ((step % 5) / 4));
+  add(start + 0.27, 1.5, (a) => voice(a) * 0.16, 0.7);
+  if (step % 2 === 0) {
+    const bass = hz(chord[0] - 12);
+    add(
+      start,
+      0.7,
+      (a) =>
+        0.075 *
+        (1 - Math.exp(-a * 100)) *
+        Math.exp(-a * 4.5) *
+        Math.sin(tau * bass * a),
+      0.5,
+    );
+  }
+  if (step % 4 === 0)
+    add(
+      start,
+      0.28,
+      (a) =>
+        0.12 *
+        Math.exp(-a * 24) *
+        Math.sin(tau * (45 * a + 0.85 * (1 - Math.exp(-a * 65)))),
+      0.5,
+    );
+  // A soft brushed backbeat, replacing the earlier high electronic ticks.
+  if (step % 4 === 2)
+    add(
+      start,
+      0.16,
+      (a) =>
+        0.016 *
+        Math.exp(-a * 34) *
+        (Math.sin(a * 10331) + Math.sin(a * 16447) + Math.sin(a * 20593)) *
+        0.33,
+      0.55,
+    );
 }
-const buffer = Buffer.alloc(44 + count * 2);
+const chordFreq = chords.map((c) => c.slice(1, 4).map(hz));
+for (let i = 0; i < count; i++) {
+  const t = i / rate,
+    section = Math.floor(t / (beat * 8)),
+    pos = t % (beat * 8),
+    blend = Math.min(1, pos / 0.9);
+  const current = chordFreq[section % 4],
+    previous = chordFreq[(section + 3) % 4];
+  let pad = 0;
+  for (let j = 0; j < 3; j++)
+    pad +=
+      0.012 *
+      ((1 - blend) * Math.sin(tau * previous[j] * t) +
+        blend * Math.sin(tau * current[j] * t));
+  const fade = Math.min(1, t / 2, (seconds - t) / 3);
+  // Master gain keeps this instrumental audible without clipping.
+  left[i] = Math.tanh(left[i] + pad) * Math.max(0, fade) * 3.6;
+  right[i] = Math.tanh(right[i] + pad * 0.97) * Math.max(0, fade) * 3.6;
+}
+const buffer = Buffer.alloc(44 + count * 4);
 buffer.write("RIFF", 0);
 buffer.writeUInt32LE(buffer.length - 8, 4);
 buffer.write("WAVEfmt ", 8);
 buffer.writeUInt32LE(16, 16);
 buffer.writeUInt16LE(1, 20);
-buffer.writeUInt16LE(1, 22);
+buffer.writeUInt16LE(2, 22);
 buffer.writeUInt32LE(rate, 24);
-buffer.writeUInt32LE(rate * 2, 28);
-buffer.writeUInt16LE(2, 32);
+buffer.writeUInt32LE(rate * 4, 28);
+buffer.writeUInt16LE(4, 32);
 buffer.writeUInt16LE(16, 34);
 buffer.write("data", 36);
-buffer.writeUInt32LE(count * 2, 40);
-for (let i = 0; i < count; i++)
-  buffer.writeInt16LE(Math.round(pcm[i] * 32767), 44 + i * 2);
+buffer.writeUInt32LE(count * 4, 40);
+for (let i = 0; i < count; i++) {
+  buffer.writeInt16LE(Math.round(left[i] * 32767), 44 + i * 4);
+  buffer.writeInt16LE(Math.round(right[i] * 32767), 46 + i * 4);
+}
 writeFileSync(destination, buffer);
-writeFileSync(marker, "2");
-console.log("Prepared original 60-second score.");
+writeFileSync(marker, version);
+console.log("Prepared 60-second stereo downtempo score at 90 BPM.");

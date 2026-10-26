@@ -1,10 +1,20 @@
-import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import {
+  interpolate,
+  interpolateColors,
+  useCurrentFrame,
+  useVideoConfig,
+} from "remotion";
 import { C, Frame, Reveal, mono, ease } from "./design";
 export const Integration = () => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = f / fps;
-  const stage = Math.min(2, Math.floor(t / 2.6));
+  const focus = interpolate(
+    t,
+    [0, 2.05, 3.15, 4.65, 5.75, 10],
+    [0, 0, 1, 1, 2, 2],
+    ease,
+  );
   return (
     <Frame>
       <Reveal
@@ -73,7 +83,12 @@ export const Integration = () => {
               fontSize: 128,
               fontWeight: 500,
               letterSpacing: -8,
-              color: stage === i ? C.lime : C.text,
+              color: interpolateColors(
+                Math.max(0, 1 - Math.abs(focus - i)),
+                [0, 1],
+                [C.text, C.lime],
+              ),
+              scale: 1 + 0.02 * Math.max(0, 1 - Math.abs(focus - i)),
             }}
           >
             {word}

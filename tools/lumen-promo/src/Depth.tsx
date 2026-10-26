@@ -1,4 +1,9 @@
-import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import {
+  interpolate,
+  interpolateColors,
+  useCurrentFrame,
+  useVideoConfig,
+} from "remotion";
 import { C, mono, ease } from "./design";
 
 // Perspective planes add deterministic depth without a WebGL dependency.
@@ -6,7 +11,12 @@ export const DocumentRig = ({ engine = false }: { engine?: boolean }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = f / fps;
-  const active = Math.min(3, Math.floor(Math.max(0, t - 1) / 2));
+  const focus = interpolate(
+    t,
+    [1, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5],
+    [0, 0, 1, 1, 2, 2, 3],
+    ease,
+  );
   const spread = interpolate(
     f,
     [0, 1.8 * fps, 7 * fps, 10 * fps],
@@ -48,9 +58,23 @@ export const DocumentRig = ({ engine = false }: { engine?: boolean }) => {
               width: 430,
               height: 430,
               padding: 35,
-              background: i === active ? C.lime : C.surface,
-              color: i === active ? C.bg : C.text,
-              border: "2px solid " + (i === active ? C.lime : C.line),
+              background: interpolateColors(
+                Math.max(0, 1 - Math.abs(focus - i)),
+                [0, 1],
+                [C.surface, C.lime],
+              ),
+              color: interpolateColors(
+                Math.max(0, 1 - Math.abs(focus - i)),
+                [0, 1],
+                [C.text, C.bg],
+              ),
+              border:
+                "2px solid " +
+                interpolateColors(
+                  Math.max(0, 1 - Math.abs(focus - i)),
+                  [0, 1],
+                  [C.line, C.lime],
+                ),
               transform: "translateZ(" + (i - 1.5) * spread + "px)",
               backfaceVisibility: "visible",
             }}
@@ -81,20 +105,31 @@ export const DocumentRig = ({ engine = false }: { engine?: boolean }) => {
                           width: 44,
                           height: 44,
                           margin: 8,
-                          border: "1px solid " + (i === active ? C.bg : C.line),
+                          border:
+                            "1px solid " +
+                            interpolateColors(
+                              Math.max(0, 1 - Math.abs(focus - i)),
+                              [0, 1],
+                              [C.line, C.bg],
+                            ),
                           background:
                             j % 3 === 0
-                              ? i === active
-                                ? C.bg
-                                : C.lime
+                              ? interpolateColors(
+                                  Math.max(0, 1 - Math.abs(focus - i)),
+                                  [0, 1],
+                                  [C.lime, C.bg],
+                                )
                               : "transparent",
                         }
                       : {
                           height: 8,
                           width: (j % 2 ? 65 : 100) + "%",
                           marginBottom: 29,
-                          background:
-                            i === active ? C.bg : j === 2 ? C.lime : C.line,
+                          background: interpolateColors(
+                            Math.max(0, 1 - Math.abs(focus - i)),
+                            [0, 1],
+                            [j === 2 ? C.lime : C.line, C.bg],
+                          ),
                         }
                   }
                 />
