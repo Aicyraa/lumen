@@ -1,50 +1,87 @@
-import { C, Frame, Reveal, Title, mono } from "./design";
-
-export const Closing = () => (
-  <Frame chapter="BUILD WITH LUMEN" number="05" light seconds={11}>
-    <div style={{ position: "absolute", left: 100, top: 230, right: 100 }}>
-      <Reveal at={0.2}>
-        <div style={{ ...mono, marginBottom: 35 }}>
-          SEAMLESS RAG INTEGRATION
-        </div>
-      </Reveal>
-      <Reveal at={0.5}>
-        <Title size={124}>
-          Your knowledge.
+import {
+  interpolate,
+  useCurrentFrame,
+  useVideoConfig,
+  Img,
+  staticFile,
+} from "remotion";
+import { C, Frame, Reveal, Title, mono, ease } from "./design";
+export const Closing = () => {
+  const f = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  return (
+    <Frame chapter="BUILD WITH LUMEN" number="06" seconds={8} light>
+      <div style={{ position: "absolute", left: 100, top: 225, width: 1220 }}>
+        <Reveal>
+          <div style={{ ...mono, marginBottom: 35 }}>
+            LESS WIRING. MORE BUILDING.
+          </div>
+        </Reveal>
+        <Reveal at={0.4}>
+          <Title size={136}>
+            Give your app
+            <br />
+            your knowledge.
+          </Title>
+        </Reveal>
+        <Reveal
+          at={1.5}
+          style={{ fontSize: 39, marginTop: 45, lineHeight: 1.4 }}
+        >
+          Seamless RAG integration.
           <br />
-          Your models.
+          Cheap + expensive model routing.
           <br />
-          One Lumen API.
-        </Title>
-      </Reveal>
-      <Reveal at={2.3} style={{ marginTop: 48, fontSize: 39 }}>
-        Upload documents. Connect models. Call{" "}
-        <span style={{ fontFamily: "Geist Mono" }}>/v1/chat</span>.
-      </Reveal>
-      <Reveal
-        at={4}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 45,
-          marginTop: 45,
-        }}
-      >
-        <div
+          One connected RAG service.
+        </Reveal>
+        <Reveal
+          at={3.4}
           style={{
+            marginTop: 45,
+            display: "inline-block",
+            padding: "25px 35px",
             background: C.bg,
             color: C.text,
-            padding: "25px 38px",
             borderRadius: 100,
-            fontSize: 33,
+            fontSize: 31,
           }}
         >
-          Explore Lumen
-        </div>
-        <div style={{ fontFamily: "Geist Mono", fontSize: 27 }}>
+          Explore Lumen on GitHub
+        </Reveal>
+        <Reveal
+          at={4}
+          style={{ fontFamily: "Geist Mono", fontSize: 29, marginTop: 27 }}
+        >
           github.com/Aicyraa/lumen
-        </div>
-      </Reveal>
-    </div>
-  </Frame>
-);
+        </Reveal>
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          left: 1420,
+          top: 340,
+          width: 300,
+          height: 330,
+          perspective: 1200,
+        }}
+      >
+        <Img
+          src={staticFile("lumen-mark.svg")}
+          style={{
+            width: 300,
+            height: 300,
+            background: C.bg,
+            padding: 25,
+            borderRadius: 35,
+            transform:
+              "rotateY(" +
+              interpolate(f, [0, 3 * fps], [100, -15], ease) +
+              "deg) rotateZ(" +
+              Math.sin(f / fps) * 5 +
+              "deg)",
+          }}
+        />
+      </div>
+    </Frame>
+  );
+};

@@ -1,108 +1,88 @@
-import { C, Frame, Label, Reveal, Title, Line, mono } from "./design";
-
-export const RagService = () => (
-  <Frame chapter="THE RAG SERVICE" number="03" seconds={12}>
-    <div style={{ position: "absolute", left: 100, top: 210 }}>
-      <Reveal>
-        <Label>FROM FILES TO CONTEXT</Label>
-        <Title>
-          The RAG service.
-          <br />
-          <span style={{ color: C.lime }}>Working underneath.</span>
-        </Title>
-      </Reveal>
-    </div>
-    <div
-      style={{
-        position: "absolute",
-        left: 100,
-        top: 490,
-        width: 1720,
-        height: 225,
-      }}
-    >
-      <svg width="1720" height="225" style={{ position: "absolute" }}>
-        <Line d="M290 110H435" at={1.2} />
-        <Line d="M725 110H870" at={2.4} />
-        <Line d="M1160 110H1305" at={3.6} />
-      </svg>
-      <Node left={0} at={0.5} n="01" title="Chunk" detail="Split documents" />
-      <Node left={435} at={1.7} n="02" title="Embed" detail="Encode meaning" />
-      <Node
-        left={870}
-        at={2.9}
-        n="03"
-        title="Retrieve"
-        detail="Vector + BM25"
-      />
-      <Node
-        left={1305}
-        at={4.1}
-        n="04"
-        title="Rerank"
-        detail="Select context"
-      />
-    </div>
-    <Reveal
-      at={6}
-      style={{
-        position: "absolute",
-        left: 100,
-        right: 100,
-        top: 770,
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: 70,
-      }}
-    >
-      <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 28 }}>
-        <div style={{ fontSize: 40 }}>Project-scoped retrieval.</div>
-        <div style={{ color: C.muted, fontSize: 28, marginTop: 15 }}>
-          Each request searches its own tenant’s documents.
-        </div>
-      </div>
-      <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 28 }}>
-        <div style={{ fontSize: 40 }}>Evidence-backed answers.</div>
-        <div style={{ color: C.muted, fontSize: 28, marginTop: 15 }}>
-          Quotes are checked before citations are rendered.
-        </div>
-      </div>
-    </Reveal>
-  </Frame>
-);
-function Node({
-  left,
-  at,
-  n,
-  title,
-  detail,
-}: {
-  left: number;
-  at: number;
-  n: string;
-  title: string;
-  detail: string;
-}) {
+import { useCurrentFrame, useVideoConfig } from "remotion";
+import { C, Frame, Label, Reveal, Title, mono } from "./design";
+import { DocumentRig } from "./Depth";
+export const RagService = () => {
+  const f = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const step = Math.min(3, Math.floor(Math.max(0, f / fps - 1) / 2));
   return (
-    <Reveal
-      at={at}
-      style={{
-        position: "absolute",
-        left,
-        width: 290,
-        height: 225,
-        background: C.surface,
-        border: `1px solid ${C.line}`,
-        padding: 28,
-      }}
-    >
-      <div style={{ ...mono, color: C.lime, fontSize: 21, marginBottom: 30 }}>
-        {n} / RAG
+    <Frame chapter="INSIDE THE RAG SERVICE" number="03" seconds={11}>
+      <div style={{ position: "absolute", left: 100, top: 220, width: 850 }}>
+        <Reveal>
+          <Label>THE ENGINE UNDER THE ANSWER</Label>
+          <Title size={108}>
+            Your knowledge.
+            <br />
+            <span style={{ color: C.lime }}>Put to work.</span>
+          </Title>
+        </Reveal>
+        <div
+          style={{
+            marginTop: 50,
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 26,
+          }}
+        >
+          {[
+            "Chunk documents",
+            "Embed meaning",
+            "Retrieve context",
+            "Rerank matches",
+          ].map((s, i) => (
+            <Reveal
+              key={s}
+              at={0.5 + i * 0.3}
+              style={{
+                borderTop: "2px solid " + (step === i ? C.lime : C.line),
+                paddingTop: 20,
+              }}
+            >
+              <div
+                style={{
+                  ...mono,
+                  color: step === i ? C.lime : C.muted,
+                  fontSize: 21,
+                }}
+              >
+                0{i + 1} / {step === i ? "ACTIVE" : "RAG"}
+              </div>
+              <div style={{ fontSize: 31, marginTop: 14 }}>{s}</div>
+            </Reveal>
+          ))}
+        </div>
+        <Reveal
+          at={7.6}
+          style={{
+            marginTop: 40,
+            fontSize: 29,
+            color: C.muted,
+            lineHeight: 1.4,
+          }}
+        >
+          Hybrid vector + keyword retrieval.
+          <br />
+          Context scoped to your project.
+        </Reveal>
       </div>
-      <div style={{ fontSize: 48, letterSpacing: -2 }}>{title}</div>
-      <div style={{ fontSize: 25, color: C.muted, marginTop: 14 }}>
-        {detail}
+      <div style={{ position: "absolute", left: 970, top: 220, scale: 1.1 }}>
+        <DocumentRig engine />
       </div>
-    </Reveal>
+      <Reveal
+        at={1.5}
+        style={{
+          position: "absolute",
+          left: 1070,
+          top: 875,
+          width: 650,
+          borderTop: "1px solid " + C.line,
+          paddingTop: 20,
+        }}
+      >
+        <div style={{ ...mono, color: C.lime, fontSize: 22 }}>
+          RAG SERVICE / INTERNAL FASTAPI
+        </div>
+      </Reveal>
+    </Frame>
   );
-}
+};

@@ -1,183 +1,170 @@
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, Frame, Label, Reveal, Title, Line, mono, ease } from "./design";
-
+import { C, Frame, Label, Reveal, Title, mono, ease } from "./design";
 export const Routing = () => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = f / fps;
-  const mode = t < 6 ? "cheap" : t < 12 ? "expensive" : "none";
+  const mode = t < 4.5 ? 0 : t < 9 ? 1 : 2;
+  const local = t - (mode === 0 ? 0 : mode === 1 ? 4.5 : 9);
+  const questions = [
+    "When does enrollment close?",
+    "Compare the policies and explain the exceptions.",
+    "What is outside these documents?",
+  ];
+  const y = [150, 350, 550][mode];
   return (
-    <Frame chapter="CHEAP + EXPENSIVE MODELS" number="04" seconds={18}>
-      <div style={{ position: "absolute", left: 100, top: 205 }}>
+    <Frame chapter="CHEAP + EXPENSIVE MODEL ROUTING" number="04" seconds={14}>
+      <div style={{ position: "absolute", left: 100, top: 220, width: 900 }}>
         <Reveal>
-          <Label>TWO TIERS. ONE ROUTER.</Label>
-          <Title>
-            The right model.
+          <Label>ONE QUESTION. THE RIGHT TIER.</Label>
+          <Title size={110}>
+            Route by
             <br />
-            <span style={{ color: C.lime }}>For the question.</span>
+            <span style={{ color: C.lime }}>what it takes.</span>
           </Title>
         </Reveal>
+        <div
+          style={{
+            marginTop: 50,
+            borderTop: "1px solid " + C.line,
+            paddingTop: 30,
+            width: 760,
+          }}
+        >
+          <div style={{ ...mono, color: C.lime, fontSize: 23 }}>
+            {
+              [
+                "01 / STRAIGHTFORWARD",
+                "02 / HARD OR UNCERTAIN",
+                "03 / NO RELEVANT MATCH",
+              ][mode]
+            }
+          </div>
+          <div
+            style={{
+              fontSize: 38,
+              lineHeight: 1.3,
+              marginTop: 25,
+              minHeight: 110,
+            }}
+          >
+            {"“" + questions[mode] + "”"}
+          </div>
+          <div style={{ fontSize: 28, color: C.muted, marginTop: 22 }}>
+            {
+              [
+                "Use the cheap tier for easy questions.",
+                "Escalate when the question needs more.",
+                "Skip the model. Say the answer is not found.",
+              ][mode]
+            }
+          </div>
+        </div>
       </div>
-      <Reveal
-        at={1}
-        style={{
-          position: "absolute",
-          left: 100,
-          top: 495,
-          width: 650,
-          borderTop: `1px solid ${C.line}`,
-          paddingTop: 30,
-        }}
-      >
-        <div style={{ ...mono, color: C.lime, marginBottom: 22 }}>
-          {mode === "cheap"
-            ? "01 / EASY QUESTION"
-            : mode === "expensive"
-              ? "02 / HARD OR UNCERTAIN"
-              : "03 / NO RELEVANT MATCH"}
-        </div>
-        <div
-          style={{
-            fontSize: 42,
-            lineHeight: 1.22,
-            letterSpacing: -1,
-            maxWidth: 620,
-          }}
-        >
-          {mode === "cheap"
-            ? "“When does enrollment close?”"
-            : mode === "expensive"
-              ? "“Compare the policies and explain the exceptions.”"
-              : "“What is outside these documents?”"}
-        </div>
-        <div
-          style={{
-            fontSize: 29,
-            lineHeight: 1.5,
-            color: C.muted,
-            marginTop: 28,
-          }}
-        >
-          {mode === "cheap"
-            ? "Straightforward question → cheap tier."
-            : mode === "expensive"
-              ? "Complexity or weak evidence → expensive tier."
-              : "No evidence to retrieve → no model call."}
-        </div>
-      </Reveal>
       <div
         style={{
           position: "absolute",
-          left: 840,
-          top: 320,
-          width: 980,
-          height: 520,
+          left: 980,
+          top: 250,
+          width: 840,
+          height: 660,
         }}
       >
-        <svg width="980" height="520" style={{ position: "absolute" }}>
+        <svg width="840" height="660" style={{ position: "absolute" }}>
           <path
-            d="M265 255H390V100H520M390 255V290H520M390 255V480H520"
+            d="M210 350H315V150H450M315 350H450M315 350V550H450"
             fill="none"
             stroke={C.line}
             strokeWidth={2}
           />
-          <Line
-            d={
-              mode === "cheap"
-                ? "M265 255H390V100H520"
-                : mode === "expensive"
-                  ? "M265 255H390V290H520"
-                  : "M265 255H390V480H520"
-            }
-            at={mode === "cheap" ? 1.8 : mode === "expensive" ? 6.2 : 12.2}
-            duration={0.8}
+          <path
+            d={"M210 350H315V" + y + "H450"}
+            fill="none"
+            stroke={C.lime}
+            strokeWidth={4}
+            pathLength={1}
+            strokeDasharray={1}
+            strokeDashoffset={interpolate(local, [0.25, 1.1], [1, 0], ease)}
           />
+          {[0, 1, 2].map((i) => (
+            <circle
+              key={i}
+              cx={315 + (((f / fps) * 70 + i * 45) % 135)}
+              cy={y}
+              r={5}
+              fill={C.lime}
+              opacity={local > 1.1 ? 1 : 0}
+            />
+          ))}
         </svg>
-        <Reveal
-          at={0.6}
+        <div
           style={{
             position: "absolute",
             left: 0,
-            top: 175,
-            width: 265,
-            height: 160,
-            border: `1px solid ${C.lime}`,
+            top: 245,
+            width: 220,
+            height: 210,
+            display: "grid",
+            placeItems: "center",
             background: C.surface,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 16,
+            border: "2px solid " + C.lime,
+            transform:
+              "perspective(900px) rotateY(" + Math.sin(t * 0.7) * 8 + "deg)",
           }}
         >
-          <span style={{ ...mono, color: C.lime }}>LUMEN</span>
-          <span style={{ fontSize: 48, letterSpacing: -2 }}>Router</span>
-        </Reveal>
-        <Tier
-          top={10}
-          active={mode === "cheap"}
-          title="Cheap model"
-          detail="For straightforward questions"
-        />
-        <Tier
-          top={200}
-          active={mode === "expensive"}
-          title="Expensive model"
-          detail="For hard questions & escalation"
-        />
-        <Tier
-          top={390}
-          active={mode === "none"}
-          title="No model called"
-          detail="When the documents have no match"
-        />
+          <div style={{ textAlign: "center" }}>
+            <div
+              style={{ ...mono, color: C.lime, fontSize: 20, marginBottom: 20 }}
+            >
+              LUMEN
+            </div>
+            <div style={{ fontSize: 48 }}>Router</div>
+          </div>
+        </div>
+        {["Cheap model", "Expensive model", "No model call"].map((title, i) => (
+          <div
+            key={title}
+            style={{
+              position: "absolute",
+              left: 450,
+              top: 65 + i * 200,
+              width: 390,
+              height: 165,
+              padding: 26,
+              background: mode === i ? C.lime : C.surface,
+              color: mode === i ? C.bg : C.muted,
+              border: "1px solid " + (mode === i ? C.lime : C.line),
+              scale: mode === i ? 1.025 : 1,
+            }}
+          >
+            <div style={{ ...mono, fontSize: 18, marginBottom: 15 }}>
+              {["EASY QUESTIONS", "COMPLEXITY / ESCALATION", "NO MATCH"][i]}
+            </div>
+            <div style={{ fontSize: 36, letterSpacing: -1.5 }}>{title}</div>
+            <div style={{ fontSize: 21, marginTop: 10 }}>
+              {
+                [
+                  "Your models, cheap tier",
+                  "Your models, expensive tier",
+                  "An honest not-found reply",
+                ][i]
+              }
+            </div>
+          </div>
+        ))}
       </div>
       <Reveal
-        at={15}
+        at={10.5}
         style={{
           position: "absolute",
           left: 100,
-          right: 100,
-          top: 880,
-          fontSize: 36,
+          top: 900,
+          fontSize: 30,
           color: C.muted,
-          opacity: interpolate(f, [15 * fps, 15.5 * fps], [0, 1], ease),
         }}
       >
-        Bring your own models. Order primary and backups within each tier.
+        Choose your models. Order primary and backups inside each tier.
       </Reveal>
     </Frame>
   );
 };
-function Tier({
-  top,
-  active,
-  title,
-  detail,
-}: {
-  top: number;
-  active: boolean;
-  title: string;
-  detail: string;
-}) {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        left: 520,
-        top,
-        width: 460,
-        height: 160,
-        border: `1px solid ${active ? C.lime : C.line}`,
-        background: active ? C.lime : C.surface,
-        color: active ? C.bg : C.muted,
-        padding: "24px 26px",
-      }}
-    >
-      <div style={{ fontSize: 38, letterSpacing: -1.4, marginBottom: 12 }}>
-        {title}
-      </div>
-      <div style={{ fontSize: 23 }}>{detail}</div>
-    </div>
-  );
-}

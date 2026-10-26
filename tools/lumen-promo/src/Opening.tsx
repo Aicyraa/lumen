@@ -1,89 +1,63 @@
-import { useCurrentFrame, useVideoConfig, interpolate } from "remotion";
-import { C, Frame, Label, Reveal, Title, mono, ease } from "./design";
-
+import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import { C, Frame, Label, Reveal, Title, ease, mono } from "./design";
+import { DocumentRig, Packets } from "./Depth";
 export const Opening = () => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const second = f > 3.2 * fps;
   return (
-    <Frame chapter="MEET LUMEN" number="01" seconds={7}>
-      <div style={{ position: "absolute", left: 100, top: 235, width: 1270 }}>
+    <Frame chapter="MEET YOUR CONTEXT LAYER" number="01" seconds={8}>
+      <div style={{ position: "absolute", left: 100, top: 230, width: 1080 }}>
         <Reveal at={0.2}>
-          <Label>THE RAG GATEWAY FOR YOUR CHATBOT</Label>
+          <Label>YOUR CHATBOT HAS A MISSING PIECE.</Label>
         </Reveal>
-        <Reveal at={0.5}>
-          <Title size={142}>
-            Your documents.
-            <br />
-            Answers that
-            <br />
-            <span style={{ color: C.lime }}>connect.</span>
-          </Title>
-        </Reveal>
-        <Reveal
-          at={1.6}
-          style={{ marginTop: 40, fontSize: 42, color: C.muted }}
+        <div
+          style={{
+            opacity: interpolate(
+              f,
+              second ? [3.2 * fps, 3.65 * fps] : [0, 0.6 * fps],
+              [0, 1],
+              ease,
+            ),
+          }}
         >
-          A RAG API. Built to fit your application.
+          <Title size={136}>
+            {second ? (
+              <>
+                Give it
+                <br />
+                <span style={{ color: C.lime }}>Lumen.</span>
+              </>
+            ) : (
+              <>
+                It needs
+                <br />
+                <span style={{ color: C.lime }}>your context.</span>
+              </>
+            )}
+          </Title>
+        </div>
+        <Reveal
+          at={1.2}
+          style={{
+            fontSize: 40,
+            color: C.muted,
+            marginTop: 38,
+            maxWidth: 810,
+            lineHeight: 1.3,
+          }}
+        >
+          Turn the documents you already have into answers your app can use.
+        </Reveal>
+        <Reveal at={4.2} style={{ ...mono, marginTop: 45, color: C.lime }}>
+          A RAG GATEWAY. YOUR MODELS. ONE API.
         </Reveal>
       </div>
-      <div
-        style={{
-          position: "absolute",
-          right: 110,
-          top: 300,
-          width: 340,
-          height: 440,
-        }}
-      >
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            style={{
-              position: "absolute",
-              width: 260,
-              height: 340,
-              border: `1px solid ${i === 2 ? C.lime : C.line}`,
-              background: C.surface,
-              padding: 30,
-              left: 40 - i * 25,
-              top: i * 35,
-              rotate: `${(i - 1) * 7}deg`,
-              opacity: interpolate(
-                f,
-                [(1 + i * 0.2) * fps, (1.6 + i * 0.2) * fps],
-                [0, 1],
-                ease,
-              ),
-              translate: interpolate(
-                f,
-                [(1 + i * 0.2) * fps, (1.8 + i * 0.2) * fps],
-                ["0px 80px", "0px 0px"],
-                ease,
-              ),
-            }}
-          >
-            <div
-              style={{
-                ...mono,
-                color: i === 2 ? C.lime : C.muted,
-                fontSize: 19,
-              }}
-            >
-              DOCUMENT / 0{i + 1}
-            </div>
-            {[0, 1, 2, 3, 4].map((j) => (
-              <div
-                key={j}
-                style={{
-                  height: 5,
-                  width: `${j % 2 ? 70 : 100}%`,
-                  background: j === 2 && i === 2 ? C.lime : C.line,
-                  marginTop: 30,
-                }}
-              />
-            ))}
-          </div>
-        ))}
+      <div style={{ position: "absolute", left: 1020, top: 195, scale: 1.08 }}>
+        <DocumentRig />
+      </div>
+      <div style={{ position: "absolute", left: 100, top: 825 }}>
+        <Packets />
       </div>
     </Frame>
   );

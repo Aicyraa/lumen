@@ -1,5 +1,11 @@
 // Original, deterministic electronic score. No samples or external music assets.
-import { existsSync, mkdirSync, writeFileSync, statSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  writeFileSync,
+  statSync,
+  readFileSync,
+} from "node:fs";
 import { fileURLToPath } from "node:url";
 const destination = fileURLToPath(
   new URL("../public/lumen-score.wav", import.meta.url),
@@ -7,7 +13,13 @@ const destination = fileURLToPath(
 const rate = 24000,
   seconds = 60,
   count = rate * seconds;
-if (existsSync(destination) && statSync(destination).size === 44 + count * 2)
+const marker = destination + ".version";
+if (
+  existsSync(destination) &&
+  statSync(destination).size === 44 + count * 2 &&
+  existsSync(marker) &&
+  readFileSync(marker, "utf8") === "2"
+)
   process.exit(0);
 mkdirSync(fileURLToPath(new URL("../public/", import.meta.url)), {
   recursive: true,
@@ -48,6 +60,15 @@ for (let i = 0; i < count; i++) {
     Math.sin(tau * (46 * kickAge + 1.8 * (1 - Math.exp(-kickAge * 45))));
   // Short tonal ticks replace noisy hi-hats for a calm, precise texture.
   sample += 0.012 * Math.exp(-age * 85) * Math.sin(tau * 5300 * age);
+  // Original transition sweeps, aligned with the five overlapping scene changes.
+  for (const cut of [7.4, 16.8, 27.2, 40.6, 52]) {
+    const sweep = t - cut;
+    if (sweep >= 0 && sweep < 0.6) {
+      const envelope = Math.sin((Math.PI * sweep) / 0.6) ** 2;
+      sample +=
+        0.055 * envelope * Math.sin(tau * (180 * sweep + 1000 * sweep * sweep));
+    }
+  }
   const fade = Math.min(1, t / 1.5, (seconds - t) / 3);
   pcm[i] = Math.tanh(sample) * Math.max(0, fade);
 }
@@ -67,4 +88,5 @@ buffer.writeUInt32LE(count * 2, 40);
 for (let i = 0; i < count; i++)
   buffer.writeInt16LE(Math.round(pcm[i] * 32767), 44 + i * 2);
 writeFileSync(destination, buffer);
+writeFileSync(marker, "2");
 console.log("Prepared original 60-second score.");

@@ -1,113 +1,143 @@
-import { useCurrentFrame, useVideoConfig, interpolate } from "remotion";
-import { Arrow, C, Frame, Label, Reveal, Title, mono, ease } from "./design";
-
+import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import { C, Frame, Label, Reveal, Title, mono, ease } from "./design";
 export const Integration = () => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const stage = Math.min(2, Math.floor(f / fps / 2.6));
+  const code =
+    'const reply = await fetch("/v1/chat", {\n  method: "POST",\n  headers: {\n    "Content-Type": "application/json",\n    "x-api-key": process.env.LUMEN_KEY\n  },\n  body: JSON.stringify({\n    query: "What do my documents say?"\n  })\n});';
   return (
-    <Frame chapter="SEAMLESS INTEGRATION" number="02" seconds={12}>
-      <div style={{ position: "absolute", left: 100, top: 210 }}>
+    <Frame chapter="SEAMLESS RAG INTEGRATION" number="02" seconds={10}>
+      <div style={{ position: "absolute", left: 100, top: 225, width: 790 }}>
         <Reveal>
-          <Label>CONNECT YOUR CHATBOT</Label>
-          <Title>
-            Seamless RAG
+          <Label>FROM YOUR DOCS. INTO YOUR APP.</Label>
+          <Title size={108}>
+            Seamless
             <br />
-            <span style={{ color: C.lime }}>integration.</span>
+            RAG integration.
           </Title>
+        </Reveal>
+        <div
+          style={{
+            marginTop: 55,
+            display: "flex",
+            flexDirection: "column",
+            gap: 24,
+          }}
+        >
+          {[
+            "Upload your documents",
+            "Create a project API key",
+            "Call POST /v1/chat",
+          ].map((s, i) => (
+            <Reveal
+              key={s}
+              at={0.6 + i * 0.4}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 25,
+                fontSize: 35,
+                color: stage === i ? C.text : C.muted,
+              }}
+            >
+              <span
+                style={{
+                  ...mono,
+                  width: 60,
+                  height: 60,
+                  display: "grid",
+                  placeItems: "center",
+                  background: stage === i ? C.lime : C.surface,
+                  color: stage === i ? C.bg : C.muted,
+                  border: "1px solid " + C.line,
+                  borderRadius: 100,
+                }}
+              >
+                0{i + 1}
+              </span>
+              {s}
+            </Reveal>
+          ))}
+        </div>
+        <Reveal
+          at={6.5}
+          style={{ marginTop: 35, fontSize: 28, color: C.muted }}
+        >
+          Keep your API key on your backend.
         </Reveal>
       </div>
       <div
         style={{
           position: "absolute",
-          left: 100,
-          right: 100,
-          top: 490,
-          display: "grid",
-          gridTemplateColumns: "1fr 70px 1fr 70px 1fr",
-          alignItems: "center",
-          gap: 24,
+          left: 955,
+          top: 230,
+          width: 865,
+          perspective: 1600,
         }}
       >
-        <Reveal at={0.7}>
-          <Step n="01" title="Upload documents" detail="PDF · TXT · Markdown" />
+        <Reveal
+          at={0.5}
+          style={{
+            transform: "rotateY(-8deg) rotateX(3deg)",
+            background: C.surface,
+            border: "1px solid " + C.line,
+            padding: 36,
+            height: 610,
+          }}
+        >
+          <div
+            style={{
+              ...mono,
+              color: C.lime,
+              borderBottom: "1px solid " + C.line,
+              paddingBottom: 24,
+              fontSize: 22,
+            }}
+          >
+            YOUR BACKEND / JAVASCRIPT
+          </div>
+          <pre
+            style={{
+              fontFamily: "Geist Mono",
+              fontSize: 22,
+              lineHeight: 1.55,
+              color: C.text,
+              whiteSpace: "pre-wrap",
+              marginTop: 28,
+            }}
+          >
+            {code.slice(
+              0,
+              Math.floor(
+                interpolate(f, [1.2 * fps, 5.3 * fps], [0, code.length], ease),
+              ),
+            )}
+            <span style={{ color: C.lime, opacity: Math.floor(f / 12) % 2 }}>
+              ▍
+            </span>
+          </pre>
         </Reveal>
-        <Reveal at={1.4}>
-          <Arrow />
-        </Reveal>
-        <Reveal at={1.7}>
-          <Step
-            n="02"
-            title="Create an API key"
-            detail="Scoped to your project"
-          />
-        </Reveal>
-        <Reveal at={2.4}>
-          <Arrow />
-        </Reveal>
-        <Reveal at={2.7}>
-          <Step n="03" title="Call /v1/chat" detail="From your backend" />
+        <Reveal
+          at={6}
+          style={{
+            position: "absolute",
+            left: 55,
+            right: -15,
+            top: 520,
+            background: C.lime,
+            color: C.bg,
+            padding: "25px 30px",
+            border: "1px solid " + C.bg,
+            rotate: "-2deg",
+          }}
+        >
+          <div style={{ ...mono, fontSize: 20 }}>ONE RESPONSE</div>
+          <div style={{ fontSize: 36, marginTop: 12 }}>
+            Answer + sources + route
+          </div>
         </Reveal>
       </div>
-      <Reveal
-        at={4}
-        style={{
-          position: "absolute",
-          left: 100,
-          right: 100,
-          top: 750,
-          border: `1px solid ${C.line}`,
-          background: C.surface,
-          padding: "26px 36px",
-          display: "flex",
-          alignItems: "center",
-          gap: 40,
-        }}
-      >
-        <div style={{ ...mono, color: C.lime, fontSize: 25 }}>
-          POST /v1/chat
-        </div>
-        <code style={{ fontFamily: "Geist Mono", fontSize: 30, color: C.text }}>
-          {'{ "query": "What do my documents say?" }'.slice(
-            0,
-            Math.floor(interpolate(f, [4.3 * fps, 6.3 * fps], [0, 47], ease)),
-          )}
-        </code>
-      </Reveal>
-      <Reveal
-        at={7.5}
-        style={{
-          position: "absolute",
-          left: 100,
-          top: 875,
-          fontSize: 40,
-          color: C.muted,
-        }}
-      >
-        One endpoint. Answers, sources, and the route taken.
-      </Reveal>
     </Frame>
   );
 };
-function Step({
-  n,
-  title,
-  detail,
-}: {
-  n: string;
-  title: string;
-  detail: string;
-}) {
-  return (
-    <div
-      style={{ borderTop: `2px solid ${C.line}`, paddingTop: 25, height: 188 }}
-    >
-      <div style={{ ...mono, color: C.lime, marginBottom: 23 }}>{n}</div>
-      <div style={{ fontSize: 39, letterSpacing: -1.5, whiteSpace: "nowrap" }}>
-        {title}
-      </div>
-      <div style={{ fontSize: 27, color: C.muted, marginTop: 16 }}>
-        {detail}
-      </div>
-    </div>
-  );
-}

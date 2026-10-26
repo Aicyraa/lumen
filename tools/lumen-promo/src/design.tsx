@@ -77,16 +77,7 @@ export function Frame({
       }}
     >
       <style>{"* { box-sizing: border-box; }"}</style>
-      <AbsoluteFill
-        style={{
-          opacity: interpolate(
-            frame,
-            [0, 0.3 * fps, durationInFrames - 0.3 * fps, durationInFrames - 1],
-            [0, 1, 1, 0],
-            { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-          ),
-        }}
-      >
+      <AbsoluteFill>
         <div
           style={{
             position: "absolute",
@@ -113,6 +104,19 @@ export function Frame({
           }}
         />
         {children}
+        <div
+          style={{
+            position: "absolute",
+            left: 100,
+            bottom: 34,
+            height: 2,
+            background: light ? C.bg : C.lime,
+            width: interpolate(frame, [0, durationInFrames - 1], [0, 1720], {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            }),
+          }}
+        />
         <div
           style={{
             position: "absolute",

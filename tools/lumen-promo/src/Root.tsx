@@ -5,6 +5,7 @@ import { Integration } from "./Integration";
 import { RagService } from "./RagService";
 import { Routing } from "./Routing";
 import { Closing } from "./Closing";
+import { Response } from "./Response";
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -21,7 +22,7 @@ export const RemotionRoot: React.FC = () => {
         <Composition
           id="Opening"
           component={Opening}
-          durationInFrames={210}
+          durationInFrames={240}
           fps={30}
           width={1920}
           height={1080}
@@ -29,7 +30,7 @@ export const RemotionRoot: React.FC = () => {
         <Composition
           id="Integration"
           component={Integration}
-          durationInFrames={360}
+          durationInFrames={300}
           fps={30}
           width={1920}
           height={1080}
@@ -37,7 +38,7 @@ export const RemotionRoot: React.FC = () => {
         <Composition
           id="RagService"
           component={RagService}
-          durationInFrames={360}
+          durationInFrames={330}
           fps={30}
           width={1920}
           height={1080}
@@ -45,7 +46,15 @@ export const RemotionRoot: React.FC = () => {
         <Composition
           id="Routing"
           component={Routing}
-          durationInFrames={540}
+          durationInFrames={420}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
+        <Composition
+          id="Response"
+          component={Response}
+          durationInFrames={360}
           fps={30}
           width={1920}
           height={1080}
@@ -53,7 +62,7 @@ export const RemotionRoot: React.FC = () => {
         <Composition
           id="Closing"
           component={Closing}
-          durationInFrames={330}
+          durationInFrames={240}
           fps={30}
           width={1920}
           height={1080}
