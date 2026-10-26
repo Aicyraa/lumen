@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { MemoryStore, type RateLimitInfo, rateLimit } from "express-rate-limit";
+import { MemoryStore, type Options, type RateLimitInfo, rateLimit } from "express-rate-limit";
 import type { Config } from "../config/config.js";
 import { ApiError, sendError } from "../lib/errors.js";
 
@@ -16,15 +16,18 @@ export function createLimiters(
   >,
 ) {
   const store = new MemoryStore();
-  const perTenant = rateLimit({
-    windowMs: 60_000,
-    limit: config.ratePerMinute,
-    store,
-    handler,
-    legacyHeaders: false,
-    standardHeaders: "draft-7",
-    keyGenerator: (req) => req.tenantId, // runs after auth, so this is always the authenticated tenant
-  });
+  // keyGenerator runs after auth, so this is always the authenticated tenant.
+  const perTenantLimiter = (limit: number, options: Partial<Options> = {}) =>
+    rateLimit({
+      windowMs: 60_000,
+      limit,
+      handler,
+      legacyHeaders: false,
+      standardHeaders: "draft-7",
+      keyGenerator: (req) => req.tenantId,
+      ...options,
+    });
+  const perTenant = perTenantLimiter(config.ratePerMinute, { store });
   const globalCap = rateLimit({
     windowMs: 60_000,
     limit: config.globalLlmCapPerMinute,
@@ -35,18 +38,9 @@ export function createLimiters(
     skip: (req) => !!req.tenantModels, // the cap protects the shared default key; a tenant's own keys are never throttled by it
   });
   // Test & save calls the tenant's own provider with the tenant's key: its own, much tighter counter.
-  const modelTests = rateLimit({
-    windowMs: 60_000,
-    limit: config.modelTestRatePerMinute,
-    handler,
-    legacyHeaders: false,
-    standardHeaders: "draft-7",
-    keyGenerator: (req) => req.tenantId,
-  });
+  const modelTests = perTenantLimiter(config.modelTestRatePerMinute);
   // Starting an upload writes a file and starts an ingest: one counter per tenant for /v1/documents and the dashboard together.
-  const uploads = rateLimit({
-    windowMs: 60_000,
-    limit: config.uploadRatePerMinute,
+  const uploads = perTenantLimiter(config.uploadRatePerMinute, {
     handler: (req, _res, next) => {
       const wait = Math.max(
         1,
@@ -58,9 +52,6 @@ export function createLimiters(
       );
       next(new ApiError(429, "upload_rate_limited", "Too many uploads. Try again shortly.", wait));
     },
-    legacyHeaders: false,
-    standardHeaders: "draft-7",
-    keyGenerator: (req) => req.tenantId,
   });
   // The usage meter reads the same store the limiter writes.
   // The store keeps an entry after its window ends until a sweep, so an ended window counts as 0.
