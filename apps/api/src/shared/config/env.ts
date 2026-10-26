@@ -1,5 +1,10 @@
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 
-// apps/api/.env only (plus the real environment: real variables win).
-dotenv.config({ path: fileURLToPath(new URL("../../../.env", import.meta.url)), quiet: true });
+// Real variables win over the file; a missing file is fine (production sets them in the environment).
+export function loadEnvFile(path: string) {
+  dotenv.config({ path, quiet: true });
+}
+
+// apps/api/.env only.
+loadEnvFile(fileURLToPath(new URL("../../../.env", import.meta.url)));
