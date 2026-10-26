@@ -71,9 +71,9 @@ services:
       - key: MAX_DOCUMENTS_PER_TENANT
         value: "50"
       - key: RATE_LIMIT_PER_MINUTE
-        value: "60"
+        value: "100"
       - key: MAX_REQUESTS_PER_MONTH
-        value: "5000"
+        value: "10000"
       - key: MAX_PROJECTS_PER_USER
-        value: "5"
+        value: "10"
       # Social sign-in (optional): add GOOGLE_CLIENT_ID/SECRET and GITHUB_CLIENT_ID/SECRET in the dashboard if you use them.
