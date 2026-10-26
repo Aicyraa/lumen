@@ -11,7 +11,3 @@ def embed(texts: list[str]) -> np.ndarray:
     """Return one L2-normalized 384-number vector per text (cosine similarity = dot product)."""
     with limits.slot("embed"):  # at most concurrency.embed_max encodes at once per process
         return _model.encode(texts, normalize_embeddings=True)
-
-
-def is_loaded() -> bool:
-    return _model is not None

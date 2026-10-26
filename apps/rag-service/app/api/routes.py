@@ -19,7 +19,7 @@ from app.core.logging import log
 from app.ingest.chunking import chunk
 from app.ingest.extract import DocumentTooLarge, UnreadableDocument, extract_text
 from app.llm.prompt import build_prompt, render_answer
-from app.retrieval import db, embeddings, reranker, store
+from app.retrieval import db, reranker, store
 from app.retrieval.embeddings import (
     embed,  # loads the model at import, before the server starts listening
 )
@@ -61,7 +61,7 @@ def embed_checked(tenant_id: str, document_id: str, chunks: list[str]) -> np.nda
 
 @internal.get("/ready")  # secret required, only health is public; plain def: it uses the database
 def ready():
-    checks = {"database": False, "embedder": embeddings.is_loaded(), "reranker": True}
+    checks = {"database": False, "reranker": True}
     try:
         with db.connection(timeout=load_config()["database"]["ready_timeout_seconds"]) as conn:
             conn.execute("SELECT 1")
