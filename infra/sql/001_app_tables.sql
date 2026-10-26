@@ -6,7 +6,7 @@ CREATE TABLE documents (
   filename    TEXT NOT NULL,
   status      TEXT NOT NULL DEFAULT 'processing' CHECK (status IN ('processing', 'ready', 'failed')),
   error       TEXT,
-  chunk_count INTEGER NOT NULL DEFAULT 0,
+  chunk_count INTEGER NOT NULL DEFAULT 0,     -- dropped in 005, now the document_stats view
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX documents_tenant_idx ON documents (tenant_id);
@@ -30,7 +30,7 @@ CREATE TABLE request_logs (
   session_id  TEXT,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   query       TEXT NOT NULL,
-  sources     JSONB NOT NULL DEFAULT '[]',    -- [{document_id, chunk_id, score}] from the chat response; for the Requests detail view
+  sources     JSONB NOT NULL DEFAULT '[]',    -- dropped in 004, now the request_sources table
   model_tier  TEXT,                           -- 'cheap', 'expensive' or 'none'
   k           INTEGER,
   escalated   BOOLEAN,
@@ -38,7 +38,7 @@ CREATE TABLE request_logs (
   top_score   REAL,
   tokens_in   INTEGER,
   tokens_out  INTEGER,
-  cost_usd    NUMERIC(12, 6),                 -- stays NULL until Phase 7
+  cost_usd    NUMERIC(12, 6),                 -- dropped in 005, now the request_usage view
   latency_ms  INTEGER,
   status      TEXT NOT NULL DEFAULT 'ok',
   feedback    SMALLINT CHECK (feedback IN (-1, 1))
