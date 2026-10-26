@@ -158,7 +158,7 @@ describe("POST /api/dashboard/workspaces", () => {
     expect((await as(u).get("/workspaces")).body.workspaces).toHaveLength(4);
   });
 
-  it("an owner who also holds another role (\"owner,admin\") still counts against the cap", async () => {
+  it('an owner who also holds another role ("owner,admin") still counts against the cap', async () => {
     const u = await ctx.createTenant("multirole");
     for (const n of ["m2", "m3", "m4"]) await create(u, n);
     await ctx.pool.query(
