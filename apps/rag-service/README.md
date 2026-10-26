@@ -51,6 +51,10 @@ NODE_ENV=production LOG_LEVEL=INFO RAG_WORKERS=2 .venv/bin/python -m app.cli ser
 
 No `--reload`, and bind to 127.0.0.1: only the Express API calls this service. Every worker loads the embedder and the reranker and has its own database pool (`database.pool_max_size`) and its own model semaphores, so size workers by memory and CPU. Liveness: `GET /internal/health`; readiness (database connection and models loaded): `GET /internal/ready` (sends `X-Internal-Secret`). Only health is public.
 
+## Running behind a Tailscale Funnel
+
+To serve the Render-hosted API from your own machine, run `pnpm rag:funnel` from the repo root: it reads `apps/rag-service/.env.funnel` (`DATABASE_URL`, `INTERNAL_SECRET`), forces production mode and `127.0.0.1`, and `pnpm rag:funnel -- --check` validates the file. Funnel setup, the public address and its risks are in `infra/TAILSCALE.md`.
+
 ## Logging
 
 `lumen.rag` lines go to stderr at `LOG_LEVEL` (default INFO), one line each: `time level=INFO logger=lumen.rag msg=...`. They carry tenant ids, counts, tiers, outcomes and latencies, never keys, prompts, passages, questions or snippets.

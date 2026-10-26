@@ -1,70 +1,73 @@
 # Deploying Lumen
 
-`web` on Vercel, `api` and `rag-service` as Docker containers on Render (Blueprint `render.yaml` at the repo root), Postgres on Supabase. Nothing here was deployed: the images were built and run locally and `render.yaml` was checked against Render's published JSON schema only (section 9 says exactly what was and was not checked). The images are plain Docker images, so another host works with the same variables (section 10 says what changes).
+`web` on Vercel, `api` as a Docker container on Render's free plan (Blueprint `render.yaml` at the repo root, api only), `rag-service` on the operator's PC behind a Tailscale Funnel (`infra/TAILSCALE.md`), Postgres on Supabase. Nothing here was deployed (section 9 says exactly what was and was not checked).
 
 ```text
 Browser ──https──> https://NAME.vercel.app            (Vercel: static web + rewrites)
                       │  /api/*  /v1/*  proxied (vercel.json rewrites), everything else = index.html
                       ▼
-              https://lumen-api.onrender.com          (Render web service: apps/api, PORT 10000, PUBLIC)
-                      │  X-Internal-Secret, Render private network only
+              https://lumen-api.onrender.com          (Render free web service: apps/api, PORT 10000, PUBLIC)
+                      │  https, X-Internal-Secret
                       ▼
-              http://lumen-rag-xxxx:8000              (Render private service: apps/rag-service, no public URL)
+              https://MACHINE.TAILNET.ts.net          (Tailscale Funnel, TLS ends on the PC)
                       │
-API and rag ───────> Supabase Postgres (session pooler or direct, never port 6543)
+                      ▼
+              127.0.0.1:8000                          (rag-service on the operator's PC: pnpm rag:funnel)
+                      │
+API and rag ───────> Supabase Postgres (session pooler, never port 6543)
 API ───────────────> SMTP provider (verification emails)      rag ──> tenants' LLM providers (their own keys)
 ```
 
 ## 1. Images
 
+Only the api is built as an image (by Render). The rag-service runs from the repo with `pnpm rag:funnel` (`infra/TAILSCALE.md`).
+
 | Image | Build (run from the repo root) | Size | Build time |
 | --- | --- | --- | --- |
 | api | `docker build -f apps/api/Dockerfile -t lumen-api .` (context = repo root: pnpm workspace and `infra/sql`; ignore list `apps/api/Dockerfile.dockerignore`) | 520 MB | about 45 s cold |
-| rag-service | `docker build -t lumen-rag apps/rag-service` (context = the app dir, ignore list `.dockerignore`) | 1.74 GB (CPU torch 0.9 GB, other Python packages 0.5 GB, the two models 0.19 GB) | 3 min 23 s cold, 39 s when only `app/` changed |
+| rag-service (alternative host only) | `docker build -t rag-service apps/rag-service` (context = the app dir, ignore list `.dockerignore`) | 1.74 GB | 3 min 23 s cold |
 
-Measured with Podman 5.8 using `--format docker` (Podman's default OCI format drops `HEALTHCHECK`; Docker/BuildKit keeps it). Render ignores the image's `HEALTHCHECK` (it uses its own: HTTP `healthCheckPath` for web services, a TCP probe for private services), so the Podman note only matters for other hosts.
+Measured with Podman 5.8 using `--format docker` (Podman's default OCI format drops `HEALTHCHECK`; Docker/BuildKit keeps it). Render ignores the image's `HEALTHCHECK` and uses `healthCheckPath`.
 
 - **api**: runs `node --import tsx src/server.ts` (the repo has no compiled build; tsx is a devDependency, so dev dependencies are installed), as user `node`, `NODE_ENV=production`, `PORT=3000` (the Blueprint pins `PORT=10000`, Render's default for web services; the app reads `PORT`, so any value works). Health check: `GET /api/auth/ok` (Better Auth's built-in; the API has no health route of its own).
-- **uploads**: files in `apps/api/uploads` are scratch. Each upload is deleted as soon as its ingest ends and the startup sweep deletes leftovers; chunks live in Postgres. **No volume is needed.** Without one, a restart loses only ingests running at that moment (the sweep marks them `failed`, the user uploads again), exactly as with a volume. If you mount a volume anyway (`/app/apps/api/uploads`), it must be writable by uid 1000; a fresh volume is usually root-owned and uploads would fail with 500. (Render cannot attach a disk to a free service anyway.)
-- **rag-service**: CPU-only torch (CI does the same), dependencies pinned by `constraints.txt`, models baked in by `python -m app.cli download-models` at the pinned revisions of `app/config.yaml`. At runtime `HF_HUB_OFFLINE=1` and the code loads with `local_files_only=True`, so the container never contacts Hugging Face and needs no model volume. Non-root (uid 10001), start command `python -m app.cli serve`, health check `GET /internal/health` (no secret). To change a model: edit `config.yaml`, rebuild (a new embedding model also needs `VECTOR(384)` and a re-embed).
-- **Why `RAG_HOST=0.0.0.0` in the image**: inside a container `127.0.0.1` is unreachable from the platform's private network, so the service would be unreachable by the API. The CLI default stays `127.0.0.1` for bare-metal. The service is private because on Render it is a *private service* (`type: pserv`): no public URL, reachable only from your other services in the same region and workspace. Anyone who can reach it still needs `INTERNAL_SECRET` for every route except `/internal/health`. Render's private network also reaches the service on its detected port (8000), so no `RAG_PORT`/`PORT` override is needed.
-- The torch version is not pinned (CI does not pin it either): a rebuild may pick a newer CPU wheel. Build used torch 2.14.1+cpu.
+- **uploads**: files in `apps/api/uploads` are scratch. Each upload is deleted as soon as its ingest ends and the startup sweep deletes leftovers; chunks live in Postgres. **No volume is needed** (Render cannot attach a disk to a free service anyway). A restart loses only ingests running at that moment (the sweep marks them `failed`, the user uploads again).
+- **rag-service image (alternative host)**: CPU-only torch, dependencies pinned by `constraints.txt`, models baked in at the pinned revisions of `app/config.yaml`, `HF_HUB_OFFLINE=1`, non-root (uid 10001), start command `python -m app.cli serve`, health check `GET /internal/health` (no secret). The image sets `RAG_HOST=0.0.0.0` because `127.0.0.1` inside a container is unreachable from outside; the funnel runner always uses `127.0.0.1`. The torch version is not pinned: a rebuild may pick a newer CPU wheel.
 
 ## 2. Environment variables
 
 Names come from `apps/api/src/shared/config/config.ts`, `apps/rag-service/app/core/config.py` and the `.env.example` files. Set them as the host's secrets, not in the image. Never put real values in git.
 
-**api** (starts only when all "required" ones are set and valid)
+**api** (starts only when all "required" ones are set and valid; on Render)
 
 | Variable | Required | Production value |
 | --- | --- | --- |
 | `NODE_ENV` | yes | `production` (the image and the Blueprint set it; unset or any other word counts as production, `development` opens `/dev/*` routes: never in production) |
-| `DATABASE_URL` | yes | Supabase session pooler or direct string (section 6) |
-| `BETTER_AUTH_SECRET` | yes | 32+ random characters (`openssl rand -hex 32`). The Blueprint uses `generateValue` (a random base64 256-bit value, 44 characters), created once and kept on later syncs |
+| `DATABASE_URL` | yes | Supabase session pooler string (section 6) |
+| `BETTER_AUTH_SECRET` | yes | 32+ random characters (`openssl rand -hex 32`). The Blueprint uses `generateValue`, created once and kept on later syncs |
 | `BETTER_AUTH_URL` | yes | **`https://NAME.vercel.app`** (the browser-facing origin, not the API host; section 4) |
-| `DASHBOARD_ORIGIN` | yes | **`https://NAME.vercel.app`**, exact, no trailing slash (CORS, Better Auth `trustedOrigins`, verification redirect). This is the brief's "web origin" |
-| `INTERNAL_SECRET` | yes | long random string, **equal to rag-service's**. The Blueprint generates it once in the environment group `lumen-shared`, which both services link, so there is nothing to copy |
-| `RAG_SERVICE_URL` | yes | the rag-service's private address. On Render the Blueprint fills it with `fromService ... property: hostport` (e.g. `lumen-rag-ab12:8000`, no scheme); the API adds `http://` when the value has no scheme (the private network is plain HTTP). Any other host: a full `http://...:8000` URL |
+| `DASHBOARD_ORIGIN` | yes | **`https://NAME.vercel.app`**, exact, no trailing slash (CORS, Better Auth `trustedOrigins`, verification redirect) |
+| `INTERNAL_SECRET` | yes | **set by hand**: the same value as `INTERNAL_SECRET` in `apps/rag-service/.env.funnel` (`openssl rand -hex 32`). Not generated by the Blueprint |
+| `RAG_SERVICE_URL` | yes | the funnel address `https://MACHINE.TAILNET.ts.net` (no trailing slash, no port) |
 | `MODEL_KEY_ENCRYPTION_SECRET` | yes | exactly 64 hex chars (`openssl rand -hex 32`). Back it up: losing or changing it makes every stored provider key unreadable |
 | `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE`, `MAX_REQUESTS_PER_MONTH`, `MAX_PROJECTS_PER_USER` | yes | the human's limits |
 | `SMTP_URL`, `MAIL_FROM` | yes in production | section 8 |
 | `TRUST_PROXY` | recommended | `3` on Render behind the Vercel proxy (section 4); never `true` (refused) |
-| `PORT` | no | default: the port of `BETTER_AUTH_URL`, else 3000. The Blueprint sets `10000`, Render's default for web services |
+| `PORT` | no | default: the port of `BETTER_AUTH_URL`, else 3000. The Blueprint sets `10000` |
 | `UPLOAD_MAX_BYTES` | no | default 10485760; lower it to `4194304` if the Vercel proxy rejects bigger bodies (section 4) |
 | `GOOGLE_CLIENT_ID/SECRET`, `GITHUB_CLIENT_ID/SECRET` | no | social sign-in; skipped while empty |
 | other tunables | no | any key of `apps/api/config.json` as UPPER_SNAKE |
 
-The Blueprint sets `NODE_ENV`, `PORT`, `TRUST_PROXY`, `RAG_SERVICE_URL`, `INTERNAL_SECRET`, `BETTER_AUTH_SECRET` and the four limits (50 / 60 / 5000 / 5: placeholders, edit them in `render.yaml` before the first deploy or in the dashboard afterwards) itself, and asks you for `DATABASE_URL`, `MODEL_KEY_ENCRYPTION_SECRET`, `BETTER_AUTH_URL`, `DASHBOARD_ORIGIN`, `SMTP_URL` and `MAIL_FROM` (`sync: false`). Social sign-in ids are not in the Blueprint: add them in the dashboard if you use them.
+The Blueprint sets `NODE_ENV`, `PORT`, `TRUST_PROXY`, `BETTER_AUTH_SECRET` and the four limits (50 / 100 / 10000 / 10: edit them in `render.yaml` before the first deploy or in the dashboard afterwards) itself, and asks you for `RAG_SERVICE_URL`, `INTERNAL_SECRET`, `DATABASE_URL`, `MODEL_KEY_ENCRYPTION_SECRET`, `BETTER_AUTH_URL`, `DASHBOARD_ORIGIN`, `SMTP_URL` and `MAIL_FROM` (`sync: false`). Social sign-in ids are not in the Blueprint: add them in the dashboard if you use them.
 
-**rag-service**
+**rag-service** (PC, file `apps/rag-service/.env.funnel`, git-ignored; steps in `infra/TAILSCALE.md`)
 
 | Variable | Required | Value |
 | --- | --- | --- |
-| `NODE_ENV` | yes | `production` (set by the image; disables the `LLM_*` default model and `http://localhost` endpoints) |
-| `DATABASE_URL` | yes | same database as the API; may differ in spelling (libpq syntax, section 6). Asked for by the Blueprint (`sync: false`) |
-| `INTERNAL_SECRET` | yes | equal to the API's (environment group `lumen-shared`) |
-| `RAG_HOST` / `RAG_PORT` / `RAG_WORKERS` | no | image sets `0.0.0.0` / `8000` / `1`. Keep workers at 1: each loads both models |
-| `LOG_LEVEL` | no | `INFO` |
+| `DATABASE_URL` | yes | Supabase session pooler string with `?sslmode=require` (section 6) |
+| `INTERNAL_SECRET` | yes | 32+ characters, equal to the api's |
+| `RAG_PORT` / `RAG_WORKERS` / `LOG_LEVEL` | no | default 8000 / 1 / `INFO`. Keep workers at 1: each loads both models |
+
+`pnpm rag:funnel` forces `NODE_ENV=production` and `RAG_HOST=127.0.0.1`.
 
 **web (Vercel project env, build time)**: `VITE_API_URL=/` (the single slash makes the app call its own origin; unset fails the build into a "Missing VITE_API_URL" screen on purpose).
 
@@ -72,26 +75,26 @@ The Blueprint sets `NODE_ENV`, `PORT`, `TRUST_PROXY`, `RAG_SERVICE_URL`, `INTERN
 
 ## 3. Deploy order
 
-1. **Database.** On a **fresh** database apply Better Auth's tables, then `001`..`011`, to a session pooler/direct URL (a session lock is used, so not port 6543):
+1. **Database.** The Supabase project `lumen` is already migrated: `001`..`011` were applied through the Supabase tool, which does not write `schema_migrations`. **Never run `pnpm db:migrate` there** (it would try to apply all eleven again). For a later migration `012`+ apply it with the Supabase tool (`docs/DATABASE.md`, `docs/NOTES.md`); migrations are forward-only, take a backup first. On a **fresh** database instead, apply Better Auth's tables, then `001`..`011`, to a session pooler/direct URL (not port 6543):
 
    ```sh
-   export DATABASE_URL='postgresql://...'   # session pooler or direct, from your shell, never committed
+   export DATABASE_URL='postgresql://...'   # from your shell, never committed
    # auth:migrate builds the auth config, so it needs the API's required variables to exist; throwaway values are fine:
    env NODE_ENV=development BETTER_AUTH_SECRET=$(openssl rand -hex 16) BETTER_AUTH_URL=http://localhost:3000 DASHBOARD_ORIGIN=http://localhost \
      INTERNAL_SECRET=x RAG_SERVICE_URL=http://localhost:8000 MODEL_KEY_ENCRYPTION_SECRET=$(printf '0%.0s' $(seq 64)) \
      MAX_DOCUMENTS_PER_TENANT=1 RATE_LIMIT_PER_MINUTE=1 MAX_REQUESTS_PER_MONTH=1 MAX_PROJECTS_PER_USER=1 \
      pnpm --filter @lumen/api auth:migrate
-   pnpm db:migrate      # applies infra/sql/001..011 in order, once each (table schema_migrations); pnpm db:status shows pending
+   pnpm db:migrate      # applies infra/sql/001..011 once each (table schema_migrations); pnpm db:status shows pending
    ```
-
-   Verified on an empty `pgvector/pgvector:pg16`. **The Supabase project `lumen` is already migrated: all of `001`..`011` were applied through the Supabase tool, which does not write `schema_migrations`. Never run `pnpm db:migrate` there** (it would try to apply all eleven again and fail or, worse, partly re-run them). Nothing is left to do for the database; for a later migration `012`+ apply it with the Supabase tool as before (`docs/DATABASE.md`, `docs/NOTES.md`). Migrations are forward-only; take a backup first.
 2. **Vercel project name.** Create the Vercel project first (Import Git repository, do not deploy yet, or deploy and ignore the result) so you know its real `https://NAME.vercel.app` (a name that is taken gets a suffix). You need it for `BETTER_AUTH_URL` and `DASHBOARD_ORIGIN`.
-3. **rag-service and api on Render, from the Blueprint** (section 10). Both services are created together; the rag-service build is slow (a few minutes). Wait until the rag-service logs say it is up, then check the API (section 7).
-4. **web** on Vercel. Put the API's real host, from the dashboard (`lumen-api.onrender.com`, or with a suffix if the name was taken), into `apps/web/vercel.json` (both `REPLACE-WITH-API-HOST`), commit, push, then deploy. Project settings:
+3. **api on Render, from the Blueprint** (section 10). When it asks for `RAG_SERVICE_URL` and `INTERNAL_SECRET` and you do not have them yet, enter a placeholder; step 5 sets the real values.
+4. **rag-service and funnel on your PC**: `infra/TAILSCALE.md`, steps 1-7. It ends with the public `https://MACHINE.TAILNET.ts.net` address checked from outside.
+5. **Point the api at it**: put that address into `RAG_SERVICE_URL` and the `.env.funnel` secret into `INTERNAL_SECRET` on the api's Environment tab (`infra/TAILSCALE.md`, step 8). Render redeploys.
+6. **web** on Vercel. Put the API's real host from the Render dashboard (`lumen-api.onrender.com`, or with a suffix if the name was taken) into `apps/web/vercel.json` (both `REPLACE-WITH-API-HOST`), commit, push, then deploy. Project settings:
    - Root Directory `apps/web`; keep "Include source files outside of the Root Directory in the Build Step" on (the default): the build reads the root `pnpm-lock.yaml`, `pnpm-workspace.yaml` and `tsconfig.base.json`. Vercel then installs with pnpm from the repo root.
    - Framework Vite; build command `pnpm run build` and output `dist` (already in `vercel.json`); Node 24.x (`.nvmrc`; `engines` allows >=22).
    - Env `VITE_API_URL=/`.
-5. Smoke test (section 7).
+7. Smoke test (section 7).
 
 ## 4. Primary setup: no custom domain, same-origin proxy
 
@@ -104,7 +107,7 @@ Values that make it work:
 | web `VITE_API_URL` | `/` | requests are relative; the Better Auth client uses `window.location.origin` |
 | api `BETTER_AUTH_URL` | `https://NAME.vercel.app` | `Secure` cookie flag is on because it starts with `https://`; verification links and OAuth redirect URIs point through the proxy, so the cookie lands on the vercel.app origin (first-party) |
 | api `DASHBOARD_ORIGIN` | `https://NAME.vercel.app` | the browser sends `Origin: https://NAME.vercel.app`; Better Auth answers `403 INVALID_ORIGIN` for anything else |
-| api `TRUST_PROXY` | `3` on Render | the app sees `X-Forwarded-For: visitor, <Vercel address>, <Cloudflare address>` with the Render load balancer as the socket peer, so the visitor is the third hop. Vercel sets the first entry to the visitor (replacing any client value); Render states that all inbound traffic passes through Cloudflare and Render's load balancers and that Cloudflare *appends* to `X-Forwarded-For`; that Render's own load balancer also appends is **assumed**, not documented, and the exact count is unverified (section 10 has a two-device test). Too low (`1` or `2`) and every visitor shares one address (the resend limit of 3/min becomes global); too high and the limit never triggers. Someone calling the API host directly can spoof their address for the per-address limits; that is low impact |
+| api `TRUST_PROXY` | `3` on Render | the app sees `X-Forwarded-For: visitor, <Vercel address>, <Cloudflare address>` with the Render load balancer as the socket peer, so the visitor is the third hop. Vercel sets the first entry to the visitor (replacing any client value); Render states that all inbound traffic passes through Cloudflare and Render's load balancers and that Cloudflare *appends* to `X-Forwarded-For`; that Render's own load balancer also appends is **assumed**, not documented, and the exact count is unverified (section 10 has a two-device test). Too low (`1` or `2`) and every visitor shares one address (the resend limit of 3/min becomes global); too high and the limit never triggers. The Tailscale Funnel is behind the api, not in front of it, so it adds no hop. Someone calling the API host directly can spoof their address for the per-address limits; that is low impact |
 | Google/GitHub redirect URI | `https://NAME.vercel.app/api/auth/callback/google` (and `/github`) | the provider returns to the proxied path; not tested against real providers |
 
 Limits of an external rewrite (from Vercel docs, checked 2026-10-26):
@@ -133,15 +136,13 @@ APP=https://NAME.vercel.app ; API=https://lumen-api.onrender.com   # your real h
 curl -s  $API/api/auth/ok                                   # {"ok":true}  (api alive)
 curl -s  $APP/api/auth/ok                                   # same through the proxy; HTML here = rewrite missing
 curl -s  -o /dev/null -w '%{http_code}\n' $APP/projects     # 200, SPA fallback
-# rag-service: private, so test it from its own Shell tab in the Render dashboard (the image has no curl; python is there; the secret stays in the container's environment):
-#   python -c "import os,urllib.request as u; print(u.urlopen('http://127.0.0.1:8000/internal/health').read())"                                  # {"status":"ok"}
-#   python -c "import os,urllib.request as u; print(u.urlopen(u.Request('http://127.0.0.1:8000/internal/ready',headers={'X-Internal-Secret':os.environ['INTERNAL_SECRET']})).read())"   # database and reranker both true
-# (Shell may need a paid instance; otherwise read the logs and test the chain by uploading a document, below.)
+# rag-service: infra/TAILSCALE.md, step 7 (health, ready 401 without the secret, ready with it)
 # sign-up: the mail arrives only if SMTP works; click the link (it lands on NAME.vercel.app and signs you in)
 curl -s -H "Origin: $APP" -H 'content-type: application/json' -X POST $APP/api/auth/sign-up/email \
   -d '{"email":"you@example.com","password":"a-long-password","name":"You","callbackURL":"'$APP'/verify-email"}'
 # Set-Cookie check: sign in from the browser, DevTools > Application > Cookies: __Secure-better-auth.session_token on NAME.vercel.app
-# upload + chat (create a project API key in the dashboard first; add a model in the Models tab for chat):
+# upload + chat (create a project API key in the dashboard first; add a model in the Models tab for chat).
+# The upload goes Vercel -> Render -> funnel -> PC, so it proves the whole chain:
 curl -s -H "x-api-key: $KEY" -F file=@handbook.md $APP/v1/documents          # 202 {document_id}; poll GET /v1/documents/{id} until ready
 curl -s -H "x-api-key: $KEY" -H 'content-type: application/json' -d '{"query":"When do you open?"}' $APP/v1/chat
 ```
@@ -162,60 +163,47 @@ Free-tier numbers of these providers change and were not verified. Without a dom
 
 ## 9. Memory, verification status and rollback
 
-**rag-service memory** (measured in the container, one worker): about 420 MB after start (both models loaded), 630 MB after ingesting a 4 KB file, **880 MB peak resident** while ingesting a 450 KB text (1,428 chunks); a query adds a reranker batch on top. Give it **2 GB** (1 GB will work for small documents and then be OOM-killed on big ones), 1-2 shared CPUs. Embedding is CPU-bound; the first request after a cold start is slower.
+**rag-service memory** (measured in the container, one worker): about 420 MB after start (both models loaded), **880 MB peak resident** while ingesting a 450 KB text (1,428 chunks); a query adds a reranker batch. Keep about 1 GB of RAM free on the PC. Embedding is CPU-bound; the first request after a cold start is slower.
 
-**Run locally (Podman, throwaway Postgres):** both images built; rag container healthy as non-root and offline, `/internal/ready` all true; api container healthy, SIGTERM stops it in under a second; migrations `auth:migrate` + `001..011` applied to an empty database; a built web (`VITE_API_URL=/`) behind a small Node proxy playing Vercel (same origin, `/api` and `/v1` forwarded with `X-Forwarded-*`): sign-up, verification link (built from `BETTER_AUTH_URL`), `Set-Cookie` first-party on the proxy origin, `get-session` and `/api/dashboard/*` authorized with that cookie, 401 without it, 403 `INVALID_ORIGIN` for a foreign origin, a document uploaded through the proxy ingested by the rag container (15 chunks). Web tests: 387 pass. The API accepts `RAG_SERVICE_URL=host:port` (unit test; the other API tests need the local test database and were not run). The API image still builds from a fresh worktree (Podman). `render.yaml` validates against Render's JSON schema (`https://render.com/schema/render.yaml.json`, checked with ajv 8; a deliberately wrong file is rejected). **Only written, never run**: the Blueprint itself on Render (Render's `blueprints validate` CLI needs an API key or login, so it was not used), Vercel's real rewrite behaviour (body size, Set-Cookie, Origin), HTTPS/`Secure` cookies, SMTP sending, OAuth with Google/GitHub, Supabase connections, `TRUST_PROXY=3` against the real Cloudflare/Render/Vercel chain, a chat call with a real model, the 1.7 GB image on Render's builder and registry.
+**Run locally (Podman, throwaway Postgres):** both images built; rag container healthy as non-root and offline, `/internal/ready` all true; api container healthy, SIGTERM stops it in under a second; migrations `auth:migrate` + `001..011` applied to an empty database; a built web (`VITE_API_URL=/`) behind a small Node proxy playing Vercel (same origin, `/api` and `/v1` forwarded with `X-Forwarded-*`): sign-up, verification link (built from `BETTER_AUTH_URL`), `Set-Cookie` first-party on the proxy origin, `get-session` and `/api/dashboard/*` authorized with that cookie, 401 without it, 403 `INVALID_ORIGIN` for a foreign origin, a document uploaded through the proxy ingested by the rag container (15 chunks). Web tests: 387 pass. The API accepts a scheme-less `RAG_SERVICE_URL=host:port` (unit test; the other API tests need the local test database and were not run). The API image still builds from a fresh worktree (Podman).
 
-**Rollback.** Web: Vercel dashboard, previous deployment, "Promote to Production" (or Instant Rollback). Containers: on Render, open the service's Deploys page, pick a recent successful deploy and click Rollback (it reuses that deploy's build artifact; a dashboard rollback also turns auto-deploys off, which the Blueprint already does). It only works while Render still keeps that build. Database: migrations are forward-only (no down scripts): restore from Supabase backup/PITR (plan-dependent), and keep each release compatible with the previous schema until you are sure. Keep `MODEL_KEY_ENCRYPTION_SECRET` and `BETTER_AUTH_SECRET` stable across rollbacks (changing the latter signs everyone out).
+**Not run at all**: anything about the funnel (`tailscale funnel`, `pnpm rag:funnel`, the public address, the api reaching the PC over it, `infra/TAILSCALE.md` end to end; the steps are checked against Tailscale's documentation only). Also never run: the Blueprint on Render (the api-only `render.yaml` was not re-checked against Render's JSON schema, `https://render.com/schema/render.yaml.json`, after the rag-service was removed from it; an earlier two-service version passed; Render's `blueprints validate` CLI needs an API key), Docker on Render's free plan, Vercel's real rewrite behaviour (body size, Set-Cookie, Origin), HTTPS/`Secure` cookies, SMTP sending, OAuth with Google/GitHub, Supabase connections, `TRUST_PROXY=3` against the real Cloudflare/Render/Vercel chain, a chat call with a real model.
 
-## 10. Render (Blueprint `render.yaml`)
+**Rollback.** Web: Vercel dashboard, previous deployment, "Promote to Production" (or Instant Rollback). API: on Render, open the service's Deploys page, pick a recent successful deploy and click Rollback (it reuses that deploy's build artifact; a dashboard rollback also turns auto-deploys off, which the Blueprint already does). It only works while Render still keeps that build. Database: migrations are forward-only (no down scripts): restore from Supabase backup/PITR (plan-dependent), and keep each release compatible with the previous schema until you are sure. Keep `MODEL_KEY_ENCRYPTION_SECRET` and `BETTER_AUTH_SECRET` stable across rollbacks (changing the latter signs everyone out).
 
-`render.yaml` at the repo root describes two services in one region (singapore, the closest Render region to the Supabase project `lumen` in ap-northeast-2/Seoul; Render's regions are oregon, ohio, virginia, frankfurt and singapore; the region cannot be changed after creation, so edit it before the first deploy if you choose another, and keep both services in the same one, because the private network only spans one region):
+## 10. Render: api only
 
-| Service | Type | Built from | Plan in the file | Port |
-| --- | --- | --- | --- | --- |
-| `lumen-rag` | private service (`pserv`) | `apps/rag-service/Dockerfile`, context `apps/rag-service` | `1c-2g` (1 CPU, 2 GB) | 8000, private only |
-| `lumen-api` | web service | `apps/api/Dockerfile`, context = repo root | `free` (512 MB, 0.1 CPU) | `PORT=10000`, public, health check `/api/auth/ok` |
+`render.yaml` at the repo root describes one web service, `lumen-api` (`apps/api/Dockerfile`, context = repo root, plan `free`: 512 MB, 0.1 CPU; `PORT=10000`, public, health check `/api/auth/ok`), in region singapore (the closest Render region to the Supabase project `lumen` in ap-northeast-2/Seoul; regions are oregon, ohio, virginia, frankfurt and singapore; it cannot be changed after creation). `numInstances: 1` and `autoDeployTrigger: "off"`: a push does not rebuild anything, you deploy by hand. The rag-service is not on Render; the funnel address reaches it (`infra/TAILSCALE.md`). Check the file with `https://render.com/schema/render.yaml.json` or `render blueprints validate render.yaml` (needs the Render CLI and an API key).
 
-Both have `numInstances: 1` and `autoDeployTrigger: "off"` (a push does not rebuild anything; you deploy by hand). One environment group, `lumen-shared`, holds the generated `INTERNAL_SECRET`, so both services get the same value. Check the file with `https://render.com/schema/render.yaml.json` (the YAML extension by Red Hat uses it from SchemaStore) or `render blueprints validate render.yaml` (needs the Render CLI and an API key, so it was not run here).
+Blueprint: <https://dashboard.render.com/blueprint/new?repo=https://github.com/Aicyraa/lumen>, branch `cleanup-tailscale` (the branch that contains this `render.yaml`; use `main` once it is merged).
 
-### Cost, honestly
-
-- **The rag-service cannot run on the free plan.** There is no free private service, and a free web service has 512 MB; the rag-service measured 420 MB idle and 880 MB peak while ingesting (section 9). The cheapest plan with enough RAM is `1c-2g` (1 CPU, 2 GB; legacy name Standard), about **$25 per month**. `0.5c-512mb` (Starter, about $7) would be OOM-killed on the first large document.
-- **The API can stay free** (`plan: free`, $0, 750 free instance hours per workspace and month, which one always-on service uses up almost entirely) or move to `0.5c-512mb` (about $7) for an always-on API. So the monthly bill is about **$25 with a free API, about $32 with a Starter API**. Build minutes beyond the plan's included amount (500 per month on Hobby) and outbound bandwidth are extra.
-- The compute plans, their RAM and CPU come from Render's docs (`render.com/docs/compute-plans`). **The dollar figures are not from Render's own pages**: `render.com/pricing` did not render its table for me, so they come from third-party price lists and a Render-hosted mirror that agree with each other. Confirm them on the pricing page before you commit. Supabase and the SMTP provider are separate; Vercel Hobby is free.
+**Paid alternative (unverified, about $25/month):** the rag-service as a Render private service (`type: pserv`, plan `1c-2g`, 1 CPU and 2 GB) built from `apps/rag-service/Dockerfile`, with `RAG_SERVICE_URL` set to its `host:port` (the API adds `http://` to a scheme-less value) and the same `INTERNAL_SECRET`. It is not in `render.yaml`. The dollar figure comes from third-party price lists, not Render's pricing page; confirm it before committing. A Starter instance (512 MB) would be OOM-killed on the first large document.
 
 ### What a free API does (spin-down)
 
 Render spins a free web service down after 15 minutes without inbound traffic and starts it again on the next request; the docs say that takes about a minute. Render may also restart a free service at any time. For Lumen this means:
 
-- **The first request after idle waits about a minute** (sign-in page, API call, verification link). Vercel's external rewrites time out after 120 s, so the request still succeeds, but the first load looks hung. A ping every 10 minutes would keep it awake (the 750 free hours cover one service running all month), but that is working around the plan, not a setup.
-- **In-memory state is lost at each spin-down or restart**: rate-limit counters, the per-address and per-email resend limits and the create-project lock restart from zero. The limits still protect against bursts but not across idle periods.
-- **A background ingest running at that moment dies.** The startup sweep (`apps/api/src/modules/documents/sweep.ts`) marks documents still `processing` past its cutoff as `failed` at the next start and deletes leftover upload files; the user uploads again. Uploads are scratch space, nothing is lost beyond that run. Chunks already stored are in Postgres.
-- Local files do not survive restarts (no disk on free services); that does not matter, there is no volume in this setup.
-- The rag-service is a paid instance and does not spin down; its models are baked into the image, so a restart takes seconds, not a download. The API calls it over the private network: a free web service *can send* private requests, it just cannot receive them (Render docs, private network).
-- To avoid all of the above, set `plan: 0.5c-512mb` on `lumen-api` in `render.yaml` (or change the plan in the dashboard). The API's memory was not measured; if 512 MB is too small, `1c-2g` is the next step.
+- **The first request after idle waits about a minute** (sign-in page, API call, verification link). Vercel's external rewrites time out after 120 s, so the request still succeeds, but the first load looks hung.
+- **In-memory state is lost at each spin-down or restart**: rate-limit counters, the per-address and per-email resend limits and the create-project lock restart from zero.
+- **A background ingest running at that moment dies.** The startup sweep (`apps/api/src/modules/documents/sweep.ts`) marks documents still `processing` past its cutoff as `failed` at the next start and deletes leftover upload files; the user uploads again. Chunks already stored are in Postgres.
+- To avoid all of this set `plan: 0.5c-512mb` (Starter, about $7, not from Render's own pages) on `lumen-api`. The API's memory was not measured.
 
 ### Steps you do in the Render dashboard
 
-1. Push the branch that contains `render.yaml` (the Blueprint tracks whichever branch you pick) and make sure the repo is on GitHub, GitLab or Bitbucket. Create a Render account and workspace; Paid instances need a payment method.
-2. Decide the Vercel URL (section 3, step 2), generate the two values you must bring: `openssl rand -hex 32` for `MODEL_KEY_ENCRYPTION_SECRET` (back it up) and an SMTP account (section 8). Have the Supabase session-pooler connection string ready (section 6).
-3. Dashboard: **New > Blueprint**, connect the repository, choose the branch, keep the Blueprint path `render.yaml`, give the Blueprint a name.
-4. Render shows the proposed services and asks for the `sync: false` values (asked once, at creation; later you change them on the service's Environment tab, and Render ignores `sync: false` variables on later Blueprint syncs):
-   - `lumen-rag`: `DATABASE_URL` (`...?sslmode=require`).
-   - `lumen-api`: `DATABASE_URL` (`...?uselibpqcompat=true&sslmode=require` if the plain form fails with a certificate error), `MODEL_KEY_ENCRYPTION_SECRET`, `BETTER_AUTH_URL` and `DASHBOARD_ORIGIN` (both `https://NAME.vercel.app`, no trailing slash), `SMTP_URL`, `MAIL_FROM`.
-5. Check the proposed plans (rag `1c-2g`, api `free`) and region, then **Deploy Blueprint**. Builds start for both services; the rag image takes a few minutes (3 min 23 s cold locally; Render's builder has 2 CPUs and 8 GB, 120-minute timeout).
-6. Open `lumen-api`: copy its URL (`https://lumen-api...onrender.com`). Open its **Environment** tab and look at `RAG_SERVICE_URL`: it should read like `lumen-rag-xxxx:8000`. If it shows another port or the API logs `connection refused`, open `lumen-rag`, copy its Service Address and set `RAG_SERVICE_URL` to `http://<service address>`.
-7. Put the API host into both entries of `apps/web/vercel.json`, commit, push, deploy on Vercel (section 3, step 4).
-8. Add social sign-in ids (`GOOGLE_CLIENT_ID/SECRET`, `GITHUB_CLIENT_ID/SECRET`) on the API's Environment tab if you use them; redirect URIs are in section 4.
-9. Run the smoke tests (section 7) and the `TRUST_PROXY` check below.
-10. To update: **Manual Deploy > Deploy latest commit** on each service (auto-deploy is off). Editing an environment variable in the dashboard redeploys that service by itself.
+1. Push the branch that contains `render.yaml` and make sure the repo is on GitHub, GitLab or Bitbucket. Create a Render account and workspace.
+2. Decide the Vercel URL (section 3, step 2), generate `openssl rand -hex 32` for `MODEL_KEY_ENCRYPTION_SECRET` (back it up), set up an SMTP account (section 8), and have the Supabase session-pooler string ready (section 6).
+3. Dashboard: open the Blueprint link above (or **New > Blueprint**), choose the branch, keep the path `render.yaml`, name the Blueprint.
+4. Render asks for the `sync: false` values (asked once, at creation; later change them on the service's Environment tab, and Render ignores `sync: false` variables on later Blueprint syncs): `RAG_SERVICE_URL`, `INTERNAL_SECRET` (placeholders until section 3, step 5), `DATABASE_URL` (`...?uselibpqcompat=true&sslmode=require` if the plain form fails with a certificate error), `MODEL_KEY_ENCRYPTION_SECRET`, `BETTER_AUTH_URL` and `DASHBOARD_ORIGIN` (both `https://NAME.vercel.app`, no trailing slash), `SMTP_URL`, `MAIL_FROM`.
+5. Check plan and region, then **Deploy Blueprint**. Copy the service URL (`https://lumen-api...onrender.com`) for `apps/web/vercel.json` (section 3, step 6).
+6. Add social sign-in ids on the Environment tab if you use them; redirect URIs are in section 4.
+7. Run the smoke tests (section 7) and the `TRUST_PROXY` check below.
+8. To update: **Manual Deploy > Deploy latest commit** (auto-deploy is off). Editing an environment variable in the dashboard redeploys the service by itself.
 
 ### Facts this setup relies on
 
-From Render's docs (blueprint-spec, private-network, free, health-checks, web-services, build-pipeline, deploys, compute-plans): `dockerfilePath` and `dockerContext` are relative to the repo root; `generateValue` makes a random base64 256-bit value once; an environment group in `envVarGroups` can use `generateValue` and a service links it with `fromGroup`; `fromService` with `property: hostport` gives `host:port` of a private service, no scheme; health checks use `healthCheckPath` for web services and only a TCP check for private services; a check fails after 5 s without an answer and a deploy has 15 minutes to become healthy; services in the same region and workspace share a private network; the default `PORT` of a web service is 10000 and it must bind `0.0.0.0` (the API does, the image's rag default `RAG_HOST=0.0.0.0` too); web services accept responses up to 100 minutes (Render's own comparison pages), far above what the Vercel proxy allows.
+From Render's docs (blueprint-spec, free, health-checks, web-services, deploys): `dockerfilePath` and `dockerContext` are relative to the repo root; `generateValue` makes a random base64 256-bit value once; a web service's default `PORT` is 10000 and it must bind `0.0.0.0` (the API does); health checks use `healthCheckPath`, fail after 5 s without an answer, and a deploy has 15 minutes to become healthy.
 
-**Assumed or unverified**: Docker is allowed on the free plan (the free page lists no runtime limit); the private service's detected port is 8000, so `hostport` resolves to it (step 6 is the fallback); Render's load balancer appends to `X-Forwarded-For` (see `TRUST_PROXY` below); the 1.7 GB image fits Render's registry and instance disk (no limit is documented in the pages I read); `Dockerfile.dockerignore` (BuildKit reads `<Dockerfile>.dockerignore`) is honoured by Render's builder, whose docs only mention `.dockerignore`; if it is not, the API build context is the whole git checkout, which is harmless but slower.
+**Assumed or unverified**: Docker is allowed on the free plan (the free page lists no runtime limit); Render's load balancer appends to `X-Forwarded-For` (see `TRUST_PROXY`); `Dockerfile.dockerignore` (BuildKit reads `<Dockerfile>.dockerignore`) is honoured by Render's builder, whose docs only mention `.dockerignore` (if not, the build context is the whole checkout: harmless, slower).
 
 ### Checking `TRUST_PROXY=3`
 
@@ -223,13 +211,17 @@ After the first deploy, from two different networks (for example your laptop and
 
 ### Other hosts
 
-Fly.io, Railway, a VPS: the same images and variables. Differences to handle: the private URL (`RAG_SERVICE_URL` as a full `http://...:8000`; on Fly, `.internal` names resolve to IPv6 so the rag-service needs `RAG_HOST=::`), `PORT`, the health check, the `TRUST_PROXY` hop count, and never publishing the rag-service's port.
+Fly.io, Railway, a VPS: the same api image and variables. Differences to handle: `PORT`, the health check, the `TRUST_PROXY` hop count.
 
 ## 11. Open risks
 
-1. Vercel rewrite behaviour for 10 MB bodies and Set-Cookie/Origin passthrough is not documented and was not run on Vercel; check with the smoke tests and fall back to `UPLOAD_MAX_BYTES=4194304`.
-2. `TRUST_PROXY=3` is a hop-count assumption about Vercel, Cloudflare and Render's load balancer; test it (section 10).
-3. Single API instance only; a crash or a free-plan spin-down loses running ingests until the next start's sweep.
-4. The torch version is unpinned and the rag image is 1.7 GB; pin torch (or use a base image cache) if builds must be reproducible.
-5. The API image installs dev dependencies (tsx lives there). Moving `tsx` to `dependencies` and installing with `--prod` would shrink the image (not measured); not done to leave `package.json` and the lockfile alone.
-6. The API host stays public; the proxy is a convenience for cookies, not an access control.
+1. The PC must stay on, awake and online: if it sleeps, uploads and questions fail (an upload in progress is marked failed).
+2. Tailscale Funnel is a beta feature with bandwidth limits you cannot configure.
+3. `INTERNAL_SECRET` is the only protection on the public funnel address; anyone who has it can read or delete any tenant's data through the rag-service. Keep it out of git, rotate it in both places if it leaks.
+4. The free Render api sleeps after 15 minutes idle: the first request waits about a minute, and in-memory counters and running ingests are lost.
+5. Brevo's authorized-IP list must stay empty (or inactive): Render's outbound addresses change, so an IP allowlist would block the mail.
+6. Vercel rewrite behaviour for 10 MB bodies and Set-Cookie/Origin passthrough is not documented and was not run on Vercel; check with the smoke tests and fall back to `UPLOAD_MAX_BYTES=4194304`.
+7. `TRUST_PROXY=3` is a hop-count assumption about Vercel, Cloudflare and Render's load balancer; test it (section 10).
+8. Single API instance only; a crash or a spin-down loses running ingests until the next start's sweep.
+9. The API image installs dev dependencies (tsx lives there); moving `tsx` to `dependencies` would shrink it (not measured, not done).
+10. The API host stays public; the proxy is a convenience for cookies, not an access control.
