@@ -21,6 +21,9 @@ def pid():
 
 
 def test_store_calls_reuse_one_pooled_connection():
+    db.open_pool(
+        wait=True
+    )  # without the wait, the first call and the pool's own startup can each open a connection
     first = pid()
     doc = add_document("t", "f.txt")  # runs through the same pool
     store.add_chunks("t", doc, ["x"], np.array([np.eye(384, dtype=np.float32)[0]]))
