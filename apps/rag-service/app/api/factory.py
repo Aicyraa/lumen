@@ -7,7 +7,7 @@ from psycopg_pool import PoolTimeout
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import routes
-from app.core.config import load_config, load_settings
+from app.core.config import is_production, load_config, load_settings
 from app.core.errors import ApiError, error_response
 from app.core.logging import configure_logging
 from app.retrieval import db, reranker
@@ -55,7 +55,9 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(lifespan=lifespan)
+    # a public URL must not advertise the schema; is_production() fails closed
+    off = {"docs_url": None, "redoc_url": None, "openapi_url": None} if is_production() else {}
+    app = FastAPI(lifespan=lifespan, **off)
     app.add_exception_handler(ApiError, api_error_handler)
     app.add_exception_handler(PoolTimeout, busy_handler)
     app.add_exception_handler(StarletteHTTPException, http_error_handler)
