@@ -5,7 +5,7 @@ import { apiBase } from "./config";
 import { guardedFetch } from "./guardedFetch";
 
 export const authClient = createAuthClient({
-  baseURL: apiBase,
+  baseURL: apiBase || window.location.origin, // apiBase is empty when VITE_API_URL=/ (same origin)
   fetchOptions: { customFetchImpl: guardedFetch },
   plugins: [organizationClient(), apiKeyClient()],
 });
