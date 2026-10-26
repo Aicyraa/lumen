@@ -204,6 +204,17 @@ describe("Docs content", () => {
     expect(text).not.toMatch(/\d+\s*(requests|documents|MB|per)/i); // no limit values of its own (status codes are fine)
     expect(document.querySelector(".doc-content")).not.toBeNull();
   });
+
+  it("lists 429 provider_rate_limited in the errors table and the Retry-After header in Limits", () => {
+    view(<Docs />);
+    const errors = document.getElementById("errors") as HTMLElement;
+    const row = within(errors).getByText("provider_rate_limited").parentElement;
+    expect(row).toHaveTextContent("429");
+    expect(row).toHaveTextContent(/Retry-After header and retry_after_seconds say how long to wait/);
+    const limits = document.getElementById("limits") as HTMLElement;
+    expect(within(limits).getByText("Retry-After")).toBeInTheDocument();
+    expect(limits).toHaveTextContent("provider_rate_limited");
+  });
 });
 
 describe("Privacy layout", () => {
