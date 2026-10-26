@@ -103,7 +103,8 @@ describe("per-tenant rate limit", () => {
       expect((await chat(ctx, a)).status).toBe(429); // the Try it box already used part of the allowance
       expect((await tryIt(ctx, a)).status).toBe(429);
       expect((await chat(ctx, b)).status).toBe(200); // another tenant has its own counter
-      expect(await ctx.app.locals.rateLimitUsed(a.tenantId)).toBeGreaterThanOrEqual(3);
+      const usage = await request(ctx.app).get("/api/dashboard/usage").set("cookie", a.cookie);
+      expect(usage.body.requests_per_minute.used).toBeGreaterThanOrEqual(3);
     });
   });
 

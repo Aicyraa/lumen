@@ -59,7 +59,6 @@ export function createApp({
   const deps = { pool, rag, config, log, pending, resolveHost };
   const limiters = createLimiters(config);
   const llm = [limiters.perTenant, loadTenantModels(deps), limiters.globalCap];
-  app.locals.rateLimitUsed = limiters.used;
   const v1 = express.Router();
   v1.use(requireApiKey(auth));
   v1.use("/documents", documentsRouter(deps, limiters.uploads));
@@ -75,30 +74,12 @@ export function createApp({
   dash.use(requireTenant);
   dash.get("/documents", async (req, res) => {
     const { rows } = await pool.query(
-      `SELECT d.id, d.filename, d.status, d.error, s.chunk_count, d.created_at
+      `SELECT d.id AS document_id, d.filename, d.status, d.error, s.chunk_count, d.created_at
        FROM documents d JOIN document_stats s ON s.document_id = d.id AND s.tenant_id = d.tenant_id
        WHERE d.tenant_id = $1 ORDER BY d.created_at DESC`,
       [req.tenantId],
     );
-    res.json({
-      documents: rows.map(
-        (d: {
-          id: string;
-          filename: string;
-          status: string;
-          error: string | null;
-          chunk_count: number;
-          created_at: Date;
-        }) => ({
-          document_id: d.id,
-          filename: d.filename,
-          status: d.status,
-          error: d.error,
-          chunk_count: d.chunk_count,
-          created_at: d.created_at,
-        }),
-      ),
-    });
+    res.json({ documents: rows });
   });
   dash.get("/usage", usageHandler(deps, limiters.used));
   dash.post("/feedback", feedbackHandler(deps)); // same logic as /v1/feedback; the tenant is the session's organization
