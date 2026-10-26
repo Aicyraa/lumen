@@ -61,13 +61,13 @@ export function createAuth({
     return org.id;
   }
 
-  // One project creation per user at a time, from the cap check to the insert, for every way of creating one. No DB connection is held while waiting.
   // At most N verification emails per address per window, whichever route asks (sign-up, sign-in, resend) and from however many clients.
   // The mail is dropped silently, so responses are the same for every address and nothing can be enumerated.
   const perEmail = createWindowCounter({
     windowMs: config.verificationResendPerEmailWindowSeconds * 1000,
     max: config.verificationResendPerEmailMax,
   });
+  // One project creation per user at a time, from the cap check to the insert, for every way of creating one. No DB connection is held while waiting.
   const createLock = new KeyedLock();
   // Whoever holds a user's lock is recorded with a token. A release only counts for the token it was made with, so a create
   // that outlives the lock's TTL cannot release the lock of the one that took over. The token travels from the hook that takes

@@ -1,9 +1,8 @@
 import { Router } from "express";
-import { z } from "zod";
 import { ApiError } from "../../shared/lib/errors.js";
 import { parseRange, rangeStart } from "../../shared/lib/range.js";
+import { isUuid } from "../../shared/lib/validate.js";
 import type { Deps } from "../../shared/types/types.js";
-import "../../shared/types/types.js";
 
 const TIERS = ["all", "cheap", "expensive", "none"];
 // created_at as text keeps microseconds, which a JS Date would cut to milliseconds and break the keyset.
@@ -18,7 +17,7 @@ const decodeCursor = (v: string): { ts: string; id: string } => {
       ISO_US.test(ts) &&
       ts >= "0001" &&
       new Date(ts.slice(0, 23) + "Z").toISOString().slice(0, 19) === ts.slice(0, 19) &&
-      z.uuid().safeParse(id).success
+      isUuid(id)
     )
       return { ts, id };
   } catch {
@@ -76,8 +75,6 @@ export function requestsRouter({ pool, config }: Deps) {
   });
 
   const notFound = () => new ApiError(404, "not_found", "Request not found.");
-  const isUuid = (v: unknown): v is string =>
-    typeof v === "string" && z.uuid().safeParse(v).success;
 
   r.get("/:id", async (req, res) => {
     if (!isUuid(req.params.id)) throw notFound();

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { MONTH_START_SQL } from "../../shared/lib/range.js";
+import { ownedProjectCount } from "../../shared/services/projects.js";
 import type { Deps } from "../../shared/types/types.js";
-import "../../shared/types/types.js";
 
 // The signed-in user's own account data. Session only: no active project needed.
 // Every statement is keyed by the session user (req.userId) or by the project ids derived from that user's memberships (rule 1).
@@ -19,10 +19,7 @@ export function accountRouter({ pool, config }: Deps) {
          FROM account WHERE "userId" = $1 ORDER BY "createdAt", id`,
         [req.userId],
       ),
-      pool.query(
-        `SELECT count(*)::int AS n FROM member WHERE "userId" = $1 AND 'owner' = ANY(string_to_array(role, ','))`,
-        [req.userId],
-      ),
+      ownedProjectCount(pool, req.userId!),
       pool.query(
         `SELECT (SELECT count(*)::int FROM documents WHERE tenant_id IN (${mine})) AS documents,
                 (SELECT count(*)::int FROM request_logs WHERE tenant_id IN (${mine}) AND created_at >= ${MONTH_START_SQL}) AS requests_this_month,
@@ -34,7 +31,7 @@ export function accountRouter({ pool, config }: Deps) {
     res.json({
       user: user.rows[0],
       providers: providers.rows,
-      projects: { owned: owned.rows[0].n, max: config.maxProjectsPerUser },
+      projects: { owned, max: config.maxProjectsPerUser },
       totals: totals.rows[0],
     });
   });

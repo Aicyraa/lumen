@@ -1,7 +1,6 @@
-import { Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { createMailer } from "../../../src/modules/auth/mailer.js";
-import { createLogger } from "../../../src/shared/lib/logger.js";
+import { captureLog } from "../../helpers/ctx.js";
 import { testConfig } from "../../helpers/env.js";
 
 const SMTP = "smtp://mailuser:mail-SECRET@smtp.example.test:587";
@@ -11,16 +10,7 @@ const mail = {
   text: "Open https://api.example.test/api/auth/verify-email?token=TOKEN-123",
 };
 function setup(over: Parameters<typeof testConfig>[0]) {
-  const lines: string[] = [];
-  const log = createLogger(
-    new Writable({
-      write(c, _e, cb) {
-        lines.push(String(c));
-        cb();
-      },
-    }),
-    "debug",
-  );
+  const { log, lines } = captureLog();
   const sent: unknown[] = [];
   const urls: string[] = [];
   const createTransport = (url: string) => {
@@ -50,7 +40,6 @@ describe("createMailer", () => {
         to: "a@example.test",
         subject: "Verify your email",
         text: mail.text,
-        html: undefined,
       },
     ]);
     expect(t.lines.join("")).not.toMatch(/mail-SECRET|smtp\.example|TOKEN-123/);
@@ -71,16 +60,9 @@ describe("createMailer", () => {
   });
 
   it("a failing SMTP server surfaces an error that carries neither the URL nor the mail text", async () => {
-    const log = createLogger(
-      new Writable({
-        write(_c, _e, cb) {
-          cb();
-        },
-      }),
-    );
     const mailer = createMailer({
       config: testConfig({ smtpUrl: SMTP }),
-      log,
+      log: captureLog().log,
       createTransport: () => ({
         sendMail: async () => {
           throw Object.assign(new Error(`connect failed ${SMTP}`), { code: "ECONNECTION" });

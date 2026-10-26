@@ -1,8 +1,8 @@
 import { mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import request from "supertest";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { type Ctx, makeCtx, type Tenant } from "../../helpers/ctx.js";
+import { uploadFile } from "../../helpers/uploads.js";
 
 // Background ingest cleanup and the rag-service's ingest statuses (fake rag-service).
 let ctx: Ctx, a: Tenant;
@@ -23,11 +23,7 @@ afterEach(() => {
   ctx.stub.reset();
 });
 
-const upload = () =>
-  request(ctx.app)
-    .post("/v1/documents")
-    .set("x-api-key", a.apiKey)
-    .attach("file", Buffer.from("hello"), "f.md");
+const upload = () => uploadFile(ctx, a);
 const row = async (id: string) =>
   (await ctx.pool.query("SELECT status, error FROM documents WHERE id = $1", [id])).rows[0];
 const ingestCalls = () => ctx.stub.calls.filter((c) => c.name === "ingest").length;

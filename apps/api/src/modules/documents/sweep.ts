@@ -4,20 +4,18 @@ import type { Logger } from "pino";
 import type { Config } from "../../shared/config/config.js";
 import type { Pool } from "../../shared/db/pool.js";
 
+interface SweepDeps {
+  pool: Pool;
+  config: Pick<Config, "interruptedIngestAfterSeconds" | "uploadDir">;
+  log: Pick<Logger, "info" | "warn">;
+}
+
 // Taken for the whole sweep so that when several API processes start together only one of them sweeps.
 export const SWEEP_LOCK_NAME = "lumen:sweep-interrupted";
 
 // At startup: a restart loses any background ingest, so rows still 'processing' past the cutoff are failed.
 // Runs per organization so every documents/chunks statement still carries tenant_id (rule 1).
-export async function sweepInterrupted({
-  pool,
-  config,
-  log,
-}: {
-  pool: Pool;
-  config: Pick<Config, "interruptedIngestAfterSeconds" | "uploadDir">;
-  log: Pick<Logger, "info" | "warn">;
-}): Promise<number> {
+export async function sweepInterrupted({ pool, config, log }: SweepDeps): Promise<number> {
   // A session-level lock lives on one connection, so that connection is held for the sweep and the lock released on it.
   const lock = await pool.connect();
   try {
@@ -38,15 +36,7 @@ export async function sweepInterrupted({
   }
 }
 
-async function sweep({
-  pool,
-  config,
-  log,
-}: {
-  pool: Pool;
-  config: Pick<Config, "interruptedIngestAfterSeconds" | "uploadDir">;
-  log: Pick<Logger, "info" | "warn">;
-}): Promise<number> {
+async function sweep({ pool, config, log }: SweepDeps): Promise<number> {
   const { rows: orgs } = await pool.query("SELECT id FROM organization");
   let swept = 0;
   for (const { id: tenantId } of orgs) {

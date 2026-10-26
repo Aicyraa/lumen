@@ -1,25 +1,19 @@
-import { randomUUID } from "node:crypto";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { authApi, newEmail, PASSWORD } from "../../helpers/auth.js";
 import { type Ctx, makeCtx } from "../../helpers/ctx.js";
 
 let ctx: Ctx;
 beforeAll(async () => {
-  ctx = await makeCtx({ verificationResendMax: 2, verificationEmailExpiresSeconds: 3600 });
+  ctx = await makeCtx({ verificationEmailExpiresSeconds: 3600 });
 });
 afterAll(async () => {
   await ctx.close();
 });
 
 const origin = () => ctx.config.dashboardOrigin;
-const PASSWORD = "correct-horse-battery";
-const post = (path: string, body: object, headers: Record<string, string> = {}) =>
-  request(ctx.app).post(`/api/auth${path}`).set("origin", origin()).set(headers).send(body);
-const signUp = (email: string, extra: object = {}) =>
-  post("/sign-up/email", { email, password: PASSWORD, name: "New", ...extra });
+const { post, signUp, mailsTo } = authApi(() => ctx);
 const signIn = (email: string) => post("/sign-in/email", { email, password: PASSWORD });
-const newEmail = () => `v-${randomUUID()}@example.test`;
-const mailsTo = (email: string) => ctx.mails.filter((m) => m.to === email);
 // the link exactly as the user would click it (path and query only; supertest talks to the app directly)
 const linkPath = (email: string) => {
   const text = mailsTo(email).at(-1)!.text;
@@ -134,26 +128,14 @@ describe("email verification", () => {
     }
   });
 
-  it("resend sends a new email, is generic for unknown addresses (no mail, no enumeration) and is rate limited per client address", async () => {
+  it("resend sends a new email (the throttles are tested in resendAbuse.test.ts)", async () => {
     const email = newEmail();
     await signUp(email);
-    const ip = { "x-forwarded-for": "198.51.100.7" }; // a client-sent header must not matter, see below
-    const first = await post(
-      "/send-verification-email",
-      { email, callbackURL: `${origin()}/verify-email` },
-      ip,
-    );
-    expect(first.status).toBe(200);
-    expect(mailsTo(email)).toHaveLength(2);
-    const unknown = await post("/send-verification-email", { email: newEmail() });
-    expect(unknown.status).toBe(200);
-    // the limit is 2 per window (config): the third call from the same client is refused, even with a different spoofed header
-    const third = await post(
-      "/send-verification-email",
-      { email },
-      { "x-forwarded-for": "203.0.113.99" },
-    );
-    expect(third.status).toBe(429);
+    const res = await post("/send-verification-email", {
+      email,
+      callbackURL: `${origin()}/verify-email`,
+    });
+    expect(res.status).toBe(200);
     expect(mailsTo(email)).toHaveLength(2);
   });
 });

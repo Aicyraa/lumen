@@ -1,6 +1,5 @@
-import { randomUUID } from "node:crypto";
-import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { authApi, newEmail, PASSWORD } from "../../helpers/auth.js";
 import { type Ctx, makeCtx } from "../../helpers/ctx.js";
 
 let ctx: Ctx;
@@ -8,18 +7,10 @@ afterEach(async () => {
   await ctx.close();
 });
 
-const PASSWORD = "correct-horse-battery";
-const newEmail = () => `r-${randomUUID()}@example.test`;
-const post = (path: string, body: object, headers: Record<string, string> = {}) =>
-  request(ctx.app)
-    .post(`/api/auth${path}`)
-    .set("origin", ctx.config.dashboardOrigin)
-    .set(headers)
-    .send(body);
-const signUp = (email: string) => post("/sign-up/email", { email, password: PASSWORD, name: "R" });
+const { post, signUp, mailsTo } = authApi(() => ctx);
 const resend = (email: string, headers: Record<string, string> = {}) =>
   post("/send-verification-email", { email }, headers);
-const mailsTo = (email: string) => ctx.mails.filter((m) => m.to === email).length;
+const mailCount = (email: string) => mailsTo(email).length;
 
 describe("one inbox cannot be flooded", () => {
   beforeEach(async () => {
@@ -35,10 +26,10 @@ describe("one inbox cannot be flooded", () => {
     await signUp(email); // mail 1
     for (let i = 0; i < 6; i++)
       expect((await resend(email, { "x-forwarded-for": `198.51.100.${i}` })).status).toBe(200);
-    expect(mailsTo(email)).toBe(2);
+    expect(mailCount(email)).toBe(2);
     await post("/sign-in/email", { email, password: PASSWORD }); // an unverified sign-in also sends mail
     await signUp(email);
-    expect(mailsTo(email)).toBe(2);
+    expect(mailCount(email)).toBe(2);
   });
 
   it("answers exactly the same for an address that has no account, before and after the limit, so nothing can be enumerated", async () => {
@@ -62,7 +53,7 @@ describe("one inbox cannot be flooded", () => {
       await outcome(unknown),
     ];
     expect(unknownResponses).toEqual(knownResponses);
-    expect(mailsTo(unknown)).toBe(0);
+    expect(mailCount(unknown)).toBe(0);
   });
 
   it("limits each address on its own", async () => {
@@ -71,7 +62,7 @@ describe("one inbox cannot be flooded", () => {
     await signUp(b);
     for (let i = 0; i < 4; i++) await resend(a);
     await resend(b);
-    expect([mailsTo(a), mailsTo(b)]).toEqual([2, 2]);
+    expect([mailCount(a), mailCount(b)]).toEqual([2, 2]);
   });
 });
 

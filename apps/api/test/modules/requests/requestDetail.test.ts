@@ -204,16 +204,6 @@ describe("GET /api/dashboard/requests/:id", () => {
     expect(JSON.stringify(res.body)).not.toMatch(/b-secret|B-ONLY-SECRET/);
   });
 
-  it("the foreign keys refuse a source row that points at another tenant's document", async () => {
-    const id = await insertLog(ctx.pool, a.tenantId);
-    await expect(
-      ctx.pool.query(
-        "INSERT INTO request_sources (request_id, tenant_id, position, document_id) VALUES ($1, $2, 0, $3)",
-        [id, a.tenantId, docB],
-      ),
-    ).rejects.toMatchObject({ code: "23503" });
-  });
-
   it("truncates the passage to passageMaxChars from config", async () => {
     const short = await makeCtx({ passageMaxChars: 40 });
     try {

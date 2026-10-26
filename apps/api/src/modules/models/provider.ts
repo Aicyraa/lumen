@@ -5,7 +5,7 @@ import type { Config } from "../../shared/config/config.js";
 import { EndpointError, type GuardOptions, guardedPost } from "../../shared/lib/endpointGuard.js";
 import { ApiError } from "../../shared/lib/errors.js";
 
-export interface ModelTarget {
+interface ModelTarget {
   provider: string;
   model_id: string;
   endpoint_url: string;

@@ -2,6 +2,7 @@ import { readdirSync } from "node:fs";
 import request from "supertest";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { type Ctx, makeCtx, type Tenant } from "../../helpers/ctx.js";
+import { until, uploadFile } from "../../helpers/uploads.js";
 
 // Per-tenant upload rate and a cap on ingests running at once. Both answer 429 with Retry-After.
 let ctx: Ctx, a: Tenant, b: Tenant;
@@ -26,13 +27,7 @@ afterEach(async () => {
   ctx.stub.reset();
 });
 
-const upload = (t: Tenant, via: "v1" | "dash" = "v1") => {
-  const req =
-    via === "v1"
-      ? request(ctx.app).post("/v1/documents").set("x-api-key", t.apiKey)
-      : request(ctx.app).post("/api/dashboard/documents").set("cookie", t.cookie);
-  return req.attach("file", Buffer.from("hello"), "f.md");
-};
+const upload = (t: Tenant, via: "v1" | "dash" = "v1") => uploadFile(ctx, t, { via });
 const hang = () => {
   ctx.stub.handlers.ingest = () =>
     new Promise((resolve) =>
@@ -40,7 +35,7 @@ const hang = () => {
     );
 };
 const started = async (n: number) => {
-  for (let i = 0; i < 100 && release.length < n; i++) await new Promise((r) => setTimeout(r, 20));
+  await until(() => release.length >= n, { ms: 20 });
   expect(release.length).toBe(n); // that many ingests reached the (fake) rag-service
 };
 const filesOf = (t: Tenant) =>

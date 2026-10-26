@@ -3,6 +3,7 @@ import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type Ctx, makeCtx, type Tenant } from "../../helpers/ctx.js";
 import { insertDoc as seedDoc } from "../../helpers/seed.js";
+import { until, uploadFile } from "../../helpers/uploads.js";
 
 let ctx: Ctx, a: Tenant, b: Tenant;
 beforeAll(async () => {
@@ -18,29 +19,21 @@ const upload = (
   tenant: Tenant,
   name = "handbook.md",
   body = "# Handbook\nOpening hours are nine to five.",
-  extra: Record<string, string> = {},
-) => {
-  let req = request(ctx.app).post("/v1/documents").set("x-api-key", tenant.apiKey);
-  for (const [k, v] of Object.entries(extra)) req = req.field(k, v);
-  return req.attach("file", Buffer.from(body), name);
-};
+  fields: Record<string, string> = {},
+) => uploadFile(ctx, tenant, { name, body, fields });
 const status = (tenant: Tenant, id: string) =>
   request(ctx.app).get(`/v1/documents/${id}`).set("x-api-key", tenant.apiKey);
+// The status flips before the background cleanup (service delete, file removal) finishes, so tests also wait for the effect itself with until().
 async function settle(tenant: Tenant, id: string) {
-  for (let i = 0; i < 50; i++) {
-    const res = await status(tenant, id);
-    if (res.body.status !== "processing") return res.body;
-    await new Promise((r) => setTimeout(r, 40));
-  }
-  throw new Error("still processing");
-}
-// The status flips before the background cleanup (service delete, file removal) finishes, so wait for the effect itself.
-async function until(done: () => boolean | Promise<boolean>) {
-  for (let i = 0; i < 100; i++) {
-    if (await done()) return;
-    await new Promise((r) => setTimeout(r, 40));
-  }
-  throw new Error("condition not reached");
+  let body: Record<string, any> = {};
+  await until(
+    async () => {
+      body = (await status(tenant, id)).body;
+      return body.status !== "processing";
+    },
+    { tries: 50 },
+  );
+  return body;
 }
 const uploadCount = () =>
   existsSync(ctx.config.uploadDir) ? readdirSync(ctx.config.uploadDir).length : 0;

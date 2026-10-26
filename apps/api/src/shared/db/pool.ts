@@ -14,3 +14,19 @@ export const createPool = (
   return pool;
 };
 export type Pool = pg.Pool;
+
+// Runs fn in one transaction on one connection: COMMIT when it returns, ROLLBACK when it throws.
+export async function withTx<T>(pool: Pool, fn: (client: pg.PoolClient) => Promise<T>): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const out = await fn(client);
+    await client.query("COMMIT");
+    return out;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}

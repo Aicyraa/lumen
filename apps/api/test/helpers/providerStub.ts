@@ -34,7 +34,6 @@ export async function startProviderStub(goodKey = "sk-good-key-1234") {
   });
   const port = (server.address() as { port: number }).port;
   return {
-    port,
     goodKey,
     calls,
     state,

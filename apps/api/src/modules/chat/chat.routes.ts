@@ -3,6 +3,7 @@ import type { Request, RequestHandler } from "express";
 import { z } from "zod";
 import { ApiError } from "../../shared/lib/errors.js";
 import { MONTH_START_SQL } from "../../shared/lib/range.js";
+import { invalidRequest, isUuid } from "../../shared/lib/validate.js";
 import {
   type Attempt,
   type KnownModel,
@@ -18,7 +19,6 @@ interface LogInput {
   usage?: Partial<ChatResponse["usage"]>;
   status?: string;
 }
-const isUuid = (v: unknown): v is string => typeof v === "string" && z.uuid().safeParse(v).success;
 
 // Shared by POST /v1/chat (API key) and POST /api/dashboard/try (session). Tenant is req.tenantId.
 export function chatHandler(
@@ -76,12 +76,7 @@ export function chatHandler(
 
   return async (req, res) => {
     const parsed = body.safeParse(req.body);
-    if (!parsed.success)
-      throw new ApiError(
-        422,
-        "invalid_request",
-        `Invalid request: ${parsed.error.issues[0].path.join(".") || "body"}.`,
-      );
+    if (!parsed.success) throw invalidRequest(parsed.error);
     const q = parsed.data;
 
     const {

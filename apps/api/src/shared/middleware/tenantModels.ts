@@ -5,7 +5,6 @@ import { ApiError } from "../lib/errors.js";
 import type { KnownModel } from "../services/modelCalls.js";
 import type { ModelsPayload } from "../services/rag.js";
 import type { Deps } from "../types/types.js";
-import "../types/types.js";
 
 export interface TenantModels {
   payload: ModelsPayload;
@@ -48,7 +47,7 @@ export const loadTenantModels = ({
     if (refused.length) {
       // a refused model's key is never decrypted or sent
       await pool.query(
-        "UPDATE tenant_models SET status = 'failing' WHERE tenant_id = $1 AND id = ANY($2::uuid[])",
+        "UPDATE tenant_models SET status = 'failing' WHERE tenant_id = $1 AND id = ANY($2::uuid[]) AND status <> 'failing'",
         [req.tenantId, refused],
       );
     }

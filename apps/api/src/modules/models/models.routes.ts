@@ -1,14 +1,14 @@
 import { type RequestHandler, Router } from "express";
 import { z } from "zod";
-import type { Pool } from "../../shared/db/pool.js";
+import { type Pool, withTx } from "../../shared/db/pool.js";
 import { encryptSecret, maskKey } from "../../shared/lib/crypto.js";
 import { assertEndpoint, EndpointError } from "../../shared/lib/endpointGuard.js";
 import { ApiError } from "../../shared/lib/errors.js";
 import { parseRange, rangeStart } from "../../shared/lib/range.js";
+import { invalidRequest, isUuid } from "../../shared/lib/validate.js";
 import { modelUsage } from "../../shared/services/modelUsage.js";
 import type { Deps } from "../../shared/types/types.js";
 import { testCompletion } from "./provider.js";
-import "../../shared/types/types.js";
 
 const TIERS = ["cheap", "expensive"] as const;
 // Never select api_key_encrypted here: the list and every response are built from these columns only.
@@ -63,12 +63,7 @@ export function modelsRouter({ pool, config, resolveHost }: Deps, testLimiter: R
 
   r.post("/", testLimiter, async (req, res) => {
     const parsed = addBody.safeParse(req.body);
-    if (!parsed.success)
-      throw new ApiError(
-        422,
-        "invalid_request",
-        `Invalid request: ${parsed.error.issues[0].path.join(".") || "body"}.`,
-      );
+    if (!parsed.success) throw invalidRequest(parsed.error);
     const m = parsed.data;
     try {
       await assertEndpoint(m.endpoint_url, { production: config.production, resolve: resolveHost });
@@ -79,9 +74,7 @@ export function modelsRouter({ pool, config, resolveHost }: Deps, testLimiter: R
     if ((await tierCount(pool, req.tenantId, m.tier)) >= config.maxModelsPerTier) throw full(); // cheap check before calling the provider
     await testCompletion(m, config, resolveHost); // nothing is saved unless this succeeds
 
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
+    const model = await withTx(pool, async (client) => {
       await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["models:" + req.tenantId]); // serialise position assignment
       if ((await tierCount(client, req.tenantId, m.tier)) >= config.maxModelsPerTier) throw full(); // the real check: adds run one at a time here
       const { rows } = await client.query(
@@ -100,38 +93,23 @@ export function modelsRouter({ pool, config, resolveHost }: Deps, testLimiter: R
           m.output_price_per_1m ?? null,
         ],
       );
-      await client.query("COMMIT");
-      res.status(201).json({ model: rows[0] });
-    } catch (err) {
-      await client.query("ROLLBACK");
-      throw err;
-    } finally {
-      client.release();
-    }
+      return rows[0];
+    });
+    res.status(201).json({ model });
   });
 
   // Runs fn inside a transaction holding the tenant's models lock (ordering changes must not interleave).
-  async function locked<T>(
+  const locked = <T>(
     tenantId: string,
     fn: (q: (sql: string, p: unknown[]) => Promise<{ rows: any[] }>) => Promise<T>,
-  ): Promise<T> {
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
+  ): Promise<T> =>
+    withTx(pool, async (client) => {
       await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["models:" + tenantId]);
-      const out = await fn((sql, p) => client.query(sql, p));
-      await client.query("COMMIT");
-      return out;
-    } catch (err) {
-      await client.query("ROLLBACK");
-      throw err;
-    } finally {
-      client.release();
-    }
-  }
+      return fn((sql, p) => client.query(sql, p));
+    });
   const notFound = () => new ApiError(404, "not_found", "Model not found.");
   const idOf = (v: string) => {
-    if (!z.uuid().safeParse(v).success) throw notFound();
+    if (!isUuid(v)) throw notFound();
     return v;
   };
 

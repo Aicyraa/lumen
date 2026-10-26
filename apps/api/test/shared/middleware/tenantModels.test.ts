@@ -54,6 +54,22 @@ describe("rule 12 at use time: endpoints are re-checked before a key is sent", (
     expect(await status(t, good)).toBe("connected");
   });
 
+  it("marks a model failing once, not by rewriting its row on every chat", async () => {
+    const { t, flip } = await setup();
+    ctx.dns.set("flip.example.test", "169.254.169.254");
+    const version = async () =>
+      (
+        await ctx.pool.query(
+          "SELECT xmin::text AS v FROM tenant_models WHERE id = $1 AND tenant_id = $2",
+          [flip, t.tenantId],
+        )
+      ).rows[0].v;
+    await chat(t);
+    const first = await version();
+    await chat(t);
+    expect(await version()).toBe(first);
+  });
+
   it("only touches the calling tenant's rows", async () => {
     const { t, flip } = await setup();
     const other = await ctx.createTenant("other");

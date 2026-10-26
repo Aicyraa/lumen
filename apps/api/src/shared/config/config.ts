@@ -73,7 +73,7 @@ const required = z.object({
     .refine((v) => v?.trim().toLowerCase() !== "true"), // `true` would trust any client's X-Forwarded-For
 });
 
-export interface OAuthCredentials {
+interface OAuthCredentials {
   clientId?: string;
   clientSecret?: string;
 }
@@ -130,10 +130,13 @@ export function loadConfig(
   // Tunables: config.json defaults, each overridable by an upper-snake env var of the same name.
   const t: Tunables = { ...tunables };
   for (const k of Object.keys(t) as (keyof Tunables)[]) {
-    const v = env[k.replace(/[A-Z]/g, (c) => "_" + c).toUpperCase()];
-    if (v)
-      (t as unknown as Record<string, number | string>)[k] =
-        typeof t[k] === "number" ? Number(v) : v;
+    const envName = k.replace(/[A-Z]/g, (c) => "_" + c).toUpperCase();
+    const v = env[envName];
+    if (!v) continue;
+    const n = Number(v);
+    if (typeof t[k] === "number" && !Number.isFinite(n))
+      throw new Error(`invalid environment variable ${envName}`);
+    (t as unknown as Record<string, number | string>)[k] = typeof t[k] === "number" ? n : v;
   }
   return {
     databaseUrl: e.DATABASE_URL,
