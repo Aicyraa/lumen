@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const lum = (hex: string) => {
@@ -67,7 +68,7 @@ describe("public page layout", () => {
   });
 });
 
-describe("sticky nav offsets and dead CSS", () => {
+describe("sticky nav offsets", () => {
   const css = readFileSync("src/shared/styles/styles.css", "utf8");
   it("anchors and scroll padding leave room for the sticky nav", () => {
     expect(css).not.toMatch(/scroll-padding-top:\s*16px/);
@@ -78,9 +79,31 @@ describe("sticky nav offsets and dead CSS", () => {
       /html\.snap-home\s*\{[^}]*scroll-padding-top:\s*calc\(var\(--nav-h\) \+ 24px\)/,
     );
   });
-  it("has no rules left for the removed native select, use cases or old header buttons", () => {
-    for (const dead of [".switcher select", ".all-projects", ".usecase", ".nav-sub", ".image-slot"])
-      expect(css).not.toContain(dead);
+});
+
+describe("dead CSS", () => {
+  // classes built at runtime (highlight tokens, status and tier variants, logo sizes, overlay kinds)
+  const runtime = /^(tk|status|logo|overlay)-/;
+  const walk = (d: string): string[] =>
+    readdirSync(d, { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory()
+        ? walk(join(d, e.name))
+        : /\.(tsx?|html)$/.test(e.name)
+          ? [join(d, e.name)]
+          : [],
+    );
+  it("every class selector in the stylesheet is used somewhere in src", () => {
+    let css = readFileSync("src/shared/styles/styles.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    // drop declaration blocks, innermost first, so only selectors and at-rule preludes remain
+    for (let prev = ""; prev !== css; ) {
+      prev = css;
+      css = css.replace(/\{[^{}]*\}/g, ";");
+    }
+    const src = [...walk("src"), "index.html"].map((f) => readFileSync(f, "utf8")).join("\n");
+    const unused = [...new Set([...css.matchAll(/\.([a-zA-Z_][\w-]*)/g)].map((m) => m[1]))].filter(
+      (c) => !runtime.test(c) && !new RegExp(`(?<![\\w-])${c}(?![\\w-])`).test(src),
+    );
+    expect(unused).toEqual([]);
   });
 });
 
