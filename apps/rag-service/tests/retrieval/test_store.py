@@ -111,6 +111,7 @@ def test_chunk_with_other_tenant_than_its_document_is_rejected():
 def test_filenames_returns_only_the_callers_tenant():
     mine, theirs = add_document("tenant_a", "mine.txt"), add_document("tenant_b", "theirs.txt")
     assert store.filenames("tenant_a", [mine, theirs]) == {mine: "mine.txt"}
+    assert store.filenames("tenant_a", []) == {}
 
 
 def test_add_chunks_does_not_need_a_chunk_count_column():

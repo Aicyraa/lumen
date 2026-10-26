@@ -4,7 +4,6 @@ import logging
 
 import pytest
 
-from app.retrieval import store
 from tests.api.test_api_query import add_doc, ask, best_score  # noqa: F401 (best_score is a fixture)
 
 KEY = "sk-tenant-secret-key-abcdef"
@@ -157,19 +156,6 @@ def test_tenant_models_are_never_mixed_with_the_env_default(client, llm, docs):
     assert tried(llm) == ["c1"]  # cheap-model was not tried as a last resort
 
 
-def test_no_documents_and_no_answer_paths_are_model_free_with_empty_attempts(
-    client, llm, best_score
-):
-    best_score(0.9)
-    body = ask(client, tenant="nobody", models=models(cheap=["c1"])).json()  # no documents
-    assert body["attempts"] == []
-    add_doc("tenant_a", ["x"])
-    best_score(0.05)  # below no_answer_score
-    body = ask(client, models=models(cheap=["c1"])).json()
-    assert body["attempts"] == [] and body["route"]["model_tier"] == "none"
-    assert llm.calls == []
-
-
 def test_no_models_path_needs_no_models_when_nothing_matches(client, llm, best_score):
     add_doc("tenant_a", ["x"])
     best_score(0.05)
@@ -230,12 +216,6 @@ def test_snippets_are_never_logged(client, llm, best_score, caplog):
     best_score(0.6)
     ask(client, models=models(cheap=["c1"]), include_snippets=True)
     assert "very private passage" not in caplog.text and KEY not in caplog.text
-
-
-def test_filenames_are_looked_up_for_one_tenant_only():
-    doc_a, doc_b = add_doc("tenant_a", ["a"], "a.txt"), add_doc("tenant_b", ["b"], "b.txt")
-    assert store.filenames("tenant_a", [doc_a, doc_b]) == {doc_a: "a.txt"}
-    assert store.filenames("tenant_a", []) == {}
 
 
 # ---- provider rate limits ----

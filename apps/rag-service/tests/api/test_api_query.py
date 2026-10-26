@@ -127,7 +127,7 @@ def test_no_documents_path_makes_zero_llm_calls(client, llm, best_score):
     add_doc("tenant_b", ["another tenant's text"])  # exists, but must not count for tenant_a
     best_score(0.9)
     body = ask(client, tenant="tenant_a").json()
-    assert llm.calls == []
+    assert llm.calls == [] and body["attempts"] == []
     assert body["answer"] == MESSAGES["no_documents"] and body["sources"] == []
     assert body["route"] == {
         "model_tier": "none",
@@ -148,7 +148,7 @@ def test_no_answer_path_makes_zero_llm_calls(client, llm, best_score):
     add_doc("tenant_a", ["Shipping is unavailable."])
     best_score(0.10)  # below no_answer_score
     body = ask(client).json()
-    assert llm.calls == []
+    assert llm.calls == [] and body["attempts"] == []
     assert body["answer"] == MESSAGES["not_found"] and body["sources"] == []
     assert body["route"]["model_tier"] == "none"
     assert body["route"]["top_score"] == pytest.approx(
