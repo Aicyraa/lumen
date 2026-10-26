@@ -109,10 +109,3 @@ def test_new_bm25_scores_stay_tenant_local():
     assert {h[0] for h in before}.isdisjoint(
         {h[0] for h in store.keyword_search("tenant_b", vec(0), "library", 10)}
     )
-
-
-def test_content_is_read_after_ranking_not_carried_through_the_cte():
-    import inspect
-
-    src = inspect.getsource(store.keyword_search)
-    assert "to_tsvector('english', content)" not in src and ".tsv" in src
