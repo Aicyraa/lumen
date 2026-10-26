@@ -3,54 +3,31 @@ import request from "supertest";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { loadConfig } from "../../../src/shared/config/config.js";
 import { type Ctx, makeCtx } from "../../helpers/ctx.js";
+import { goodEnv } from "../../helpers/env.js";
 import { startProviderStub } from "../../helpers/providerStub.js";
 
-const good = {
-  DATABASE_URL: "postgresql://u:pw@localhost:5433/x",
-  BETTER_AUTH_SECRET: "s".repeat(32),
-  BETTER_AUTH_URL: "http://localhost:3000",
-  DASHBOARD_ORIGIN: "http://localhost:5173",
-  INTERNAL_SECRET: "i",
-  RAG_SERVICE_URL: "http://localhost:8000",
-  MAX_DOCUMENTS_PER_TENANT: "7",
-  RATE_LIMIT_PER_MINUTE: "5",
-  MAX_REQUESTS_PER_MONTH: "99",
-  MAX_PROJECTS_PER_USER: "5",
-  MODEL_KEY_ENCRYPTION_SECRET: "ab".repeat(32),
-  NODE_ENV: "test",
-};
-const TUNABLES: [string, string][] = [
-  ["modelAttemptsMax", "MODEL_ATTEMPTS_MAX"],
-  ["rateLimitHeadersMax", "RATE_LIMIT_HEADERS_MAX"],
-  ["modelTestMaxTokens", "MODEL_TEST_MAX_TOKENS"],
-  ["endpointResponseMaxBytes", "ENDPOINT_RESPONSE_MAX_BYTES"],
-  ["modelIdMaxChars", "MODEL_ID_MAX_CHARS"],
-  ["endpointUrlMaxChars", "ENDPOINT_URL_MAX_CHARS"],
-  ["apiKeyMaxChars", "API_KEY_MAX_CHARS"],
-  ["apiKeyMinChars", "API_KEY_MIN_CHARS"],
-  ["providerNameMaxChars", "PROVIDER_NAME_MAX_CHARS"],
-  ["sessionIdMaxChars", "SESSION_ID_MAX_CHARS"],
-  ["maxPricePerMillion", "MAX_PRICE_PER_MILLION"],
-  ["endpointGuardCacheTtlMs", "ENDPOINT_GUARD_CACHE_TTL_MS"],
-  ["maxModelsPerTier", "MAX_MODELS_PER_TIER"],
-  ["modelTestRatePerMinute", "MODEL_TEST_RATE_PER_MINUTE"],
-];
+const good = goodEnv;
+const defaults: Record<string, unknown> = JSON.parse(
+  readFileSync(new URL("../../../config.json", import.meta.url), "utf8"),
+);
+// every numeric key of config.json, with the UPPER_SNAKE variable that overrides it
+const TUNABLES = Object.entries(defaults)
+  .filter(([, v]) => typeof v === "number")
+  .map(([key, v]) => [key, key.replace(/[A-Z]/g, (c) => `_${c}`).toUpperCase(), v] as const);
 
 describe("rule 9: limits live in config.json / the environment", () => {
-  it.each(TUNABLES)("%s has a default and %s overrides it", (key, envName) => {
-    const c = loadConfig(good) as unknown as Record<string, number>;
-    expect(c[key], `${key} default`).toBeGreaterThan(0);
-    expect(
-      (loadConfig({ ...good, [envName]: "4321" }) as unknown as Record<string, number>)[key],
-    ).toBe(4321);
-  });
+  it.each(TUNABLES)(
+    "%s defaults to its config.json value and %s overrides it",
+    (key, envName, dflt) => {
+      expect((loadConfig(good) as unknown as Record<string, number>)[key]).toBe(dflt);
+      expect(
+        (loadConfig({ ...good, [envName]: "4321" }) as unknown as Record<string, number>)[key],
+      ).toBe(4321);
+    },
+  );
 
   it("allows 5 models per tier by default", () => {
     expect(loadConfig(good).maxModelsPerTier).toBe(5);
-  });
-
-  it("the attempts cap default is not the old literal 50", () => {
-    expect(loadConfig(good).modelAttemptsMax).not.toBe(50);
   });
 
   it("no numeric limit literals remain in the Phase 3B source files", () => {

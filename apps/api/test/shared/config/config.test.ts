@@ -1,20 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { loadConfig } from "../../../src/shared/config/config.js";
+import { goodEnv } from "../../helpers/env.js";
 
-const good = {
-  DATABASE_URL: "postgresql://u:pw-SECRET@localhost:5433/x",
-  BETTER_AUTH_SECRET: "s".repeat(32),
-  BETTER_AUTH_URL: "http://localhost:3000",
-  DASHBOARD_ORIGIN: "http://localhost:5173",
-  INTERNAL_SECRET: "internal-SECRET",
-  RAG_SERVICE_URL: "http://localhost:8000",
-  MAX_DOCUMENTS_PER_TENANT: "7",
-  RATE_LIMIT_PER_MINUTE: "5",
-  MAX_REQUESTS_PER_MONTH: "99",
-  MAX_PROJECTS_PER_USER: "4",
-  MODEL_KEY_ENCRYPTION_SECRET: "ab".repeat(32),
-  NODE_ENV: "test",
-};
+const good = goodEnv;
 
 describe("loadConfig", () => {
   it("reads the limits from the environment", () => {
@@ -96,35 +84,10 @@ describe("loadConfig", () => {
     },
   );
 
-  it("defaults the global LLM cap to 8 per minute and lets GLOBAL_LLM_CAP_PER_MINUTE override it", () => {
-    expect(loadConfig(good).globalLlmCapPerMinute).toBe(8);
-    expect(loadConfig({ ...good, GLOBAL_LLM_CAP_PER_MINUTE: "20" }).globalLlmCapPerMinute).toBe(20);
-  });
-
-  it("lets an environment variable override a config.json tunable", () => {
-    expect(loadConfig({ ...good, INGEST_TIMEOUT_MS: "1234" }).ingestTimeoutMs).toBe(1234);
-  });
-
   it("refuses a numeric override that is not a number, naming the variable", () => {
     expect(() => loadConfig({ ...good, UPLOAD_MAX_BYTES: "10MB" })).toThrow(
       "invalid environment variable UPLOAD_MAX_BYTES",
     );
-  });
-
-  it("has the dashboard tunables in config.json and lets the environment override them", () => {
-    const c = loadConfig(good);
-    expect([c.unansweredScoreBelow, c.unansweredPageSize, c.passageMaxChars]).toEqual([
-      0.3, 50, 300,
-    ]);
-    const o = loadConfig({
-      ...good,
-      UNANSWERED_SCORE_BELOW: "0.45",
-      UNANSWERED_PAGE_SIZE: "7",
-      PASSAGE_MAX_CHARS: "120",
-    });
-    expect([o.unansweredScoreBelow, o.unansweredPageSize, o.passageMaxChars]).toEqual([
-      0.45, 7, 120,
-    ]);
   });
 
   describe("mail settings", () => {
@@ -163,40 +126,6 @@ describe("loadConfig", () => {
       }
       expect(loadConfig({ ...env, MAIL_FROM: "Lumen <hi@example.test>" }).production).toBe(true);
     });
-  });
-
-  it("has the project and verification tunables in config.json and lets the environment override them", () => {
-    const c = loadConfig(good);
-    expect([
-      c.projectNameMaxChars,
-      c.projectDescriptionMaxChars,
-      c.verificationResendWindowSeconds,
-      c.verificationResendMax,
-      c.verificationEmailExpiresSeconds,
-    ]).toEqual([60, 500, 60, 3, 3600]);
-    expect(
-      loadConfig({ ...good, PROJECT_NAME_MAX_CHARS: "30", VERIFICATION_RESEND_MAX: "1" }),
-    ).toMatchObject({ projectNameMaxChars: 30, verificationResendMax: 1 });
-  });
-
-  it("has the pool, project-shape and per-email resend tunables, all overridable from the environment", () => {
-    const c = loadConfig(good);
-    expect([
-      c.dbConnectionTimeoutMs,
-      c.projectIdMaxChars,
-      c.projectSlugMaxChars,
-      c.projectSlugRandomBytes,
-      c.projectCreateLockMs,
-      c.verificationResendPerEmailWindowSeconds,
-      c.verificationResendPerEmailMax,
-    ]).toEqual([5000, 100, 30, 3, 15000, 3600, 5]);
-    expect(
-      loadConfig({
-        ...good,
-        DB_CONNECTION_TIMEOUT_MS: "900",
-        VERIFICATION_RESEND_PER_EMAIL_MAX: "2",
-      }),
-    ).toMatchObject({ dbConnectionTimeoutMs: 900, verificationResendPerEmailMax: 2 });
   });
 
   describe("TRUST_PROXY", () => {
