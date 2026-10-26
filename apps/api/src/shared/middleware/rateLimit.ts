@@ -1,7 +1,6 @@
 import type { Request, Response } from "express";
 import { MemoryStore, type RateLimitInfo, rateLimit } from "express-rate-limit";
 import type { Config } from "../config/config.js";
-import "../types/types.js";
 import { ApiError, sendError } from "../lib/errors.js";
 
 const handler = (_req: Request, res: Response) =>

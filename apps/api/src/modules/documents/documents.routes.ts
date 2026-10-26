@@ -10,7 +10,6 @@ import { ApiError } from "../../shared/lib/errors.js";
 import { uploadName } from "../../shared/lib/uploads.js";
 import { RagError } from "../../shared/services/rag.js";
 import type { Deps } from "../../shared/types/types.js";
-import "../../shared/types/types.js";
 
 const ALLOWED = new Set([".pdf", ".txt", ".md"]);
 const isUuid = (v: string) => z.uuid().safeParse(v).success;

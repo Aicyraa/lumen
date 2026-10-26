@@ -2,7 +2,6 @@ import { Router } from "express";
 import { MONTH_START_SQL } from "../../shared/lib/range.js";
 import { ownedProjectCount } from "../../shared/services/projects.js";
 import type { Deps } from "../../shared/types/types.js";
-import "../../shared/types/types.js";
 
 // The signed-in user's own account data. Session only: no active project needed.
 // Every statement is keyed by the session user (req.userId) or by the project ids derived from that user's memberships (rule 1).

@@ -5,7 +5,6 @@ import { ApiError } from "../lib/errors.js";
 import type { KnownModel } from "../services/modelCalls.js";
 import type { ModelsPayload } from "../services/rag.js";
 import type { Deps } from "../types/types.js";
-import "../types/types.js";
 
 export interface TenantModels {
   payload: ModelsPayload;

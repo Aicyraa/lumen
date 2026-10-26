@@ -8,7 +8,6 @@ import { parseRange, rangeStart } from "../../shared/lib/range.js";
 import { modelUsage } from "../../shared/services/modelUsage.js";
 import type { Deps } from "../../shared/types/types.js";
 import { testCompletion } from "./provider.js";
-import "../../shared/types/types.js";
 
 const TIERS = ["cheap", "expensive"] as const;
 // Never select api_key_encrypted here: the list and every response are built from these columns only.

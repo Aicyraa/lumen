@@ -7,7 +7,6 @@ import { removeTenantUploads } from "../../shared/lib/uploads.js";
 import { descriptionOf, ownedProjectCount, projectSlug } from "../../shared/services/projects.js";
 import type { Deps } from "../../shared/types/types.js";
 import type { Auth } from "../auth/auth.js";
-import "../../shared/types/types.js";
 
 const notFound = () => new ApiError(404, "not_found", "Project not found.");
 const forbidden = () =>

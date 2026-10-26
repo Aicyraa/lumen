@@ -3,7 +3,6 @@ import type { RequestHandler } from "express";
 import type { Auth } from "../../modules/auth/auth.js";
 import type { Pool } from "../db/pool.js";
 import { ApiError } from "../lib/errors.js";
-import "../types/types.js";
 
 // /api/dashboard/*: the user comes from the session. The tenant is the session's active project, but only while the user is
 // still a member of it; a stale or foreign value leaves req.tenantId unset (requireTenant then refuses).

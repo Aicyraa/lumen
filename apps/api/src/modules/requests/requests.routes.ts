@@ -3,7 +3,6 @@ import { z } from "zod";
 import { ApiError } from "../../shared/lib/errors.js";
 import { parseRange, rangeStart } from "../../shared/lib/range.js";
 import type { Deps } from "../../shared/types/types.js";
-import "../../shared/types/types.js";
 
 const TIERS = ["all", "cheap", "expensive", "none"];
 // created_at as text keeps microseconds, which a JS Date would cut to milliseconds and break the keyset.
