@@ -72,7 +72,9 @@ def test_no_command_is_an_error(capsys):
 
 
 @pytest.mark.parametrize("rag_port, port", [("8123", 8123), (None, 8000)])
-def test_dev_uses_rag_port_with_reload_and_defaults_to_8000(monkeypatch, no_env_file, rag_port, port):
+def test_dev_uses_rag_port_with_reload_and_defaults_to_8000(
+    monkeypatch, no_env_file, rag_port, port
+):
     import uvicorn
 
     seen = {}
