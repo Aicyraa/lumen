@@ -5,7 +5,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 SECRET = "ab" * 32
-GOOD = {"DATABASE_URL": "postgresql://u:p@db.example.com:5432/x?sslmode=require", "INTERNAL_SECRET": SECRET}
+GOOD = {
+    "DATABASE_URL": "postgresql://u:p@db.example.com:5432/x?sslmode=require",
+    "INTERNAL_SECRET": SECRET,
+}
 
 
 def check(tmp, env=None, venv=True):
@@ -36,8 +39,8 @@ def test_a_missing_file_says_where_to_create_it(tmp_path):
 
 
 def test_a_short_secret_is_refused_without_echoing_it(tmp_path):
-    r = check(tmp_path, {**GOOD, "INTERNAL_SECRET": "short"})
-    assert r.returncode == 1 and "INTERNAL_SECRET" in r.stderr and "short" not in r.stderr.replace("INTERNAL_SECRET", "")
+    r = check(tmp_path, {**GOOD, "INTERNAL_SECRET": "qzq9"})
+    assert r.returncode == 1 and "INTERNAL_SECRET" in r.stderr and "qzq9" not in r.stderr
 
 
 def test_a_missing_database_url_is_refused(tmp_path):

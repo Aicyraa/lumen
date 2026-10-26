@@ -22,6 +22,7 @@
     "db:status": "node scripts/db.mjs status",
     "env:init": "node scripts/env.mjs init",
     "env:check": "node scripts/env.mjs check",
+    "rag:funnel": "node scripts/rag-funnel.mjs",
     "eval:isolation": "node tools/eval/isolation/run.mjs"
   },
   "devDependencies": {
