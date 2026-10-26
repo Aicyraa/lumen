@@ -81,25 +81,37 @@ describe("ApiKeys", () => {
     expect(await screen.findByText("Prod")).toBeInTheDocument(); // listed by its start only
   });
 
+  async function openKeyDialog(writeText?: () => Promise<void>) {
+    list.mockResolvedValue({ data: { apiKeys: [], total: 0 }, error: null });
+    create.mockResolvedValue({
+      data: { id: "k9", key: FULL_KEY, start: "lum_S", name: "Prod" },
+      error: null,
+    });
+    renderWithProviders(<ApiKeys />);
+    const user = userEvent.setup();
+    // after setup(): user-event installs its own clipboard stub on navigator
+    Object.defineProperty(navigator, "clipboard", {
+      value: writeText ? { writeText } : undefined,
+      configurable: true,
+    });
+    await user.click(await screen.findByRole("button", { name: "Create key" }));
+    await user.click(screen.getByRole("button", { name: "Create" }));
+    const dialog = await screen.findByRole("dialog");
+    return { user, dialog };
+  }
+
+  it("the one-time key dialog cannot be closed by Escape or a click on the backdrop, only by 'I've saved it'", async () => {
+    const { user, dialog } = await openKeyDialog();
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await user.pointer({ keys: "[MouseLeft]", target: dialog.parentElement! });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(within(dialog).getByText(FULL_KEY)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "I've saved it" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
   describe("copying the new key", () => {
-    async function openKeyDialog(writeText?: () => Promise<void>) {
-      list.mockResolvedValue({ data: { apiKeys: [], total: 0 }, error: null });
-      create.mockResolvedValue({
-        data: { id: "k9", key: FULL_KEY, start: "lum_S", name: "Prod" },
-        error: null,
-      });
-      renderWithProviders(<ApiKeys />);
-      const user = userEvent.setup();
-      // after setup(): user-event installs its own clipboard stub on navigator
-      Object.defineProperty(navigator, "clipboard", {
-        value: writeText ? { writeText } : undefined,
-        configurable: true,
-      });
-      await user.click(await screen.findByRole("button", { name: "Create key" }));
-      await user.click(screen.getByRole("button", { name: "Create" }));
-      const dialog = await screen.findByRole("dialog");
-      return { user, dialog };
-    }
     it("says Copied only after the clipboard write succeeded", async () => {
       const { user, dialog } = await openKeyDialog(() => Promise.resolve());
       await user.click(within(dialog).getByRole("button", { name: "Copy" }));
