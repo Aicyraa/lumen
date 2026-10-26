@@ -83,4 +83,4 @@ def test_pool_timeout_is_503_busy_with_retry_after(client, monkeypatch):
         "/internal/documents/00000000-0000-0000-0000-000000000001?tenant_id=t", headers=AUTH
     )
     assert resp.status_code == 503 and resp.json()["error"]["code"] == "busy"
-    assert resp.headers["Retry-After"]
+    assert resp.headers["Retry-After"] == str(load_config()["concurrency"]["retry_after_seconds"])
