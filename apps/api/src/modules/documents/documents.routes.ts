@@ -5,14 +5,14 @@ import { extname } from "node:path";
 import type { Request, RequestHandler, Response } from "express";
 import { Router } from "express";
 import multer from "multer";
-import { z } from "zod";
+import { withTx } from "../../shared/db/pool.js";
 import { ApiError } from "../../shared/lib/errors.js";
 import { uploadName } from "../../shared/lib/uploads.js";
+import { isUuid } from "../../shared/lib/validate.js";
 import { RagError } from "../../shared/services/rag.js";
 import type { Deps } from "../../shared/types/types.js";
 
 const ALLOWED = new Set([".pdf", ".txt", ".md"]);
-const isUuid = (v: string) => z.uuid().safeParse(v).success;
 // What the dashboard shows for a document the service could not ingest (documents.error); anything else is "code: message".
 const INGEST_FAILURE_REASONS: Record<string, string> = {
   document_too_large:
@@ -64,9 +64,7 @@ export function documentsRouter(
 
   // Insert under a per-tenant advisory lock so two uploads cannot both slip under the limit.
   async function insertWithinLimit(tenantId: string, filename: string): Promise<string> {
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
+    return withTx(pool, async (client) => {
       await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [tenantId]);
       const {
         rows: [{ n }],
@@ -94,14 +92,8 @@ export function documentsRouter(
         "INSERT INTO documents (tenant_id, filename) VALUES ($1, $2) RETURNING id",
         [tenantId, filename],
       );
-      await client.query("COMMIT");
       return rows[0].id;
-    } catch (err) {
-      await client.query("ROLLBACK");
-      throw err;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   // Runs after the 202 has been sent. Python writes chunks in one transaction, so a failure leaves none.
