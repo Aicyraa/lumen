@@ -24,6 +24,15 @@ describe("loadConfig", () => {
     ]);
   });
 
+  it("adds http:// to a scheme-less host:port (Render's fromService hostport)", () => {
+    expect(loadConfig({ ...good, RAG_SERVICE_URL: "lumen-rag-ab12:8000" }).ragUrl).toBe(
+      "http://lumen-rag-ab12:8000",
+    );
+    expect(loadConfig({ ...good, RAG_SERVICE_URL: "https://rag.example.com/" }).ragUrl).toBe(
+      "https://rag.example.com",
+    );
+  });
+
   it.each(Object.keys(good))(
     "refuses to start when %s is missing, naming it but never printing a value",
     (name) => {
