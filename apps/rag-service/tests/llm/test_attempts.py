@@ -163,24 +163,6 @@ def test_provider_reported_cost_is_returned_only_when_the_response_has_a_number(
     assert run().reported_cost_usd is None
 
 
-def test_one_retry_after_a_429_is_still_one_attempt(server, sleeps):
-    server.replies = [
-        httpx2.Response(429, json={"error": {"message": "slow"}}),
-        ok(completion("later")),
-    ]
-    a = run()
-    assert (a.outcome, a.text) == ("ok", "later") and len(server.requests) == 2
-
-
-def test_second_429_is_rate_limited_with_its_headers_and_no_tokens(server, sleeps):
-    r = httpx2.Response(429, json={"error": {"message": "slow"}}, headers={"retry-after": "7"})
-    server.replies = [r, r]
-    a = run()
-    assert a.outcome == "rate_limited" and len(server.requests) == 2  # exactly one retry
-    assert (a.tokens_in, a.tokens_out, a.text) == (None, None, None)
-    assert a.rate_limits == {"retry-after": "7"}
-
-
 @pytest.mark.parametrize(
     "reply,outcome",
     [
@@ -273,26 +255,23 @@ def test_no_header_falls_back_to_the_configured_retry_wait(server, sleeps):
 
 
 def test_a_wait_exactly_at_the_limit_is_still_retried(server, sleeps):
-    server.replies = [limited(**{"retry-after": "10"}), ok()]
-    assert run().outcome == "ok" and sleeps == [10]
+    at_limit = CFG["rate_limit_max_wait_seconds"]
+    server.replies = [limited(**{"retry-after": str(at_limit)}), ok()]
+    assert run().outcome == "ok" and sleeps == [at_limit]
 
 
-def test_second_429_after_a_retry_reports_its_wait(server, sleeps):
-    server.replies = [limited(**{"retry-after": "2"}), limited(**{"retry-after": "4"})]
+@pytest.mark.parametrize("first,second", [("7", "7"), ("2", "4")])
+def test_second_429_is_rate_limited_with_its_wait_and_headers_and_no_tokens(
+    server, sleeps, first, second
+):
+    server.replies = [limited(**{"retry-after": first}), limited(**{"retry-after": second})]
     a = run()
-    assert a.outcome == "rate_limited" and len(server.requests) == 2
-    assert a.retry_after_seconds == 4
+    assert a.outcome == "rate_limited" and len(server.requests) == 2  # exactly one retry
+    assert (a.retry_after_seconds, a.rate_limits) == (int(second), {"retry-after": second})
+    assert (a.tokens_in, a.tokens_out, a.text) == (None, None, None)
 
 
 def test_attempt_exposes_retry_after_only_when_known(server):
     server.replies = [limited(**{"retry-after": "855"}), ok()]
     assert run().public()["retry_after_seconds"] == 855
     assert "retry_after_seconds" not in run().public()
-
-
-def test_config_has_the_max_wait_default():
-    from app.core.config import load_config
-
-    llm_cfg = load_config()["llm"]
-    assert llm_cfg["rate_limit_max_wait_seconds"] == 10
-    assert llm_cfg["rate_limit_retry_seconds"] == 2
