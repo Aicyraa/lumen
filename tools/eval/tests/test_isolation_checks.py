@@ -63,17 +63,17 @@ def test_malformed_body_is_a_problem():
 
 def test_positive_needs_the_own_code_word_and_own_source():
     good = ok("Code word: AMBERFOX-4417.", ["own-1"])
-    assert check_positive(good, OWN, "AMBERFOX-4417", expected_doc="own-1") == []
+    assert check_positive(good, "AMBERFOX-4417", expected_doc="own-1") == []
     nothing = ok("I could not find that in the documents.")
-    assert kinds(check_positive(nothing, OWN, "AMBERFOX-4417", expected_doc="own-1")) == [
+    assert kinds(check_positive(nothing, "AMBERFOX-4417", expected_doc="own-1")) == [
         "positive_missing_code", "positive_missing_source",
     ]  # fmt: skip
     wrong_doc = ok("Code word: AMBERFOX-4417.", ["own-2"])
-    assert kinds(check_positive(wrong_doc, OWN, "AMBERFOX-4417", expected_doc="own-1")) == [
+    assert kinds(check_positive(wrong_doc, "AMBERFOX-4417", expected_doc="own-1")) == [
         "positive_missing_source"
     ]
     # a fact question has no code word to find
-    assert check_positive(ok("Open 6 AM", ["own-2"]), OWN, None, expected_doc="own-2") == []
+    assert check_positive(ok("Open 6 AM", ["own-2"]), None, expected_doc="own-2") == []
 
 
 def test_not_found_check_wants_404_with_the_not_found_code():

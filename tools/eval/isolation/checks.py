@@ -39,7 +39,7 @@ def check_chat(resp, own_doc_ids, foreign_markers) -> list[Finding]:
     return out
 
 
-def check_positive(resp, own_doc_ids, own_code, expected_doc) -> list[Finding]:
+def check_positive(resp, own_code, expected_doc) -> list[Finding]:
     """The tenant's own planted data must come back: the code word (when expected) and the document."""
     if resp.status != 200 or not isinstance(resp.body, dict):
         return [Finding("bad_status", f"HTTP {resp.status} (expected a JSON 200)")]

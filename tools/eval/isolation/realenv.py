@@ -132,7 +132,7 @@ class RealEnv:
             c.execute(f'CREATE DATABASE "{self.db_name}"')
         self.db_created = True
 
-    def _api(self, name, rag_port):
+    def _api(self, rag_port):
         port = free_port()
         env = api_env(self.scratch_url, port, rag_port, self.sec, self.tmp / "uploads")
         return port, env
@@ -140,7 +140,7 @@ class RealEnv:
     def start_real(self):
         self.create_db()
         rag_port = free_port()
-        port, env_api = self._api("api", rag_port)
+        port, env_api = self._api(rag_port)
         run_cmd(
             self.procs, "migrate", ["node", "scripts/db.mjs", "migrate"], ROOT,
             base_env({"DATABASE_URL": self.scratch_url}),
@@ -164,7 +164,7 @@ class RealEnv:
         self.say(f"  removed {removed} tenant_id predicate(s) in the copy of store.py")
         rag_port = free_port()
         start_rag(self.procs, f"rag-{variant}", leaky_dir, self.env_rag, rag_port)
-        port, env_api = self._api(variant, rag_port)
+        port, env_api = self._api(rag_port)
         start_api(self.procs, f"api-{variant}", env_api, port)
         return self._client(port)
 

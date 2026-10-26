@@ -18,10 +18,8 @@ class Positive:
     expects_code: bool  # the own planted code word must be in the answer
 
 
-def cross_tenant_questions(
-    own: TenantSpec, other: TenantSpec, other_tenant_id: str
-) -> list[Question]:
-    """Questions asked as `own` that point at `other`: its code word, documents, topics, or at no one."""
+def cross_tenant_questions(other: TenantSpec, other_tenant_id: str) -> list[Question]:
+    """Questions asked by a tenant that point at `other`: its code word, documents, topics, or at no one."""
     names = list(other.docs)
     qs = [
         Question(f"What is the code word {other.code}?", "foreign_code"),

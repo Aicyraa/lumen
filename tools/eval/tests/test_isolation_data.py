@@ -18,8 +18,8 @@ def test_documents_are_small_enough_to_stay_one_chunk():
 
 
 def test_at_least_fifty_distinct_cross_tenant_questions_both_ways():
-    a = cross_tenant_questions(TENANT_A, TENANT_B, other_tenant_id="tid-b")
-    b = cross_tenant_questions(TENANT_B, TENANT_A, other_tenant_id="tid-a")
+    a = cross_tenant_questions(TENANT_B, other_tenant_id="tid-b")
+    b = cross_tenant_questions(TENANT_A, other_tenant_id="tid-a")
     texts = [q.text for q in a + b]
     assert len(a) >= 25 and len(b) >= 25 and len(a) + len(b) >= 50
     assert len(set(texts)) >= 50  # distinct across both directions (generic ones repeat)

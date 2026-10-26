@@ -12,7 +12,6 @@ class RagAnswer:
     answer: str = ""
     sources: list = field(default_factory=list)
     tier: str = ""
-    escalated: bool = False
     top_score: float | None = None
     latency_ms: int | None = None
     attempts: list = field(default_factory=list)
@@ -62,7 +61,6 @@ def _query_once(cfg: Config, tenant_id: str, query: str, force_tier: str | None)
         answer=data.get("answer") or "",
         sources=data.get("sources") or [],
         tier=route.get("model_tier") or "",
-        escalated=bool(route.get("escalated")),
         top_score=route.get("top_score"),
         latency_ms=usage.get("latency_ms"),
         attempts=data.get("attempts") or [],

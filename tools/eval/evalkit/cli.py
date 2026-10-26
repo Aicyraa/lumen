@@ -68,7 +68,7 @@ def run_pair(cfg, q, setup):
         v = ("incorrect", f"system error: {a.error}")
     else:
         g = (
-            grade_unanswerable(a.answer, a.sources, cfg.not_found_message)
+            grade_unanswerable(a.answer, cfg.not_found_message)
             if q.type == "unanswerable"
             else judge(cfg, q.query, q.expected_answer, a.answer)
         )

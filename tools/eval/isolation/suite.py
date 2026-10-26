@@ -151,7 +151,7 @@ def run_questions(api: Api, tenants, run: Run, *, positives: bool):
     for t in tenants:
         other = next(o for o in tenants if o is not t)
         own_ids = set(t.doc_ids.values())
-        for q in cross_tenant_questions(t.spec, other.spec, other.tenant_id):
+        for q in cross_tenant_questions(other.spec, other.tenant_id):
             run.cross += 1
             run.add(
                 t.spec.label,
@@ -164,7 +164,7 @@ def run_questions(api: Api, tenants, run: Run, *, positives: bool):
                 r = chat(api, t, p.text)
                 found = check_chat(r, own_ids, other.markers)
                 found += check_positive(
-                    r, own_ids, t.spec.code if p.expects_code else None, t.doc_ids[p.expected_doc]
+                    r, t.spec.code if p.expects_code else None, t.doc_ids[p.expected_doc]
                 )
                 run.positives_passed += not found
                 run.add(t.spec.label, f"positive {p.text[:60]}", found)
@@ -258,9 +258,9 @@ def run_object_checks(api: Api, tenants, run: Run):
         )
         # dashboard: tenant A's pages show only A's rows
         foreign_ids = [*o.doc_ids.values(), *o.request_ids, o.tenant_id, *o.model_ids]
-        for path, id_keys in [
-            ("/api/dashboard/documents", None), ("/api/dashboard/models", None),
-            ("/api/dashboard/models/usage", None), ("/api/dashboard/usage", None),
+        for path in [
+            "/api/dashboard/documents", "/api/dashboard/models",
+            "/api/dashboard/models/usage", "/api/dashboard/usage",
         ]:  # fmt: skip
             d = api.call("GET", path, cookie=t.cookie)
             fs = [] if d.status == 200 else [Finding("bad_status", f"{path}: HTTP {d.status}")]
