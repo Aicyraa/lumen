@@ -18,4 +18,8 @@ describe("resolveApiBase", () => {
     expect(() => resolveApiBase({ DEV: false })).toThrow(/VITE_API_URL/);
     expect(() => resolveApiBase({ VITE_API_URL: "", DEV: false })).toThrow(/VITE_API_URL/);
   });
+  it('VITE_API_URL="/" means the page\'s own origin on purpose (relative requests, API proxied by the host)', () => {
+    expect(resolveApiBase({ VITE_API_URL: "/", DEV: false })).toBe("");
+    expect(resolveApiBase({ VITE_API_URL: " / ", DEV: true })).toBe("");
+  });
 });
