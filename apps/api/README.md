@@ -30,7 +30,7 @@ limit, page sizes). Each can be overridden by an upper-snake env var, for exampl
 minute and 8K tokens per minute for `openai/gpt-oss-20b` and `openai/gpt-oss-120b`. One chat call uses roughly
 700-1500 tokens, so tokens per minute, not requests, is the binding limit.
 
-## Tenant models (Phase 3B)
+## Tenant models
 
 `/api/dashboard/models` (session) manages a tenant's own provider models in two tiers, `cheap` and `expensive` (the fallback tier was removed; `tier: "fallback"` is a `422 invalid_request`; inside a tier models are tried top to bottom): list, add (Test & save makes one tiny
 completion first and saves nothing on failure), move up/down within a tier, remove, optional per-1M-token prices,
@@ -64,9 +64,9 @@ failures stays `502 provider_error`.
 
 With no models: production answers `422 no_models_configured`, other environments let the Python service use its
 `LLM_*` default. The global LLM cap applies only to that shared default key.
-The schema is the numbered SQL in `infra/sql/` (`pnpm db:migrate` from the repo root applies the pending files to the dev database; tests apply every file to `lumen_test` themselves). Design and reasons: `docs/DATABASE.md`. Upgrading drops `request_logs.tokens_in`, `tokens_out` and `cost_usd` without carrying them over: requests that have no `model_calls` rows (logged before the table existed) show null tokens and cost afterwards. `pnpm --filter @lumen/api auth:migrate` also enables RLS on Better Auth's tables (`infra/sql/auth/001_auth_tables_rls.sql`). In short: every tenant table points at `tenants(id)` with `ON DELETE CASCADE`; a request's sources are `request_sources` rows; chunk counts and a request's tokens and cost are the views `document_stats` and `request_usage`, not stored columns.
+The schema is the numbered SQL in `infra/sql/` (`pnpm db:migrate` from the repo root applies the pending files to the dev database; tests apply every file to `lumen_test` themselves). Design and reasons: `docs/DATABASE.md`. `pnpm --filter @lumen/api auth:migrate` also enables RLS on Better Auth's tables (`infra/sql/auth/001_auth_tables_rls.sql`). In short: every tenant table points at `tenants(id)` with `ON DELETE CASCADE`; a request's sources are `request_sources` rows; chunk counts and a request's tokens and cost are the views `document_stats` and `request_usage`, not stored columns.
 
-## Dashboard endpoints (Phase 4)
+## Dashboard endpoints
 
 All are under `/api/dashboard`, need the Better Auth session cookie (`401 unauthorized` otherwise) and use the session's
 active organization as the tenant. Every query filters by `tenant_id`; another tenant's id is `404 not_found`, and so is a
@@ -151,7 +151,7 @@ await authClient.apiKey.delete({ keyId });                                 // re
 membership and the `apiKey` permission of the member's role; the creator/owner role has all of them). The new key
 authenticates `/v1/*` as that tenant straight away.
 
-## Accounts, verification and projects (Phase 4B-1)
+## Accounts, verification and projects
 
 ### Environment
 
@@ -281,13 +281,6 @@ await authClient.organization.list();                          // same projects 
 // create / rename / delete: fetch(`${API}/api/dashboard/workspaces`, { method: "POST", credentials: "include", ... }) as above
 ```
 
-### Dev-only helpers
-
-`POST /dev/verify-email` `{ email }` with the `x-internal-secret` header (mounted with `/dev/api-key`, only when `NODE_ENV=development`)
-marks an email + password user's address verified (`204`), so e2e runs can sign up and sign in without a mailbox.
-`/dev/api-key` is unchanged and does not need a verified user. Test helpers: `createTenant` in `test/helpers/ctx.ts` marks the new user verified;
-`ctx.mails` captures every email the app tried to send (a fake transport).
-
 ## Dev-only API key
 
 No browser needed. Sign up with email + password (`POST /api/auth/sign-up/email`), then:
@@ -301,7 +294,9 @@ curl -s localhost:3000/dev/api-key -H "x-internal-secret: $INTERNAL_SECRET" \
 The route needs the internal secret and is mounted only when `NODE_ENV=development` (any other value: not mounted). `pnpm dev` sets `NODE_ENV=development` when it is unset; `pnpm start` needs it set explicitly.
 Real keys are made in the dashboard with the API key plugin.
 
-## Limits, errors and the project header (polish step)
+`POST /dev/verify-email` `{ email }` (same header, same `NODE_ENV=development` rule) marks an email + password user's address verified (`204`), so e2e runs can sign up and sign in without a mailbox; `/dev/api-key` does not need a verified user. In tests, `createTenant` marks the new user verified and `ctx.mails` captures every email the app tried to send.
+
+## Limits, errors and the project header
 
 | Setting (`config.json`, env-overridable) | Default | Effect |
 | --- | --- | --- |
@@ -360,7 +355,7 @@ src/
     config/          config.ts (env + config.json -> Config), env.ts (loads apps/api/.env)
     db/              pool.ts
     middleware/      rateLimit, requireApiKey, requireSession, tenantModels
-    lib/             errors (error shape), range (7d/30d, UTC month), crypto (AES-256-GCM), endpointGuard (SSRF guard), logger (key redaction), uploads
+    lib/             errors (error shape), validate (uuid guard, invalid_request), range (7d/30d, UTC month), crypto (AES-256-GCM), endpointGuard (SSRF guard), logger (key redaction), uploads
     services/        rag.ts (rag-service client), modelCalls.ts (attempts, cost), modelUsage.ts, projects.ts
     types/           types.ts (Deps, Express request fields)
 test/                mirrors src: modules/<feature>/, shared/, dashboardCors.test.ts (app level); helpers/ and global-setup.ts
