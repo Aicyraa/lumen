@@ -1,34 +1,11 @@
-# Render Blueprint for Lumen: rag-service (private) + api (public). See infra/DEPLOY.md, section 10.
+# Render Blueprint for Lumen: only the api. The rag-service runs on the operator's machine behind a Tailscale Funnel (infra/TAILSCALE.md),
+# because it needs ~1 GB of RAM and Render's free plan has 512 MB. See infra/DEPLOY.md.
 # Web stays on Vercel (apps/web/vercel.json proxies /api and /v1 to the api's onrender.com host); Postgres stays on Supabase.
 # Values marked "sync: false" are asked for once, when the Blueprint is first created; afterwards edit them in the dashboard.
 # Never put a secret in this file. Region and plan names: https://render.com/docs/blueprint-spec
 
-envVarGroups:
-  # One generated value, linked into both services with fromGroup, so INTERNAL_SECRET is equal on both sides without copying it.
-  - name: lumen-shared
-    envVars:
-      - key: INTERNAL_SECRET
-        generateValue: true
-
 services:
-  # --- rag-service: no public URL, reachable only from the api over Render's private network ---
-  - type: pserv
-    name: lumen-rag
-    runtime: docker
-    dockerfilePath: ./apps/rag-service/Dockerfile # relative to the repo root, not to the context
-    dockerContext: ./apps/rag-service
-    region: singapore # must equal the api's region; pick the one closest to the Supabase project (lumen: ap-northeast-2, Seoul)
-    plan: 1c-2g # smallest plan that fits the ~0.9 GB peak plus headroom; there is no free private service; 0.5c-512mb would be OOM-killed
-    numInstances: 1
-    autoDeployTrigger: "off"
-    envVars:
-      - fromGroup: lumen-shared
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL # Supabase session pooler, rag spelling: ...?sslmode=require (section 6)
-        sync: false
-
-  # --- api: the only public service ---
+  # --- api: the only service on Render ---
   - type: web
     name: lumen-api
     runtime: docker
@@ -40,16 +17,14 @@ services:
     autoDeployTrigger: "off"
     healthCheckPath: /api/auth/ok
     envVars:
-      - fromGroup: lumen-shared
       - key: NODE_ENV
         value: production
       - key: PORT # the image says 3000; Render's default for web services is 10000, so pin it
         value: "10000"
-      - key: RAG_SERVICE_URL # "host:port" of the private service; the api adds http://
-        fromService:
-          type: pserv
-          name: lumen-rag
-          property: hostport
+      - key: RAG_SERVICE_URL # the Tailscale Funnel address of the rag-service: https://MACHINE.TAILNET.ts.net (infra/TAILSCALE.md)
+        sync: false
+      - key: INTERNAL_SECRET # the same value as INTERNAL_SECRET in apps/rag-service/.env.funnel (openssl rand -hex 32)
+        sync: false
       # Two hops (Cloudflare, Render's load balancer) plus Vercel's egress address: see infra/DEPLOY.md, section 4.
       - key: TRUST_PROXY
         value: "3"
