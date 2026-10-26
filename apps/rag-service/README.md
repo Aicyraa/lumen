@@ -83,9 +83,7 @@ pnpm --filter @lumen/rag-service build  # from the repo root; pnpm build also ru
 Hugging Face (or reuses already cached weights) and saves self-contained copies in
 `app/models/<embedding|reranker>/<revision>/`. These generated files are ignored by
 Git and included in Python package data. Run this build command before packaging
-the service. `pyproject.toml` registers the same command as the Vercel Python build
-hook; any dashboard or service-level build override must retain it. A failed download
-fails the build. Models are rebuilt without Turborepo task caching so an absent
+the service. A failed download fails the build. Models are rebuilt without Turborepo task caching so an absent
 local artifact cannot be mistaken for a successful cached build.
 
 Runtime loads only those bundled files and makes no Hugging Face requests. A
@@ -104,8 +102,7 @@ HF_HUB_OFFLINE=1 .venv/bin/python -c 'from app.retrieval.embeddings import embed
 
 Changing either model or revision requires rebuilding its files. Changing the
 embedding model still requires re-embedding stored documents; bundling does not
-change the model, vector dimensions or existing data. Vercel bundle limits still
-apply to the weights plus Python dependencies, including PyTorch.
+change the model, vector dimensions or existing data.
 
 Chat models return claims with passage ids and exact evidence quotes. The service validates the quotes, tolerating whitespace and equivalent PDF typography, and renders ASCII citations itself. A quote assigned to the wrong passage is corrected only when it matches exactly one other provided passage. A quote shorter than `llm.min_quote_chars` or `llm.min_quote_words` (unless the whole passage is shorter) is invalid evidence. Invalid evidence gets one format-repair attempt, then `502 provider_error`; every attempt contributes to recorded usage.
 
