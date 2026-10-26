@@ -17,10 +17,6 @@ def _resolve(host: str) -> list[str]:
     return [info[4][0] for info in socket.getaddrinfo(host, None)]
 
 
-def _is_loopback(ip) -> bool:
-    return ip.is_loopback
-
-
 def _is_public(ip) -> bool:
     if ip.version == 6 and ip.ipv4_mapped:  # ::ffff:10.0.0.1 is the IPv4 address
         ip = ip.ipv4_mapped
@@ -61,7 +57,7 @@ def assert_endpoint(url: str, production: bool, resolve=None) -> None:
         raise EndpointError("The endpoint host did not resolve to an address.")
     for raw in addresses:
         ip = ipaddress.ip_address(raw.split("%")[0])  # drop an IPv6 zone id
-        if local_dev and _is_loopback(ip):
+        if local_dev and ip.is_loopback:
             continue
         if not _is_public(ip):
             raise EndpointError(
