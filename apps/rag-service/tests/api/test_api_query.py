@@ -25,7 +25,7 @@ def best_score(monkeypatch):
     """Make the question embed to a vector scoring `s` against any chunk stored on axis 0."""
 
     def set_score(s):
-        monkeypatch.setattr("app.api.routes.embed", lambda texts: np.array([axis0(s)]))
+        monkeypatch.setattr("app.api.routes.embed", lambda texts, wait=None: np.array([axis0(s)]))
 
     return set_score
 

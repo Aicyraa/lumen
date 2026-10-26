@@ -7,6 +7,7 @@ concurrency:
   rerank_max: 2             # simultaneous reranker calls per process
   ingest_max: 1             # simultaneous uploads being embedded; smaller than embed_max so queries are not starved
   ingest_wait_seconds: 10   # an upload waits this long for a slot, then gets 503 busy
+  query_wait_seconds: 10    # a query waits this long for an embed or rerank slot, then gets 503 busy
   retry_after_seconds: 5    # Retry-After on 503 busy
 
 database:

@@ -107,16 +107,9 @@ def ingest(
     if len(chunks) > load_config()["ingest"]["max_chunks"]:  # before any embedding work
         raise too_large()
     cfg = load_config()
-    try:  # uploads queue for a slot; over the wait the caller gets 503 and may retry
-        with limits.slot("ingest", wait=cfg["concurrency"]["ingest_wait_seconds"]):
-            vectors = embed_checked(tenant_id, str(document_id), chunks)
-    except limits.Busy:
-        raise ApiError(
-            503,
-            "busy",
-            "The service is busy. Try again shortly.",
-            headers={"Retry-After": str(cfg["concurrency"]["retry_after_seconds"])},
-        )
+    # uploads queue for a slot; over the wait the caller gets 503 busy (the Busy handler) and may retry
+    with limits.slot("ingest", wait=cfg["concurrency"]["ingest_wait_seconds"]):
+        vectors = embed_checked(tenant_id, str(document_id), chunks)
     try:  # one transaction: a failure leaves no chunks
         store.add_chunks(tenant_id, str(document_id), chunks, vectors)
     except store.DocumentMissing:
@@ -211,7 +204,7 @@ def query(req: QueryRequest, caller=Depends(get_caller)):
         "difficulty": 0.0,
         "top_score": None,
     }
-    qvec = embed([req.query])[0]
+    qvec = embed([req.query], wait=load_config()["concurrency"]["query_wait_seconds"])[0]
     cfg = router_cfg()
     reranker_cfg = load_config()["reranker"]
     # one dense search serves best_score and the fusion later; deep enough for the largest k or candidate list

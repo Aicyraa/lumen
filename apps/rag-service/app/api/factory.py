@@ -7,6 +7,7 @@ from psycopg_pool import PoolTimeout
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import routes
+from app.core import limits
 from app.core.config import is_production, load_config, load_settings
 from app.core.errors import ApiError, error_response
 from app.core.logging import configure_logging
@@ -34,9 +35,13 @@ async def api_error_handler(request: Request, exc: ApiError):
     )
 
 
-async def busy_handler(request: Request, exc: PoolTimeout):
+async def busy_handler(request: Request, exc: PoolTimeout | limits.Busy):
+    retry_after = load_config()["concurrency"]["retry_after_seconds"]
     return error_response(
-        503, "busy", "The service is busy. Try again shortly.", headers={"Retry-After": "2"}
+        503,
+        "busy",
+        "The service is busy. Try again shortly.",
+        headers={"Retry-After": str(retry_after)},
     )
 
 
@@ -60,6 +65,7 @@ def create_app() -> FastAPI:
     app = FastAPI(lifespan=lifespan, **off)
     app.add_exception_handler(ApiError, api_error_handler)
     app.add_exception_handler(PoolTimeout, busy_handler)
+    app.add_exception_handler(limits.Busy, busy_handler)
     app.add_exception_handler(StarletteHTTPException, http_error_handler)
     app.add_exception_handler(RequestValidationError, validation_error_handler)
     app.include_router(routes.public)

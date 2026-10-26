@@ -17,7 +17,7 @@ def test_ingest_over_the_limit_waits_then_503_busy_and_queries_still_run(client,
     monkeypatch.setitem(cfg, "ingest_wait_seconds", 0.3)
     gate, entered = threading.Event(), threading.Event()
 
-    def fake_embed(texts):
+    def fake_embed(texts, wait=None):
         if len(texts) > 1:  # an upload's batch: hold the ingest slot until released
             entered.set()
             gate.wait(5)

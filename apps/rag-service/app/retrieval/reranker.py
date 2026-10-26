@@ -27,9 +27,8 @@ def rerank(query: str, hits: list, k: int) -> list:
         return []
     try:
         model = _model()
-        with limits.slot(
-            "rerank"
-        ):  # at most concurrency.rerank_max predictions at once per process
+        # at most concurrency.rerank_max predictions at once per process; Busy is not caught below (503)
+        with limits.slot("rerank", load_config()["concurrency"]["query_wait_seconds"]):
             scores = model.predict(
                 [(query, h[2]) for h in hits],
                 batch_size=load_config()["reranker"]["batch_size"],
