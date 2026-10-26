@@ -135,7 +135,7 @@ curl -s  $APP/api/auth/ok                                   # same through the p
 curl -s  -o /dev/null -w '%{http_code}\n' $APP/projects     # 200, SPA fallback
 # rag-service: private, so test it from its own Shell tab in the Render dashboard (the image has no curl; python is there; the secret stays in the container's environment):
 #   python -c "import os,urllib.request as u; print(u.urlopen('http://127.0.0.1:8000/internal/health').read())"                                  # {"status":"ok"}
-#   python -c "import os,urllib.request as u; print(u.urlopen(u.Request('http://127.0.0.1:8000/internal/ready',headers={'X-Internal-Secret':os.environ['INTERNAL_SECRET']})).read())"   # database, embedder, reranker all true
+#   python -c "import os,urllib.request as u; print(u.urlopen(u.Request('http://127.0.0.1:8000/internal/ready',headers={'X-Internal-Secret':os.environ['INTERNAL_SECRET']})).read())"   # database and reranker both true
 # (Shell may need a paid instance; otherwise read the logs and test the chain by uploading a document, below.)
 # sign-up: the mail arrives only if SMTP works; click the link (it lands on NAME.vercel.app and signs you in)
 curl -s -H "Origin: $APP" -H 'content-type: application/json' -X POST $APP/api/auth/sign-up/email \
@@ -198,7 +198,7 @@ Render spins a free web service down after 15 minutes without inbound traffic an
 
 ### Steps you do in the Render dashboard
 
-1. Push the branch that contains `render.yaml` (this worktree's branch is `deploy-render`; the Blueprint tracks whichever branch you pick) and make sure the repo is on GitHub, GitLab or Bitbucket. Create a Render account and workspace; Paid instances need a payment method.
+1. Push the branch that contains `render.yaml` (the Blueprint tracks whichever branch you pick) and make sure the repo is on GitHub, GitLab or Bitbucket. Create a Render account and workspace; Paid instances need a payment method.
 2. Decide the Vercel URL (section 3, step 2), generate the two values you must bring: `openssl rand -hex 32` for `MODEL_KEY_ENCRYPTION_SECRET` (back it up) and an SMTP account (section 8). Have the Supabase session-pooler connection string ready (section 6).
 3. Dashboard: **New > Blueprint**, connect the repository, choose the branch, keep the Blueprint path `render.yaml`, give the Blueprint a name.
 4. Render shows the proposed services and asks for the `sync: false` values (asked once, at creation; later you change them on the service's Environment tab, and Render ignores `sync: false` variables on later Blueprint syncs):
