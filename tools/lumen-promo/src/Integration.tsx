@@ -1,143 +1,156 @@
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, Frame, Label, Reveal, Title, mono, ease } from "./design";
+import { C, Frame, Reveal, mono, ease } from "./design";
 export const Integration = () => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const stage = Math.min(2, Math.floor(f / fps / 2.6));
-  const code =
-    'const reply = await fetch("/v1/chat", {\n  method: "POST",\n  headers: {\n    "Content-Type": "application/json",\n    "x-api-key": process.env.LUMEN_KEY\n  },\n  body: JSON.stringify({\n    query: "What do my documents say?"\n  })\n});';
+  const t = f / fps;
+  const stage = Math.min(2, Math.floor(t / 2.6));
   return (
-    <Frame chapter="SEAMLESS RAG INTEGRATION" number="02" seconds={10}>
-      <div style={{ position: "absolute", left: 100, top: 225, width: 790 }}>
-        <Reveal>
-          <Label>FROM YOUR DOCS. INTO YOUR APP.</Label>
-          <Title size={108}>
-            Seamless
-            <br />
-            RAG integration.
-          </Title>
-        </Reveal>
-        <div
-          style={{
-            marginTop: 55,
-            display: "flex",
-            flexDirection: "column",
-            gap: 24,
-          }}
-        >
-          {[
-            "Upload your documents",
-            "Create a project API key",
-            "Call POST /v1/chat",
-          ].map((s, i) => (
-            <Reveal
-              key={s}
-              at={0.6 + i * 0.4}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 25,
-                fontSize: 35,
-                color: stage === i ? C.text : C.muted,
-              }}
-            >
-              <span
-                style={{
-                  ...mono,
-                  width: 60,
-                  height: 60,
-                  display: "grid",
-                  placeItems: "center",
-                  background: stage === i ? C.lime : C.surface,
-                  color: stage === i ? C.bg : C.muted,
-                  border: "1px solid " + C.line,
-                  borderRadius: 100,
-                }}
-              >
-                0{i + 1}
-              </span>
-              {s}
-            </Reveal>
-          ))}
-        </div>
-        <Reveal
-          at={6.5}
-          style={{ marginTop: 35, fontSize: 28, color: C.muted }}
-        >
-          Keep your API key on your backend.
-        </Reveal>
-      </div>
-      <div
+    <Frame>
+      <Reveal
+        at={0.2}
         style={{
           position: "absolute",
-          left: 955,
-          top: 230,
-          width: 865,
-          perspective: 1600,
+          top: 135,
+          left: 100,
+          right: 100,
+          textAlign: "center",
+          fontSize: 88,
+          letterSpacing: -5,
         }}
       >
-        <Reveal
-          at={0.5}
+        Seamless <span style={{ color: C.lime }}>RAG integration.</span>
+      </Reveal>
+      <svg width="1920" height="1080" style={{ position: "absolute" }}>
+        <path
+          d="M160 520C460 760 720 280 1010 520S1510 760 1760 520"
+          stroke={C.line}
+          strokeWidth={2}
+          fill="none"
+        />
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <circle
+            key={i}
+            cx={160 + ((t * 120 + i * 267) % 1600)}
+            cy={520 + 95 * Math.sin((t * 120 + i * 267) / 260)}
+            r={4}
+            fill={C.lime}
+          />
+        ))}
+      </svg>
+      {["Upload.", "Connect.", "Ask."].map((word, i) => (
+        <div
+          key={word}
           style={{
-            transform: "rotateY(-8deg) rotateX(3deg)",
-            background: C.surface,
-            border: "1px solid " + C.line,
-            padding: 36,
-            height: 610,
+            position: "absolute",
+            left: [140, 690, 1350][i],
+            top: 360 + Math.sin(t * 0.8 + i) * 15,
+            opacity: interpolate(
+              f,
+              [(0.5 + i * 0.35) * fps, (1.1 + i * 0.35) * fps],
+              [0, 1],
+              ease,
+            ),
+            translate: interpolate(
+              f,
+              [(0.5 + i * 0.35) * fps, (1.4 + i * 0.35) * fps],
+              ["180px 0px", "0px 0px"],
+              ease,
+            ),
           }}
         >
           <div
+            style={{ ...mono, fontSize: 22, color: C.muted, marginBottom: 22 }}
+          >
+            {
+              ["PDF / TXT / MARKDOWN", "YOUR PROJECT API KEY", "YOUR BACKEND"][
+                i
+              ]
+            }
+          </div>
+          <div
             style={{
-              ...mono,
-              color: C.lime,
-              borderBottom: "1px solid " + C.line,
-              paddingBottom: 24,
-              fontSize: 22,
+              fontSize: 128,
+              fontWeight: 500,
+              letterSpacing: -8,
+              color: stage === i ? C.lime : C.text,
             }}
           >
-            YOUR BACKEND / JAVASCRIPT
+            {word}
           </div>
-          <pre
-            style={{
-              fontFamily: "Geist Mono",
-              fontSize: 22,
-              lineHeight: 1.55,
-              color: C.text,
-              whiteSpace: "pre-wrap",
-              marginTop: 28,
-            }}
-          >
-            {code.slice(
-              0,
-              Math.floor(
-                interpolate(f, [1.2 * fps, 5.3 * fps], [0, code.length], ease),
-              ),
-            )}
-            <span style={{ color: C.lime, opacity: Math.floor(f / 12) % 2 }}>
-              ▍
-            </span>
-          </pre>
-        </Reveal>
-        <Reveal
-          at={6}
-          style={{
-            position: "absolute",
-            left: 55,
-            right: -15,
-            top: 520,
-            background: C.lime,
-            color: C.bg,
-            padding: "25px 30px",
-            border: "1px solid " + C.bg,
-            rotate: "-2deg",
-          }}
-        >
-          <div style={{ ...mono, fontSize: 20 }}>ONE RESPONSE</div>
-          <div style={{ fontSize: 36, marginTop: 12 }}>
-            Answer + sources + route
-          </div>
-        </Reveal>
-      </div>
+        </div>
+      ))}
+      <Reveal
+        at={1.8}
+        style={{
+          position: "absolute",
+          left: 180,
+          top: 650,
+          ...mono,
+          fontSize: 23,
+          color: C.muted,
+          rotate: "-8deg",
+        }}
+      >
+        handbook.pdf
+      </Reveal>
+      <Reveal
+        at={2.8}
+        style={{
+          position: "absolute",
+          left: 790,
+          top: 650,
+          ...mono,
+          fontSize: 23,
+          color: C.muted,
+          rotate: "6deg",
+        }}
+      >
+        x-api-key
+      </Reveal>
+      <Reveal
+        at={4}
+        style={{
+          position: "absolute",
+          left: 1380,
+          top: 650,
+          ...mono,
+          fontSize: 23,
+          color: C.muted,
+          rotate: "-4deg",
+        }}
+      >
+        POST /v1/chat
+      </Reveal>
+      <Reveal
+        at={5.5}
+        style={{
+          position: "absolute",
+          left: 150,
+          right: 150,
+          top: 805,
+          textAlign: "center",
+          fontSize: 46,
+          letterSpacing: -1.5,
+        }}
+      >
+        One request.{" "}
+        <span style={{ color: C.lime }}>Answer + sources + route.</span>
+      </Reveal>
+      <Reveal
+        at={7}
+        style={{
+          position: "absolute",
+          left: 150,
+          right: 150,
+          top: 900,
+          textAlign: "center",
+          fontSize: 27,
+          color: C.muted,
+        }}
+      >
+        Your documents stay at the center of the conversation.
+      </Reveal>
     </Frame>
   );
 };

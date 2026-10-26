@@ -11,8 +11,11 @@ An editable Remotion promo based on `Aicyraa/lumen` main at
 **60 seconds · 1920 × 1080 · 30 fps · 1,800 frames.**
 Lumen’s actual logo, self-hosted Geist fonts, near-black/off-white palette and
 lime accent. Perspective document stacks, an exploded RAG engine, moving data
-packets, typewritten API code, kinetic headlines, and a rotating logo create
+packets, full-canvas kinetic typography, and open radial routing paths create
 depth and continuous motion. Five wipe/slide/fade transitions connect six scenes.
+No navbar, chapter bar, footer, progress rule or dashboard-style information cards.
+The closing signature slides the icon in from the right, builds “lumen” letter by
+letter, reveals “Where knowledge becomes an answer.”, then slides the group left.
 These are deterministic CSS 3D planes, not externally rendered stock footage.
 Original electronic music and synchronized transition sweeps are generated locally.
 Text-led; no voiceover or external provider credentials required.
@@ -35,14 +38,14 @@ its deterministic source is `scripts/score.mjs`.
 
 ## Storyboard
 
-| Time      | Scene                     | Message                                                                                     |
-| --------- | ------------------------- | ------------------------------------------------------------------------------------------- |
-| 00–08     | The missing piece         | Your chatbot needs your context. Give it Lumen.                                             |
-| 07.4–17.4 | Seamless RAG integration  | Upload → create a project API key → call `POST /v1/chat`; animated backend request.         |
-| 16.8–27.8 | Exploded RAG engine       | Chunk → embed → hybrid retrieval → rerank, animated as a perspective stack.                 |
-| 27.2–41.2 | Model routing             | Packets follow cheap, expensive and no-match paths as the question changes.                 |
-| 40.6–52.6 | An answer you can inspect | Illustrative answer, checked evidence, sources, route, tokens, latency, logs and use cases. |
-| 52–60     | Build with Lumen          | Give your app your knowledge. Clear recap and GitHub call to action.                        |
+| Time      | Scene                     | Message                                                                                       |
+| --------- | ------------------------- | --------------------------------------------------------------------------------------------- |
+| 00–08     | The missing piece         | Your chatbot needs your context. Give it Lumen.                                               |
+| 07.4–17.4 | Seamless RAG integration  | Upload → connect a project API key → ask through `POST /v1/chat`; freestanding kinetic words. |
+| 16.8–27.8 | Exploded RAG engine       | Chunk → embed → hybrid retrieval → rerank, animated as a perspective stack.                   |
+| 27.2–41.2 | Model routing             | Packets follow cheap, expensive and no-match paths as the question changes.                   |
+| 40.6–52.6 | An answer you can inspect | Open typographic evidence map: sources, route, tokens, latency and use cases.                 |
+| 52–60     | Build with Lumen          | Icon slides in from the right → name builds → original quote → group slides out.              |
 
 Scenes overlap by 18 frames each: 1,890 authored frames minus 90 transition
 frames equals exactly 1,800 frames / 60 seconds. Each scene remains independently

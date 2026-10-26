@@ -2,9 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import {
   AbsoluteFill,
   Easing,
-  Img,
   interpolate,
-  staticFile,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
@@ -33,107 +31,18 @@ export const ease = {
   easing: Easing.bezier(0.16, 1, 0.3, 1),
 } as const;
 
-export const Logo = ({ large = false }: { large?: boolean }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: large ? 30 : 16 }}>
-    <Img
-      src={staticFile("lumen-mark.svg")}
-      style={{ width: large ? 104 : 42, height: large ? 104 : 42 }}
-    />
-    <span
-      style={{
-        fontSize: large ? 112 : 44,
-        fontWeight: 600,
-        letterSpacing: large ? -7 : -2,
-      }}
-    >
-      lumen
-    </span>
-  </div>
-);
-
-export function Frame({
-  chapter,
-  number,
-  children,
-  light = false,
-  seconds,
-}: {
-  chapter: string;
-  number: string;
-  children: ReactNode;
-  light?: boolean;
-  seconds: number;
-}) {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const durationInFrames = seconds * fps;
+export function Frame({ children }: { children: ReactNode }) {
   return (
     <AbsoluteFill
       style={{
-        background: light ? C.lime : C.bg,
-        color: light ? C.bg : C.text,
+        background: C.bg,
+        color: C.text,
         fontFamily: "Geist",
         overflow: "hidden",
       }}
     >
-      <style>{"* { box-sizing: border-box; }"}</style>
-      <AbsoluteFill>
-        <div
-          style={{
-            position: "absolute",
-            top: 64,
-            left: 100,
-            right: 100,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <Logo />
-          <div style={{ ...mono, color: light ? C.bg : C.muted }}>
-            {number} / {chapter}
-          </div>
-        </div>
-        <div
-          style={{
-            position: "absolute",
-            left: 100,
-            right: 100,
-            top: 144,
-            borderTop: `1px solid ${light ? "#0c0c0b55" : C.line}`,
-          }}
-        />
-        {children}
-        <div
-          style={{
-            position: "absolute",
-            left: 100,
-            bottom: 34,
-            height: 2,
-            background: light ? C.bg : C.lime,
-            width: interpolate(frame, [0, durationInFrames - 1], [0, 1720], {
-              extrapolateLeft: "clamp",
-              extrapolateRight: "clamp",
-            }),
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            bottom: 55,
-            left: 100,
-            right: 100,
-            display: "flex",
-            justifyContent: "space-between",
-            ...mono,
-            fontSize: 20,
-            color: light ? C.bg : C.muted,
-          }}
-        >
-          <span>YOUR DOCUMENTS. YOUR MODELS.</span>
-          <span>RAG, CONNECTED.</span>
-        </div>
-      </AbsoluteFill>
+      <style>{"* {box-sizing:border-box;}"}</style>
+      {children}
     </AbsoluteFill>
   );
 }

@@ -4,83 +4,131 @@ import {
   useVideoConfig,
   Img,
   staticFile,
+  Easing,
 } from "remotion";
-import { C, Frame, Reveal, Title, mono, ease } from "./design";
+import { C, Frame, ease } from "./design";
+
+// Eight-second logo signature: enter, build the name, reveal the line, exit.
 export const Closing = () => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const exit = interpolate(f, [6.5 * fps, 7.8 * fps], [0, -2100], {
+    ...ease,
+    easing: Easing.bezier(0.65, 0, 0.8, 0.35),
+  });
   return (
-    <Frame chapter="BUILD WITH LUMEN" number="06" seconds={8} light>
-      <div style={{ position: "absolute", left: 100, top: 225, width: 1220 }}>
-        <Reveal>
-          <div style={{ ...mono, marginBottom: 35 }}>
-            LESS WIRING. MORE BUILDING.
-          </div>
-        </Reveal>
-        <Reveal at={0.4}>
-          <Title size={136}>
-            Give your app
-            <br />
-            your knowledge.
-          </Title>
-        </Reveal>
-        <Reveal
-          at={1.5}
-          style={{ fontSize: 39, marginTop: 45, lineHeight: 1.4 }}
-        >
-          Seamless RAG integration.
-          <br />
-          Cheap + expensive model routing.
-          <br />
-          One connected RAG service.
-        </Reveal>
-        <Reveal
-          at={3.4}
-          style={{
-            marginTop: 45,
-            display: "inline-block",
-            padding: "25px 35px",
-            background: C.bg,
-            color: C.text,
-            borderRadius: 100,
-            fontSize: 31,
-          }}
-        >
-          Explore Lumen on GitHub
-        </Reveal>
-        <Reveal
-          at={4}
-          style={{ fontFamily: "Geist Mono", fontSize: 29, marginTop: 27 }}
-        >
-          github.com/Aicyraa/lumen
-        </Reveal>
-      </div>
+    <Frame>
       <div
-        style={{
-          position: "absolute",
-          left: 1420,
-          top: 340,
-          width: 300,
-          height: 330,
-          perspective: 1200,
-        }}
+        style={{ position: "absolute", inset: 0, translate: exit + "px 0px" }}
       >
-        <Img
-          src={staticFile("lumen-mark.svg")}
+        <div
           style={{
-            width: 300,
-            height: 300,
-            background: C.bg,
-            padding: 25,
-            borderRadius: 35,
-            transform:
-              "rotateY(" +
-              interpolate(f, [0, 3 * fps], [100, -15], ease) +
-              "deg) rotateZ(" +
-              Math.sin(f / fps) * 5 +
-              "deg)",
+            position: "absolute",
+            left: 360,
+            top: 320,
+            width: 1200,
+            height: 240,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 48,
           }}
-        />
+        >
+          <Img
+            src={staticFile("lumen-mark.svg")}
+            style={{
+              width: 180,
+              height: 180,
+              translate: interpolate(
+                f,
+                [0.15 * fps, 1.25 * fps],
+                ["1550px 0px", "0px 0px"],
+                ease,
+              ),
+              rotate: interpolate(
+                f,
+                [0.15 * fps, 1.25 * fps],
+                ["12deg", "0deg"],
+                ease,
+              ),
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              fontSize: 200,
+              fontWeight: 500,
+              lineHeight: 1,
+              letterSpacing: -10,
+              overflow: "hidden",
+              height: 240,
+              alignItems: "center",
+            }}
+          >
+            {"lumen".split("").map((letter, i) => (
+              <span
+                key={i}
+                style={{
+                  display: "inline-block",
+                  opacity: interpolate(
+                    f,
+                    [(1.2 + i * 0.38) * fps, (1.8 + i * 0.38) * fps],
+                    [0, 1],
+                    ease,
+                  ),
+                  translate: interpolate(
+                    f,
+                    [(1.2 + i * 0.38) * fps, (1.95 + i * 0.38) * fps],
+                    ["0px 210px", "0px 0px"],
+                    ease,
+                  ),
+                }}
+              >
+                {letter}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div
+          style={{
+            position: "absolute",
+            left: 200,
+            right: 200,
+            top: 625,
+            textAlign: "center",
+            fontSize: 58,
+            fontWeight: 400,
+            letterSpacing: -2,
+            lineHeight: 1.25,
+          }}
+        >
+          {["“Where", "knowledge", "becomes", "an", "answer.”"].map(
+            (word, i) => (
+              <span
+                key={word}
+                style={{
+                  display: "inline-block",
+                  marginRight: 15,
+                  color: i === 4 ? C.lime : C.text,
+                  opacity: interpolate(
+                    f,
+                    [(3.35 + i * 0.12) * fps, (3.95 + i * 0.12) * fps],
+                    [0, 1],
+                    ease,
+                  ),
+                  translate: interpolate(
+                    f,
+                    [(3.35 + i * 0.12) * fps, (4.1 + i * 0.12) * fps],
+                    ["0px 35px", "0px 0px"],
+                    ease,
+                  ),
+                }}
+              >
+                {word}
+              </span>
+            ),
+          )}
+        </div>
       </div>
     </Frame>
   );

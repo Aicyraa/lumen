@@ -6,14 +6,14 @@ export const RagService = () => {
   const { fps } = useVideoConfig();
   const step = Math.min(3, Math.floor(Math.max(0, f / fps - 1) / 2));
   return (
-    <Frame chapter="INSIDE THE RAG SERVICE" number="03" seconds={11}>
+    <Frame>
       <div style={{ position: "absolute", left: 100, top: 220, width: 850 }}>
         <Reveal>
           <Label>THE ENGINE UNDER THE ANSWER</Label>
           <Title size={108}>
-            Your knowledge.
+            The RAG service.
             <br />
-            <span style={{ color: C.lime }}>Put to work.</span>
+            <span style={{ color: C.lime }}>In motion.</span>
           </Title>
         </Reveal>
         <div

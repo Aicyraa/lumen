@@ -6,7 +6,7 @@ export const Opening = () => {
   const { fps } = useVideoConfig();
   const second = f > 3.2 * fps;
   return (
-    <Frame chapter="MEET YOUR CONTEXT LAYER" number="01" seconds={8}>
+    <Frame>
       <div style={{ position: "absolute", left: 100, top: 230, width: 1080 }}>
         <Reveal at={0.2}>
           <Label>YOUR CHATBOT HAS A MISSING PIECE.</Label>
