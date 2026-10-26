@@ -204,6 +204,32 @@ describe("PATCH /api/dashboard/workspaces/:id", () => {
     expect(cleared.body.workspace).toMatchObject({ name: "New name", description: null });
   });
 
+  it("a name-only patch leaves the description as it was", async () => {
+    const u = await ctx.createTenant("ren-name");
+    const w = await create(u, "Old name", "keep me");
+    const res = await as(u).patch(`/workspaces/${w.id}`, { name: "Only name" });
+    expect(res.status).toBe(200);
+    expect(res.body.workspace).toMatchObject({ name: "Only name", description: "keep me" });
+  });
+
+  it("description: null clears the description and keeps the name", async () => {
+    const u = await ctx.createTenant("ren-clear");
+    const w = await create(u, "Stays", "to clear");
+    const res = await as(u).patch(`/workspaces/${w.id}`, { description: null });
+    expect(res.status).toBe(200);
+    expect(res.body.workspace).toMatchObject({ name: "Stays", description: null });
+    const { rows } = await ctx.pool.query(`SELECT metadata FROM organization WHERE id = $1`, [w.id]);
+    expect(rows[0].metadata).toBeNull();
+  });
+
+  it("a description-only patch leaves the name as it was", async () => {
+    const u = await ctx.createTenant("ren-desc");
+    const w = await create(u, "Keep name", "old");
+    const res = await as(u).patch(`/workspaces/${w.id}`, { description: "new text" });
+    expect(res.status).toBe(200);
+    expect(res.body.workspace).toMatchObject({ name: "Keep name", description: "new text" });
+  });
+
   it("lets an admin edit but not a plain member", async () => {
     const u = await ctx.createTenant("roles-owner");
     const w = await create(u, "Team");
