@@ -49,10 +49,6 @@ def close_pool() -> None:
         pool.close()
 
 
-def is_open() -> bool:
-    return _pool is not None
-
-
 def connection(timeout: float | None = None):
     """Context manager: commits on success, rolls back on error, returns the connection to the pool.
     `timeout` overrides how long to wait for a free connection (default: database.pool_timeout_seconds)."""

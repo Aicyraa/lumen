@@ -49,11 +49,11 @@ def test_pool_size_and_timeouts_come_from_config(monkeypatch):
 
 def test_close_pool_releases_it_and_a_later_call_reopens():
     pid()
-    assert db.is_open()
+    assert db._pool is not None
     db.close_pool()
-    assert not db.is_open()
+    assert db._pool is None
     pid()
-    assert db.is_open()
+    assert db._pool is not None
 
 
 def test_connections_have_the_vector_type_registered():
@@ -63,9 +63,9 @@ def test_connections_have_the_vector_type_registered():
 
 
 def test_service_opens_the_pool_at_startup_and_closes_it_at_shutdown(client):
-    assert db.is_open()
+    assert db._pool is not None
     client.__exit__(None, None, None)  # run shutdown while the fixture still holds the client
-    assert not db.is_open()
+    assert db._pool is None
     client.__enter__()  # restore for the fixture's own exit
 
 
