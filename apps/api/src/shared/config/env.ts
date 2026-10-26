@@ -1,9 +1,12 @@
 import { fileURLToPath } from "node:url";
-import dotenv from "dotenv";
 
-// Real variables win over the file; a missing file is fine (production sets them in the environment).
+// Real variables win over the file (loadEnvFile never overrides); a missing file is fine (production sets them in the environment).
 export function loadEnvFile(path: string) {
-  dotenv.config({ path, quiet: true });
+  try {
+    process.loadEnvFile(path);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+  }
 }
 
 // apps/api/.env only.
