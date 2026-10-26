@@ -1,59 +1,28 @@
-import { act, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Reveal } from "../../../src/shared/motion/motion";
 import { useInView } from "../../../src/shared/motion/useInViewOnce";
+import { fire, installFakeIntersectionObserver, observers } from "./fakeIntersectionObserver";
 
-let observers: {
-  cb: IntersectionObserverCallback;
-  el?: Element;
-  opts?: IntersectionObserverInit;
-  disconnect: () => void;
-}[] = [];
-const original = window.IntersectionObserver;
 const originalMatch = window.matchMedia;
+let restore: () => void;
 beforeEach(() => {
-  observers = [];
-  class IO {
-    el?: Element;
-    disconnect = vi.fn();
-    constructor(
-      public cb: IntersectionObserverCallback,
-      public opts?: IntersectionObserverInit,
-    ) {
-      observers.push(this as never);
-    }
-    observe(el: Element) {
-      this.el = el;
-    }
-    unobserve() {}
-    takeRecords() {
-      return [];
-    }
-  }
-  (window as unknown as { IntersectionObserver: unknown }).IntersectionObserver = IO;
+  restore = installFakeIntersectionObserver();
 });
 afterEach(() => {
-  window.IntersectionObserver = original;
+  restore();
   window.matchMedia = originalMatch;
 });
-const fire = (isIntersecting: boolean, intersectionRatio: number) =>
-  act(() => {
-    const o = observers[observers.length - 1];
-    o.cb(
-      [{ isIntersecting, intersectionRatio, target: o.el! } as IntersectionObserverEntry],
-      o as never,
-    );
-  });
 
-function Probe({ replay }: { replay: boolean }) {
-  const [ref, state] = useInView<HTMLDivElement>({ replay });
+function Probe() {
+  const [ref, state] = useInView<HTMLDivElement>();
   return <div ref={ref} data-testid="p" data-state={state} />;
 }
 const state = () => screen.getByTestId("p").getAttribute("data-state");
 
-describe("useInView with replay", () => {
+describe("useInView", () => {
   it("starts idle, goes in when well inside the viewport, out when fully outside, and in again", () => {
-    render(<Probe replay />);
+    render(<Probe />);
     expect(state()).toBe("idle");
     fire(false, 0);
     expect(state()).toBe("out");
@@ -66,7 +35,7 @@ describe("useInView with replay", () => {
   });
 
   it("does not flicker at the edges: a sliver does not switch it in, and it stays in until fully gone", () => {
-    render(<Probe replay />);
+    render(<Probe />);
     fire(false, 0);
     fire(true, 0.04); // a sliver
     expect(state()).toBe("out");
@@ -77,23 +46,15 @@ describe("useInView with replay", () => {
   });
 
   it("observes with several thresholds so the sliver and the fully-gone moments are reported", () => {
-    render(<Probe replay />);
+    render(<Probe />);
     const t = observers[0].opts!.threshold as number[];
     expect(t[0]).toBe(0);
     expect(t.length).toBeGreaterThan(1);
   });
 
-  it("without replay it is the once-only hook: stays in after leaving", () => {
-    render(<Probe replay={false} />);
-    fire(true, 0.5);
-    expect(state()).toBe("in");
-    fire(false, 0);
-    expect(state()).toBe("in");
-  });
-
   it("is simply 'in' when there is no IntersectionObserver (nothing hidden)", () => {
     (window as unknown as { IntersectionObserver?: unknown }).IntersectionObserver = undefined;
-    render(<Probe replay />);
+    render(<Probe />);
     expect(state()).toBe("in");
   });
 });

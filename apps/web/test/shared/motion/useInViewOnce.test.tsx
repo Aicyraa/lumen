@@ -1,31 +1,13 @@
-import { act, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { useInViewOnce } from "../../../src/shared/motion/useInViewOnce";
+import { fire, installFakeIntersectionObserver, observers } from "./fakeIntersectionObserver";
 
-// A controllable IntersectionObserver: the test decides when an element enters the viewport.
-let observers: { cb: IntersectionObserverCallback; el?: Element; disconnect: () => void }[] = [];
-const original = window.IntersectionObserver;
+let restore: () => void;
 beforeEach(() => {
-  observers = [];
-  class IO {
-    el?: Element;
-    disconnect = vi.fn();
-    constructor(public cb: IntersectionObserverCallback) {
-      observers.push(this as never);
-    }
-    observe(el: Element) {
-      this.el = el;
-    }
-    unobserve() {}
-    takeRecords() {
-      return [];
-    }
-  }
-  (window as unknown as { IntersectionObserver: unknown }).IntersectionObserver = IO;
+  restore = installFakeIntersectionObserver();
 });
-afterEach(() => {
-  window.IntersectionObserver = original;
-});
+afterEach(() => restore());
 
 function Probe() {
   const [ref, seen] = useInViewOnce<HTMLDivElement>();
@@ -35,27 +17,21 @@ function Probe() {
     </div>
   );
 }
-const enter = (isIntersecting: boolean) =>
-  act(() => {
-    const o = observers[0];
-    o.cb([{ isIntersecting, target: o.el! } as IntersectionObserverEntry], o as never);
-  });
-
 describe("useInViewOnce", () => {
   it("is false on load, becomes true when the element enters the viewport and stays true", () => {
     render(<Probe />);
     expect(screen.getByTestId("p")).toHaveAttribute("data-seen", "false");
-    enter(false);
+    fire(false);
     expect(screen.getByTestId("p")).toHaveAttribute("data-seen", "false");
-    enter(true);
+    fire(true);
     expect(screen.getByTestId("p")).toHaveAttribute("data-seen", "true");
-    enter(false); // leaving does not undo it: once only
+    fire(false); // leaving does not undo it: once only
     expect(screen.getByTestId("p")).toHaveAttribute("data-seen", "true");
   });
 
   it("stops observing after the first time", () => {
     render(<Probe />);
-    enter(true);
+    fire(true);
     expect(observers[0].disconnect).toHaveBeenCalled();
   });
 
