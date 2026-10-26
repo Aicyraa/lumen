@@ -31,7 +31,7 @@ Run from `apps/rag-service` (or `pnpm --filter @lumen/rag-service <script>`).
 | `dev` | `python -m app.cli dev`: uvicorn with reload on `RAG_PORT` (default 8000); sets `NODE_ENV=development` when it is empty |
 | `serve` | `python -m app.cli serve`: production start, no reload, `RAG_HOST` (default 127.0.0.1), `RAG_PORT`, `RAG_WORKERS` (default 1; each worker loads both models) |
 | `test` | `python -m app.cli test`: pytest; extra args pass through (`pnpm test -- -k router`) |
-| `typecheck` | `ruff check` plus a syntax compile (no type checker) |
+| `typecheck` | a syntax compile (no type checker); `lint` runs `ruff check` |
 | `lint` / `format` | `ruff check` / `ruff format` (line length 100) |
 | `check-env` | lists required variables that are missing or empty; never prints a value |
 | `clean` | removes caches and `__pycache__` |

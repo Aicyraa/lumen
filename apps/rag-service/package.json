@@ -6,7 +6,7 @@
     "build": ".venv/bin/python -m app.cli download-models",
     "dev": ".venv/bin/python -m app.cli dev",
     "test": ".venv/bin/python -m app.cli test",
-    "typecheck": ".venv/bin/ruff check . && .venv/bin/python -m compileall -q app tests",
+    "typecheck": ".venv/bin/python -m compileall -q app tests",
     "lint": ".venv/bin/python -m app.cli lint",
     "format": ".venv/bin/python -m app.cli format",
     "check-env": ".venv/bin/python -m app.cli check-env",
