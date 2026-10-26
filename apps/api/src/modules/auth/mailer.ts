@@ -6,7 +6,6 @@ export interface Mail {
   to: string;
   subject: string;
   text: string;
-  html?: string;
 }
 export type Mailer = (mail: Mail) => Promise<void>;
 type Transport = { sendMail(mail: object): Promise<unknown> };
@@ -40,7 +39,6 @@ export function createMailer({
         to: mail.to,
         subject: mail.subject,
         text: mail.text,
-        html: mail.html,
       });
     } catch (err) {
       log.error({ code: (err as { code?: string }).code }, "mail delivery failed");

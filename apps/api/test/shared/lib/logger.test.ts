@@ -1,19 +1,9 @@
-import { Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
-import { createLogger } from "../../../src/shared/lib/logger.js";
+import { captureLog } from "../../helpers/ctx.js";
 
 describe("createLogger redaction", () => {
   it("masks provider keys and secrets wherever the models payload is logged", () => {
-    const lines: string[] = [];
-    const log = createLogger(
-      new Writable({
-        write(c, _e, cb) {
-          lines.push(String(c));
-          cb();
-        },
-      }),
-      "debug",
-    );
+    const { log, lines } = captureLog();
     log.info({ api_key: "sk-top-zqone" }, "a");
     log.info({ models: { cheap: [{ model_id: "m", api_key: "sk-deep-zqtwo" }] } }, "b");
     log.info({ model: { api_key_encrypted: "iv.tag.ct-zqthree", apiKey: "sk-camel-zqfour" } }, "c");
@@ -46,16 +36,7 @@ describe("createLogger redaction", () => {
   });
 
   const capture = () => {
-    const lines: string[] = [];
-    const log = createLogger(
-      new Writable({
-        write(c, _e, cb) {
-          lines.push(String(c));
-          cb();
-        },
-      }),
-      "debug",
-    );
+    const { log, lines } = captureLog();
     return { log, out: () => lines.join("") };
   };
 

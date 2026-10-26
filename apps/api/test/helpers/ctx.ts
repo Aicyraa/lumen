@@ -21,6 +21,21 @@ export interface Tenant {
 }
 export type Ctx = Awaited<ReturnType<typeof makeCtx>>;
 
+// A debug logger that writes into `lines` instead of stdout.
+export function captureLog() {
+  const lines: string[] = [];
+  const log = createLogger(
+    new Writable({
+      write(chunk, _enc, cb) {
+        lines.push(String(chunk));
+        cb();
+      },
+    }),
+    "debug",
+  );
+  return { log, lines };
+}
+
 // `social` replaces the Google/GitHub providers (fake id-token verification, no network) for account-linking tests.
 export async function makeCtx(
   overrides: Partial<Config> = {},
@@ -30,16 +45,7 @@ export async function makeCtx(
   const stub = await startRagStub(base.internalSecret);
   const config = { ...base, ragUrl: stub.url, ...overrides };
   const pool = createPool(config.databaseUrl, config.dbConnectionTimeoutMs);
-  const logLines: string[] = []; // everything the app logs, so tests can prove no key or snippet is in it
-  const log = createLogger(
-    new Writable({
-      write(chunk, _enc, cb) {
-        logLines.push(String(chunk));
-        cb();
-      },
-    }),
-    "debug",
-  );
+  const { log, lines: logLines } = captureLog(); // everything the app logs, so tests can prove no key or snippet is in it
   const mails: Mail[] = []; // every email the app tried to send (a fake transport: nothing leaves the process)
   const mailer = async (mail: Mail) => {
     mails.push(mail);
