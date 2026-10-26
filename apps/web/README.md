@@ -21,7 +21,7 @@ pnpm --filter @lumen/web dev      # http://localhost:5173 (strict port); the API
 
 Reads only `apps/web/.env` (copy `.env.example`); only `VITE_` variables reach the browser. `VITE_API_URL` defaults to
 `http://localhost:3000` in development and is required for a production build (otherwise the app shows a "Missing VITE_API_URL" screen).
-`VITE_API_URL=/` (a single slash) makes it call its own origin; that is how the Vercel deployment works (`vercel.json` proxies `/api` and `/v1` to the API, see `infra/DEPLOY.md`).
+`VITE_API_URL=/` (a single slash) makes it call its own origin; that is how the Vercel deployment works (`vercel.json` proxies `/api` and `/v1` to the API, see `infra/DEPLOY.md`). The `REPLACE-WITH-API-HOST` placeholder in `vercel.json` stays until deploy; `LUMEN_REQUIRE_API_HOST=1 pnpm test` fails while it is still there.
 
 ## Layout
 
