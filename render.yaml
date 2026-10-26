@@ -1,0 +1,79 @@
+# Render Blueprint for Lumen: rag-service (private) + api (public). See infra/DEPLOY.md, section 10.
+# Web stays on Vercel (apps/web/vercel.json proxies /api and /v1 to the api's onrender.com host); Postgres stays on Supabase.
+# Values marked "sync: false" are asked for once, when the Blueprint is first created; afterwards edit them in the dashboard.
+# Never put a secret in this file. Region and plan names: https://render.com/docs/blueprint-spec
+
+envVarGroups:
+  # One generated value, linked into both services with fromGroup, so INTERNAL_SECRET is equal on both sides without copying it.
+  - name: lumen-shared
+    envVars:
+      - key: INTERNAL_SECRET
+        generateValue: true
+
+services:
+  # --- rag-service: no public URL, reachable only from the api over Render's private network ---
+  - type: pserv
+    name: lumen-rag
+    runtime: docker
+    dockerfilePath: ./apps/rag-service/Dockerfile # relative to the repo root, not to the context
+    dockerContext: ./apps/rag-service
+    region: singapore # must equal the api's region; pick the one closest to the Supabase project (lumen: ap-northeast-2, Seoul)
+    plan: 1c-2g # smallest plan that fits the ~0.9 GB peak plus headroom; there is no free private service; 0.5c-512mb would be OOM-killed
+    numInstances: 1
+    autoDeployTrigger: "off"
+    envVars:
+      - fromGroup: lumen-shared
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL # Supabase session pooler, rag spelling: ...?sslmode=require (section 6)
+        sync: false
+
+  # --- api: the only public service ---
+  - type: web
+    name: lumen-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    region: singapore
+    plan: free # 512 MB, spins down after 15 min idle; change to 0.5c-512mb (Starter) for always-on, see infra/DEPLOY.md
+    numInstances: 1 # exactly one: rate limits and background ingests live in memory
+    autoDeployTrigger: "off"
+    healthCheckPath: /api/auth/ok
+    envVars:
+      - fromGroup: lumen-shared
+      - key: NODE_ENV
+        value: production
+      - key: PORT # the image says 3000; Render's default for web services is 10000, so pin it
+        value: "10000"
+      - key: RAG_SERVICE_URL # "host:port" of the private service; the api adds http://
+        fromService:
+          type: pserv
+          name: lumen-rag
+          property: hostport
+      # Two hops (Cloudflare, Render's load balancer) plus Vercel's egress address: see infra/DEPLOY.md, section 4.
+      - key: TRUST_PROXY
+        value: "3"
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: MODEL_KEY_ENCRYPTION_SECRET # exactly 64 hex characters (openssl rand -hex 32); back it up
+        sync: false
+      - key: DATABASE_URL # Supabase session pooler, api spelling: ...?uselibpqcompat=true&sslmode=require if needed (section 6)
+        sync: false
+      - key: BETTER_AUTH_URL # https://NAME.vercel.app
+        sync: false
+      - key: DASHBOARD_ORIGIN # https://NAME.vercel.app, exact, no trailing slash
+        sync: false
+      - key: SMTP_URL
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      # Limits (docs/AI_BUILD_BRIEF.md rule 9: set by the operator, never hard-coded). Edit before the first deploy.
+      - key: MAX_DOCUMENTS_PER_TENANT
+        value: "50"
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "100"
+      - key: MAX_REQUESTS_PER_MONTH
+        value: "10000"
+      - key: MAX_PROJECTS_PER_USER
+        value: "10"
+      # Social sign-in (optional): add GOOGLE_CLIENT_ID/SECRET and GITHUB_CLIENT_ID/SECRET in the dashboard if you use them.

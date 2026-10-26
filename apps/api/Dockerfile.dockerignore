@@ -1,0 +1,20 @@
+# Used with `-f apps/api/Dockerfile` from the repo root (BuildKit and Podman read <Dockerfile>.dockerignore first).
+.git
+**/node_modules
+**/.env
+**/.env.*
+!**/.env.example
+**/uploads
+**/dist
+**/.turbo
+**/.venv
+**/__pycache__
+apps/web
+apps/rag-service
+!apps/web/package.json
+!apps/rag-service/package.json
+tools
+docs
+graphify-out
+.serena
+.claude

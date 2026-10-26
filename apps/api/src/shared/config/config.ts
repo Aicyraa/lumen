@@ -141,7 +141,11 @@ export function loadConfig(
     authUrl: e.BETTER_AUTH_URL,
     dashboardOrigin: e.DASHBOARD_ORIGIN,
     internalSecret: e.INTERNAL_SECRET,
-    ragUrl: e.RAG_SERVICE_URL.replace(/\/$/, ""),
+    // A scheme-less "host:port" (Render's fromService hostport) gets http://; the private network is plain HTTP.
+    ragUrl: (/^https?:\/\//i.test(e.RAG_SERVICE_URL)
+      ? e.RAG_SERVICE_URL
+      : `http://${e.RAG_SERVICE_URL}`
+    ).replace(/\/$/, ""),
     maxDocuments: e.MAX_DOCUMENTS_PER_TENANT,
     ratePerMinute: e.RATE_LIMIT_PER_MINUTE,
     maxRequestsPerMonth: e.MAX_REQUESTS_PER_MONTH,

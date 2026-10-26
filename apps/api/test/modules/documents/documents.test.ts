@@ -34,6 +34,16 @@ async function settle(tenant: Tenant, id: string) {
   }
   throw new Error("still processing");
 }
+// The status flips before the background cleanup (service delete, file removal) finishes, so wait for the effect itself.
+async function until(done: () => boolean | Promise<boolean>) {
+  for (let i = 0; i < 100; i++) {
+    if (await done()) return;
+    await new Promise((r) => setTimeout(r, 40));
+  }
+  throw new Error("condition not reached");
+}
+const uploadCount = () =>
+  existsSync(ctx.config.uploadDir) ? readdirSync(ctx.config.uploadDir).length : 0;
 const clean = () =>
   ctx.pool.query("DELETE FROM documents WHERE tenant_id = ANY($1)", [[a.tenantId, b.tenantId]]);
 
@@ -98,21 +108,27 @@ describe("POST /v1/documents", () => {
       ]);
       return { status: 200, body: { deleted_chunks: 1 } };
     };
+    const filesBefore = uploadCount();
     const res = await upload(a, "slow.txt");
     const final = await settle(a, res.body.document_id);
     expect(final.status).toBe("failed");
-    expect(
-      (await ctx.pool.query("SELECT 1 FROM chunks WHERE document_id = $1", [res.body.document_id]))
-        .rowCount,
-    ).toBe(0);
+    await until(
+      async () =>
+        (
+          await ctx.pool.query("SELECT 1 FROM chunks WHERE document_id = $1", [
+            res.body.document_id,
+          ])
+        ).rowCount === 0,
+    );
+    await until(() => uploadCount() === filesBefore); // its file goes too, before the next test counts files
     ctx.stub.reset();
   });
 
   it("does not leave the uploaded file on disk once ingest has finished", async () => {
-    const before = existsSync(ctx.config.uploadDir) ? readdirSync(ctx.config.uploadDir).length : 0;
+    const before = uploadCount();
     const res = await upload(a, "notes.txt");
     await settle(a, res.body.document_id);
-    expect(readdirSync(ctx.config.uploadDir).length).toBe(before);
+    await until(() => uploadCount() === before);
   });
 
   it("rejects unsupported types with 415 and creates no row", async () => {
