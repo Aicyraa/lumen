@@ -5,7 +5,7 @@ import type { Logger } from "pino";
 export class ApiError extends Error {
   status: number;
   code: string;
-  retryAfterSeconds?: number; // 429 provider_rate_limited only: sent as the Retry-After header and retry_after_seconds
+  retryAfterSeconds?: number; // 429s that say when to retry (provider_rate_limited, upload_rate_limited, ingest_limit): sent as the Retry-After header and retry_after_seconds
   constructor(status: number, code: string, message: string, retryAfterSeconds?: number) {
     super(message);
     this.status = status;
