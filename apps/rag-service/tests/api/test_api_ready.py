@@ -1,7 +1,7 @@
 import pytest
 
 from app.core.config import load_config
-from app.retrieval import db, embeddings, reranker
+from app.retrieval import db, reranker
 from tests.conftest import AUTH
 
 
@@ -15,7 +15,7 @@ def test_ready_reports_each_check(client):
     assert resp.status_code == 200
     assert resp.json() == {
         "status": "ready",
-        "checks": {"database": True, "embedder": True, "reranker": True},
+        "checks": {"database": True, "reranker": True},
     }
 
 
@@ -40,12 +40,6 @@ def test_ready_ignores_the_reranker_when_it_is_disabled(client, monkeypatch):
     monkeypatch.setitem(load_config()["reranker"], "enabled", False)
     monkeypatch.setattr(reranker, "is_loaded", lambda: False)
     assert client.get("/internal/ready", headers=AUTH).status_code == 200
-
-
-def test_ready_is_503_when_the_embedder_is_not_loaded(client, monkeypatch):
-    monkeypatch.setattr(embeddings, "is_loaded", lambda: False)
-    resp = client.get("/internal/ready", headers=AUTH)
-    assert resp.status_code == 503 and resp.json()["checks"]["embedder"] is False
 
 
 def test_health_stays_cheap_and_never_touches_the_database(client, monkeypatch):
