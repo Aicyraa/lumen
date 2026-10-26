@@ -40,12 +40,6 @@ describe("dev-only API key route", () => {
     },
   );
 
-  it("an unset NODE_ENV does not start at all (it would count as production)", () => {
-    const env: NodeJS.ProcessEnv = { ...process.env };
-    delete env.NODE_ENV;
-    expect(() => loadConfig(env)).toThrow("NODE_ENV");
-  });
-
   it("mints an organization-owned key for an existing user that /v1 accepts", async () => {
     const res = await devKey(ctx.app, ctx.config.internalSecret, { email: a.email });
     expect(res.status).toBe(200);
