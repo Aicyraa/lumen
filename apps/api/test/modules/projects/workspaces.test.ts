@@ -158,6 +158,17 @@ describe("POST /api/dashboard/workspaces", () => {
     expect((await as(u).get("/workspaces")).body.workspaces).toHaveLength(4);
   });
 
+  it("an owner who also holds another role (\"owner,admin\") still counts against the cap", async () => {
+    const u = await ctx.createTenant("multirole");
+    for (const n of ["m2", "m3", "m4"]) await create(u, n);
+    await ctx.pool.query(
+      `UPDATE member SET role = 'owner,admin' WHERE "userId" = $1 AND "organizationId" = $2`,
+      [u.userId, u.tenantId],
+    );
+    const res = await as(u).post("/workspaces", { name: "m5" });
+    expect([res.status, res.body.error?.code]).toEqual([422, "project_limit"]);
+  });
+
   it("a project you were only invited to does not count against your cap", async () => {
     const u = await ctx.createTenant("guest");
     const other = await create(b, "shared");
