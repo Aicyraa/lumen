@@ -10,7 +10,7 @@ const fake = (failOn?: string) => {
       calls.push(sql);
       if (sql === failOn) throw new Error(`${sql} failed`);
     },
-    release: () => calls.push("release"),
+    release: (destroy?: boolean) => calls.push(destroy ? "destroy" : "release"),
   };
   const pool = { connect: async () => client } as unknown as Pool;
   return { pool, calls, client: client as unknown as pg.PoolClient };
@@ -47,7 +47,7 @@ describe("withTx", () => {
         throw boom;
       }),
     ).rejects.toBe(boom);
-    expect(calls.filter((c) => c === "release")).toHaveLength(1);
-    expect(calls).toEqual(["BEGIN", "ROLLBACK", "release"]);
+    // released exactly once, and with destroy=true: a connection whose ROLLBACK failed must not go back to the pool
+    expect(calls).toEqual(["BEGIN", "ROLLBACK", "destroy"]);
   });
 });

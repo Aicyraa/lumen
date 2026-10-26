@@ -218,7 +218,9 @@ describe("PATCH /api/dashboard/workspaces/:id", () => {
     const res = await as(u).patch(`/workspaces/${w.id}`, { description: null });
     expect(res.status).toBe(200);
     expect(res.body.workspace).toMatchObject({ name: "Stays", description: null });
-    const { rows } = await ctx.pool.query(`SELECT metadata FROM organization WHERE id = $1`, [w.id]);
+    const { rows } = await ctx.pool.query(`SELECT metadata FROM organization WHERE id = $1`, [
+      w.id,
+    ]);
     expect(rows[0].metadata).toBeNull();
   });
 
