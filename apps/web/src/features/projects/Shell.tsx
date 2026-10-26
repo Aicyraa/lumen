@@ -10,7 +10,7 @@ import { useSignOut } from "../auth/useSignOut";
 import { useProject } from "./projectsContext";
 import { UsageMeters } from "./UsageMeters";
 
-export const TABS = [
+const TABS = [
   ["documents", "Documents"],
   ["keys", "API keys"],
   ["try", "Try it"],

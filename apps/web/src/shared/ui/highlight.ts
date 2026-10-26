@@ -1,5 +1,5 @@
 export type Lang = "text" | "bash" | "js" | "python" | "json" | "http";
-export type Token = { kind?: string; text: string };
+type Token = { kind?: string; text: string };
 
 type Rule = readonly [kind: string, re: RegExp];
 
