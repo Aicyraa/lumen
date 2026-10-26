@@ -2,7 +2,8 @@ import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { C, Frame, Reveal, mono, ease } from "./design";
 export const Response = () => {
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, width, height } = useVideoConfig();
+  const portrait = height > width;
   const reply = "Your knowledge.\nAn answer with evidence.";
   return (
     <Frame>
@@ -10,8 +11,8 @@ export const Response = () => {
         at={0.2}
         style={{
           position: "absolute",
-          left: 120,
-          top: 120,
+          left: portrait ? 90 : 120,
+          top: portrait ? 200 : 120,
           ...mono,
           color: C.lime,
         }}
@@ -21,10 +22,10 @@ export const Response = () => {
       <div
         style={{
           position: "absolute",
-          left: 120,
-          top: 265,
-          width: 1500,
-          fontSize: 112,
+          left: portrait ? 90 : 120,
+          top: portrait ? 330 : 265,
+          width: portrait ? 850 : 1500,
+          fontSize: portrait ? 86 : 112,
           letterSpacing: -5,
           lineHeight: 1.1,
           whiteSpace: "pre-line",
@@ -48,9 +49,13 @@ export const Response = () => {
           [1]
         </span>
       </div>
-      <svg width="1920" height="1080" style={{ position: "absolute" }}>
+      <svg width={width} height={height} style={{ position: "absolute" }}>
         <path
-          d="M1690 430C1810 430 1760 685 1490 710"
+          d={
+            portrait
+              ? "M930 620C1050 790 990 1040 760 1140"
+              : "M1690 430C1810 430 1760 685 1490 710"
+          }
           fill="none"
           stroke={C.lime}
           strokeWidth={2}
@@ -66,14 +71,19 @@ export const Response = () => {
       </svg>
       <Reveal
         at={3.5}
-        style={{ position: "absolute", left: 1130, top: 685, width: 630 }}
+        style={{
+          position: "absolute",
+          left: portrait ? 120 : 1130,
+          top: portrait ? 1140 : 685,
+          width: portrait ? 800 : 630,
+        }}
       >
         <div style={{ ...mono, color: C.lime, fontSize: 25 }}>
           [1] CHECKED EVIDENCE
         </div>
         <div
           style={{
-            fontSize: 32,
+            fontSize: portrait ? 44 : 32,
             lineHeight: 1.4,
             color: C.muted,
             marginTop: 22,
@@ -88,8 +98,8 @@ export const Response = () => {
         at={4.8}
         style={{
           position: "absolute",
-          left: 120,
-          top: 665,
+          left: portrait ? 90 : 120,
+          top: portrait ? 750 : 665,
           fontSize: 48,
           lineHeight: 1.7,
           letterSpacing: -2,
@@ -109,10 +119,11 @@ export const Response = () => {
         at={7}
         style={{
           position: "absolute",
-          left: 120,
-          top: 950,
+          left: portrait ? 90 : 120,
+          top: portrait ? 1450 : 950,
           ...mono,
-          fontSize: 25,
+          fontSize: portrait ? 28 : 25,
+          maxWidth: portrait ? 800 : undefined,
           color: C.muted,
         }}
       >

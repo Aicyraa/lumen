@@ -13,7 +13,9 @@
     "prebuild": "npm run assets",
     "prerender": "npm run assets",
     "prestill": "npm run assets",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "render:mobile": "remotion render src/index.ts LumenPromoMobile out/lumen-promo-instagram.mp4",
+    "prerender:mobile": "npm run assets"
   },
   "repository": {},
   "license": "UNLICENSED",

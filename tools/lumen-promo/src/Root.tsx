@@ -1,5 +1,5 @@
 import { Composition, Folder } from "remotion";
-import { LumenPromo } from "./LumenPromo";
+import { LumenPromo, LumenPromoMobile } from "./LumenPromo";
 import { Opening } from "./Opening";
 import { Integration } from "./Integration";
 import { RagService } from "./RagService";
@@ -17,6 +17,14 @@ export const RemotionRoot: React.FC = () => {
         fps={30}
         width={1920}
         height={1080}
+      />
+      <Composition
+        id="LumenPromoMobile"
+        component={LumenPromoMobile}
+        durationInFrames={1800}
+        fps={30}
+        width={1080}
+        height={1920}
       />
       <Folder name="Scenes">
         <Composition

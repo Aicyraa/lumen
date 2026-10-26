@@ -10,7 +10,8 @@ import { glide } from "./motion";
 // One continuous camera move replaces the four-cell highlight grid.
 export const RagService = () => {
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, width, height } = useVideoConfig();
+  const portrait = height > width;
   const t = f / fps;
   const position = interpolate(
     t,
@@ -31,11 +32,11 @@ export const RagService = () => {
         at={0.15}
         style={{
           position: "absolute",
-          left: 120,
-          top: 100,
+          left: portrait ? 90 : 120,
+          top: portrait ? 210 : 100,
           ...mono,
           color: C.lime,
-          fontSize: 26,
+          fontSize: portrait ? 28 : 26,
         }}
       >
         THE RAG SERVICE
@@ -44,9 +45,11 @@ export const RagService = () => {
         at={0.3}
         style={{
           position: "absolute",
-          left: 120,
-          top: 155,
-          fontSize: 64,
+          left: portrait ? 90 : 120,
+          top: portrait ? 280 : 155,
+          fontSize: portrait ? 76 : 64,
+          width: portrait ? 860 : undefined,
+          lineHeight: portrait ? 1.08 : undefined,
           letterSpacing: -3,
         }}
       >
@@ -55,11 +58,11 @@ export const RagService = () => {
       <div
         style={{
           position: "absolute",
-          left: 460,
-          top: 310,
-          width: 1000,
+          left: portrait ? 90 : 460,
+          top: portrait ? 640 : 310,
+          width: portrait ? 900 : 1000,
           height: 445,
-          translate: -position * 1420 + "px 0px",
+          translate: -position * (portrait ? 1120 : 1420) + "px 0px",
         }}
       >
         {stages.map((name, i) => {
@@ -69,8 +72,8 @@ export const RagService = () => {
               key={name}
               style={{
                 position: "absolute",
-                left: i * 1420,
-                width: 1000,
+                left: i * (portrait ? 1120 : 1420),
+                width: portrait ? 900 : 1000,
                 height: 445,
                 opacity: 0.15 + 0.85 * w,
                 scale: 0.9 + 0.1 * w,
@@ -78,7 +81,7 @@ export const RagService = () => {
             >
               <div
                 style={{
-                  fontSize: 100,
+                  fontSize: portrait ? 110 : 100,
                   fontWeight: 500,
                   letterSpacing: -5,
                   textAlign: "center",
@@ -89,8 +92,8 @@ export const RagService = () => {
                 <span style={{ color: C.lime }}>.</span>
               </div>
               <svg
-                width="1000"
-                height="280"
+                width={portrait ? 900 : 1000}
+                height={portrait ? 400 : 280}
                 viewBox="0 0 1000 280"
                 style={{ marginTop: 35 }}
               >
@@ -196,11 +199,11 @@ export const RagService = () => {
             key={text}
             style={{
               position: "absolute",
-              left: 250,
-              right: 250,
-              top: 825,
+              left: portrait ? 100 : 250,
+              right: portrait ? 120 : 250,
+              top: portrait ? 1300 : 825,
               textAlign: "center",
-              fontSize: 39,
+              fontSize: portrait ? 46 : 39,
               letterSpacing: -1,
               color: C.muted,
               opacity: w,
@@ -214,7 +217,11 @@ export const RagService = () => {
       <svg
         width="460"
         height="12"
-        style={{ position: "absolute", left: 730, top: 958 }}
+        style={{
+          position: "absolute",
+          left: portrait ? 310 : 730,
+          top: portrait ? 1480 : 958,
+        }}
       >
         <path d="M0 6H460" stroke={C.line} strokeWidth="2" />
         <circle cx={10 + position * 146} cy="6" r="5" fill={C.lime} />

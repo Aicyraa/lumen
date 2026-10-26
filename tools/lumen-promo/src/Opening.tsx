@@ -3,15 +3,23 @@ import { C, Frame, Label, Reveal, Title, ease, mono } from "./design";
 import { DocumentRig, Packets } from "./Depth";
 export const Opening = () => {
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, width, height } = useVideoConfig();
+  const portrait = height > width;
 
   return (
     <Frame>
-      <div style={{ position: "absolute", left: 100, top: 230, width: 1080 }}>
+      <div
+        style={{
+          position: "absolute",
+          left: portrait ? 90 : 100,
+          top: portrait ? 220 : 230,
+          width: portrait ? 900 : 1080,
+        }}
+      >
         <Reveal at={0.2}>
           <Label>YOUR CHATBOT HAS A MISSING PIECE.</Label>
         </Reveal>
-        <div style={{ height: 285, position: "relative" }}>
+        <div style={{ height: portrait ? 250 : 285, position: "relative" }}>
           <div
             style={{
               position: "absolute",
@@ -25,7 +33,7 @@ export const Opening = () => {
               ),
             }}
           >
-            <Title size={136}>
+            <Title size={portrait ? 112 : 136}>
               It needs
               <br />
               <span style={{ color: C.lime }}>your context.</span>
@@ -44,7 +52,7 @@ export const Opening = () => {
               ),
             }}
           >
-            <Title size={136}>
+            <Title size={portrait ? 112 : 136}>
               Give it
               <br />
               <span style={{ color: C.lime }}>Lumen.</span>
@@ -54,10 +62,10 @@ export const Opening = () => {
         <Reveal
           at={1.2}
           style={{
-            fontSize: 40,
+            fontSize: portrait ? 44 : 40,
             color: C.muted,
             marginTop: 38,
-            maxWidth: 810,
+            maxWidth: portrait ? 850 : 810,
             lineHeight: 1.3,
           }}
         >
@@ -67,10 +75,26 @@ export const Opening = () => {
           A RAG GATEWAY. YOUR MODELS. ONE API.
         </Reveal>
       </div>
-      <div style={{ position: "absolute", left: 1020, top: 195, scale: 1.08 }}>
+      <div
+        style={{
+          position: "absolute",
+          left: portrait ? 80 : 1020,
+          top: portrait ? 920 : 195,
+          scale: portrait ? 0.9 : 1.08,
+          transformOrigin: portrait ? "top left" : undefined,
+        }}
+      >
         <DocumentRig />
       </div>
-      <div style={{ position: "absolute", left: 100, top: 825 }}>
+      <div
+        style={{
+          position: "absolute",
+          left: portrait ? 90 : 100,
+          top: portrait ? 1600 : 825,
+          scale: portrait ? 0.53 : 1,
+          transformOrigin: "top left",
+        }}
+      >
         <Packets />
       </div>
     </Frame>

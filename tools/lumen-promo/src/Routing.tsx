@@ -3,19 +3,43 @@ import { C, Frame, Reveal, mono } from "./design";
 import { routeFocus } from "./motion";
 export const Routing = () => {
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, width, height } = useVideoConfig();
+  const portrait = height > width;
   const t = f / fps;
-  const paths = [
-    "M960 530C780 530 690 650 420 720",
-    "M960 530C1100 520 1190 640 1460 720",
-    "M960 530V820",
-  ];
+  const paths = portrait
+    ? [
+        "M540 850C430 850 390 1000 260 1050",
+        "M540 850C650 850 700 1000 800 1050",
+        "M540 850V1340",
+      ]
+    : [
+        "M960 530C780 530 690 650 420 720",
+        "M960 530C1100 520 1190 640 1460 720",
+        "M960 530V820",
+      ];
   const questions = [
     "“When does enrollment close?”",
     "“Compare the policies and explain the exceptions.”",
     "“What is outside these documents?”",
   ];
   const point = (p: number, i: number) => {
+    if (portrait) {
+      if (i === 2) return [540, 850 + 490 * p];
+      const a = 1 - p,
+        c1 = i === 0 ? [430, 850] : [650, 850],
+        c2 = i === 0 ? [390, 1000] : [700, 1000],
+        end = i === 0 ? [260, 1050] : [800, 1050];
+      return [
+        a * a * a * 540 +
+          3 * a * a * p * c1[0] +
+          3 * a * p * p * c2[0] +
+          p * p * p * end[0],
+        a * a * a * 850 +
+          3 * a * a * p * c1[1] +
+          3 * a * p * p * c2[1] +
+          p * p * p * end[1],
+      ];
+    }
     if (i === 2) return [960, 530 + 290 * p];
     const a = 1 - p;
     const c1 = i === 0 ? [780, 530] : [1100, 520];
@@ -38,23 +62,24 @@ export const Routing = () => {
         at={0.1}
         style={{
           position: "absolute",
-          top: 100,
-          left: 100,
-          right: 100,
+          top: portrait ? 200 : 100,
+          left: portrait ? 90 : 100,
+          right: portrait ? 120 : 100,
           textAlign: "center",
-          fontSize: 91,
+          fontSize: portrait ? 88 : 91,
           letterSpacing: -5,
         }}
       >
-        One question. <span style={{ color: C.lime }}>The right tier.</span>
+        One question.{portrait ? <br /> : " "}
+        <span style={{ color: C.lime }}>The right tier.</span>
       </Reveal>
       <div
         style={{
           position: "absolute",
           left: 0,
           right: 0,
-          top: 220,
-          height: 110,
+          top: portrait ? 470 : 220,
+          height: portrait ? 170 : 110,
           overflow: "hidden",
         }}
       >
@@ -66,10 +91,10 @@ export const Routing = () => {
               style={{
                 position: "absolute",
                 top: 25,
-                left: 250,
-                right: 250,
+                left: portrait ? 100 : 250,
+                right: portrait ? 140 : 250,
                 textAlign: "center",
-                fontSize: 38,
+                fontSize: portrait ? 44 : 38,
                 color: C.muted,
                 opacity: w,
                 translate:
@@ -81,7 +106,7 @@ export const Routing = () => {
           );
         })}
       </div>
-      <svg width="1920" height="1080" style={{ position: "absolute" }}>
+      <svg width={width} height={height} style={{ position: "absolute" }}>
         {paths.map((d, i) => (
           <path
             key={d}
@@ -96,8 +121,8 @@ export const Routing = () => {
           />
         ))}
         <circle
-          cx="960"
-          cy="530"
+          cx={portrait ? 540 : 960}
+          cy={portrait ? 850 : 530}
           r="102"
           fill={C.bg}
           stroke={C.lime}
@@ -123,8 +148,8 @@ export const Routing = () => {
       <div
         style={{
           position: "absolute",
-          left: 840,
-          top: 510,
+          left: portrait ? 420 : 840,
+          top: portrait ? 830 : 510,
           width: 240,
           textAlign: "center",
           ...mono,
@@ -139,9 +164,9 @@ export const Routing = () => {
             key={name}
             style={{
               position: "absolute",
-              left: [120, 1200, 700][i],
-              top: i === 2 ? 850 : 730,
-              width: i === 2 ? 520 : 600,
+              left: portrait ? [70, 590, 150][i] : [120, 1200, 700][i],
+              top: portrait ? (i === 2 ? 1360 : 1110) : i === 2 ? 850 : 730,
+              width: portrait ? (i === 2 ? 780 : 410) : i === 2 ? 520 : 600,
               textAlign: "center",
               color: interpolateColors(
                 routeFocus(t, i),
@@ -151,10 +176,20 @@ export const Routing = () => {
               scale: 1 + 0.025 * routeFocus(t, i),
             }}
           >
-            <div style={{ fontSize: i === 2 ? 42 : 65, letterSpacing: -3 }}>
+            <div
+              style={{
+                fontSize: portrait ? (i === 2 ? 42 : 52) : i === 2 ? 42 : 65,
+                letterSpacing: -3,
+              }}
+            >
               {name}
             </div>
-            <div style={{ fontSize: i === 2 ? 24 : 27, marginTop: 14 }}>
+            <div
+              style={{
+                fontSize: portrait ? (i === 2 ? 34 : 44) : i === 2 ? 24 : 27,
+                marginTop: 14,
+              }}
+            >
               {
                 [
                   "Straightforward questions",
@@ -170,11 +205,11 @@ export const Routing = () => {
         at={10.5}
         style={{
           position: "absolute",
-          left: 100,
-          right: 100,
-          top: 995,
+          left: portrait ? 90 : 100,
+          right: portrait ? 120 : 100,
+          top: portrait ? 1515 : 995,
           textAlign: "center",
-          fontSize: 24,
+          fontSize: portrait ? 32 : 24,
           color: C.muted,
         }}
       >

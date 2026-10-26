@@ -28,14 +28,15 @@ export function SceneMotion({
   seconds: number;
 }) {
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, width } = useVideoConfig();
+  const drift = (54 * width) / 1920;
   return (
     <AbsoluteFill
       style={{
         translate: interpolate(
           f,
           [0, 0.75 * fps, (seconds - 0.75) * fps, seconds * fps],
-          ["54px 0px", "0px 0px", "0px 0px", "-54px 0px"],
+          [drift + "px 0px", "0px 0px", "0px 0px", -drift + "px 0px"],
           glide,
         ),
         scale: interpolate(

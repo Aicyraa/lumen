@@ -1,6 +1,6 @@
 # Lumen — one-minute product promo
 
-[Watch or download the MP4](exports/lumen-promo.mp4)
+[Landscape MP4](exports/lumen-promo.mp4) · [Instagram / Reels MP4](exports/lumen-promo-instagram.mp4) · [Portrait cover](exports/lumen-promo-instagram-cover.jpg)
 
 ![Lumen promo preview](exports/lumen-promo-poster.jpg)
 
@@ -88,3 +88,28 @@ file decodes successfully with FFmpeg. Exported integration and transition frame
 were checked after rendering.
 
 Focus changes use continuous interpolation: rolling text, color blending, scale and camera movement. Router questions stay mounted and roll through a clipped window; model paths and labels blend together instead of toggling. The logo/name/quote outro is retained.
+
+## Instagram / Reels version
+
+The separate `LumenPromoMobile` composition is 1080 × 1920 (9:16), 30 fps and
+60 seconds. It uses the same six scenes, exact words, timeline, transitions,
+90 BPM stereo music and logo/quote ending. Scene layouts reflow for portrait:
+integration steps stack, the routing diagram is rearranged, the RAG camera
+uses a narrower track, and text wraps at phone-friendly sizes. It is not a crop
+or letterboxed copy. Key copy stays roughly within x=90–990 and y=180–1600 to
+leave room for common Reels overlays; actual Instagram controls vary by device.
+
+Preview: `http://localhost:3100/LumenPromoMobile`. Export:
+
+```sh
+npm run render:mobile -- --browser-executable=/usr/bin/chromium --concurrency=2 --crf=18
+```
+
+The downloadable portrait release is `exports/lumen-promo-instagram.mp4`.
+The landscape release is retained. A representative landscape frame was rendered
+before and after the responsive changes and its PNG checksum matched exactly.
+
+The portrait release uses H.264 / yuv420p / BT.709, stereo AAC at 48 kHz,
+30 fps and fast-start MP4 packaging. The one-minute file was fully decoded for
+validation, and stills from all six scenes were checked for portrait layout.
+Studio preview playback was verified without browser exceptions.

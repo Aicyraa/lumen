@@ -99,3 +99,6 @@ export const LumenPromo = () => {
     </>
   );
 };
+
+// Same timeline and content, with each scene reflowing to the portrait canvas.
+export const LumenPromoMobile = () => <LumenPromo />;
