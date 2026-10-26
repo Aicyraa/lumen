@@ -105,6 +105,12 @@ describe("loadConfig", () => {
     expect(loadConfig({ ...good, INGEST_TIMEOUT_MS: "1234" }).ingestTimeoutMs).toBe(1234);
   });
 
+  it("refuses a numeric override that is not a number, naming the variable", () => {
+    expect(() => loadConfig({ ...good, UPLOAD_MAX_BYTES: "10MB" })).toThrow(
+      "invalid environment variable UPLOAD_MAX_BYTES",
+    );
+  });
+
   it("has the dashboard tunables in config.json and lets the environment override them", () => {
     const c = loadConfig(good);
     expect([c.unansweredScoreBelow, c.unansweredPageSize, c.passageMaxChars]).toEqual([
