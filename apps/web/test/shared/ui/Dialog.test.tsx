@@ -37,4 +37,18 @@ describe("Dialog", () => {
     await user.click(screen.getByRole("button", { name: /Bump/ })); // re-renders the host with a new onClose
     expect(screen.getByRole("button", { name: /Bump 1/ })).toHaveFocus(); // not pulled back to the input by an effect re-run
   });
+
+  it("traps Tab and Shift+Tab inside the dialog", async () => {
+    render(<Host />);
+    const user = userEvent.setup();
+    const [first, last] = [
+      screen.getByLabelText("Name"),
+      screen.getByRole("button", { name: /Bump/ }),
+    ];
+    expect(first).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(last).toHaveFocus(); // wraps from the first to the last
+    await user.tab();
+    expect(first).toHaveFocus(); // and from the last back to the first
+  });
 });

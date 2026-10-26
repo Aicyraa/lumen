@@ -3,7 +3,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { usePageTitle } from "../../shared/lib/usePageTitle";
 import { PublicLayout, SectionLabel } from "../../shared/ui/PublicLayout";
 
-export interface TocItem {
+interface TocItem {
   id: string;
   label: string;
 }

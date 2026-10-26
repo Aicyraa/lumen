@@ -1,10 +1,10 @@
 // Response shapes of the dashboard endpoints (apps/api/README.md).
 export type Range = "7d" | "30d";
-export type Tier = "cheap" | "expensive" | "none";
+type Tier = "cheap" | "expensive" | "none";
 export type ModelTier = "cheap" | "expensive";
 export type Provider = "openai" | "anthropic" | "google" | "openai_compatible";
 
-export interface Meter {
+interface Meter {
   used: number;
   max: number;
 }
@@ -30,7 +30,7 @@ export interface Route {
   difficulty: number;
   top_score: number;
 }
-export interface TrySource {
+interface TrySource {
   document_id: string;
   chunk_id: number;
   score: number;

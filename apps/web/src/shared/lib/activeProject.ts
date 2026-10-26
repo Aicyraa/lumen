@@ -16,6 +16,7 @@ export function setActiveProjectId(id: string) {
   emit();
 }
 
+// projectMismatched and resetProjectMismatch are exported only for tests.
 export const projectMismatched = () => mismatched;
 export function flagProjectMismatch() {
   mismatched = true;

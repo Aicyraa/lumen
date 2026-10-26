@@ -9,7 +9,7 @@ import { StatusMessage } from "../../shared/ui/StatusMessage";
 import { ErrorText, PageHead, StatusDot } from "../../shared/ui/ui";
 import { useOrgId } from "../auth/session";
 
-export const DOC_POLL_MS = 2000;
+const DOC_POLL_MS = 2000;
 
 // Refetch while anything is still processing, a little slower each time (x1.5, up to 5x the base); stop as soon as
 // every document is ready or failed. `attempt` counts the polls so far.

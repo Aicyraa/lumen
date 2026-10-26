@@ -20,18 +20,6 @@ describe("Home layout", () => {
     expect(document.documentElement.classList.contains("snap-home")).toBe(false);
   });
 
-  it("is made of snap sections (hero, what it is, routing, features, quickstart, security, closing)", () => {
-    const { container } = render(
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>,
-    );
-    const sections = Array.from(container.querySelectorAll("main > section"));
-    expect(sections).toHaveLength(7);
-    for (const s of sections) expect(s.classList.contains("snap-section")).toBe(true);
-    expect(sections[0].classList.contains("hero")).toBe(true);
-  });
-
   it("has no empty screenshot placeholder anywhere, and the hero keeps its headline, text and two buttons", () => {
     const { container } = render(
       <MemoryRouter>
@@ -39,21 +27,21 @@ describe("Home layout", () => {
       </MemoryRouter>,
     );
     const hero = container.querySelector("main > section.hero")!;
-    expect(hero.querySelector(".image-slot")).toBeNull();
     expect(hero.querySelector("h1")).not.toBeNull();
     expect(hero.querySelectorAll("a.btn").length).toBe(2);
     expect(container.querySelector(".image-slot")).toBeNull();
   });
 
-  it("section order: hero, what, routing, built in, quickstart, security, closing; no demo", () => {
+  it("is seven snap sections in order: hero, what, routing, built in, quickstart, security, closing; no demo", () => {
     const { container } = render(
       <MemoryRouter>
         <Home />
       </MemoryRouter>,
     );
-    const names = Array.from(container.querySelectorAll("main > section")).map(
-      (s) => s.getAttribute("aria-label") ?? "hero",
-    );
+    const sections = Array.from(container.querySelectorAll("main > section"));
+    for (const s of sections) expect(s).toHaveClass("snap-section");
+    expect(sections[0]).toHaveClass("hero");
+    const names = sections.map((s) => s.getAttribute("aria-label") ?? "hero");
     expect(names).toEqual([
       "hero",
       "What Lumen is",
