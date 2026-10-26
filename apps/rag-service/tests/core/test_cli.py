@@ -71,24 +71,18 @@ def test_no_command_is_an_error(capsys):
     assert exc.value.code == 2
 
 
-def test_dev_uses_rag_port_with_reload(monkeypatch, no_env_file):
+@pytest.mark.parametrize("rag_port, port", [("8123", 8123), (None, 8000)])
+def test_dev_uses_rag_port_with_reload_and_defaults_to_8000(monkeypatch, no_env_file, rag_port, port):
     import uvicorn
 
     seen = {}
     monkeypatch.setattr(uvicorn, "run", lambda app, **kw: seen.update(app=app, **kw))
-    monkeypatch.setenv("RAG_PORT", "8123")
+    if rag_port:
+        monkeypatch.setenv("RAG_PORT", rag_port)
+    else:
+        monkeypatch.delenv("RAG_PORT", raising=False)
     assert cli.main(["dev"]) == 0
-    assert (seen["app"], seen["port"], seen["reload"]) == ("app.main:app", 8123, True)
-
-
-def test_dev_defaults_to_port_8000(monkeypatch, no_env_file):
-    import uvicorn
-
-    seen = {}
-    monkeypatch.setattr(uvicorn, "run", lambda app, **kw: seen.update(kw))
-    monkeypatch.delenv("RAG_PORT", raising=False)
-    cli.main(["dev"])
-    assert seen["port"] == 8000
+    assert (seen["app"], seen["port"], seen["reload"]) == ("app.main:app", port, True)
 
 
 @pytest.mark.parametrize(
@@ -135,32 +129,29 @@ def test_ingest_for_a_tenant_without_a_tenants_row_fails_clearly_and_writes_noth
         assert conn.execute("SELECT count(*) FROM documents").fetchone()[0] == 0
 
 
-def test_serve_runs_without_reload_on_localhost(monkeypatch, no_env_file):
+@pytest.mark.parametrize(
+    "env, port, workers",
+    [({}, 8000, 1), ({"RAG_PORT": "8123", "RAG_WORKERS": "3"}, 8123, 3)],
+)
+def test_serve_runs_without_reload_on_localhost_with_port_and_workers_from_the_environment(
+    monkeypatch, no_env_file, env, port, workers
+):
     import uvicorn
 
     seen = {}
     monkeypatch.setattr(uvicorn, "run", lambda app, **kw: seen.update(app=app, **kw))
     for name in ("RAG_PORT", "RAG_HOST", "RAG_WORKERS"):
         monkeypatch.delenv(name, raising=False)
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
     assert cli.main(["serve"]) == 0
     assert seen == {
         "app": "app.main:app",
         "host": "127.0.0.1",
-        "port": 8000,
-        "workers": 1,
+        "port": port,
+        "workers": workers,
         "reload": False,
     }
-
-
-def test_serve_reads_port_and_workers_from_the_environment(monkeypatch, no_env_file):
-    import uvicorn
-
-    seen = {}
-    monkeypatch.setattr(uvicorn, "run", lambda app, **kw: seen.update(kw))
-    monkeypatch.setenv("RAG_PORT", "8123")
-    monkeypatch.setenv("RAG_WORKERS", "3")
-    cli.main(["serve"])
-    assert (seen["port"], seen["workers"], seen["reload"]) == (8123, 3, False)
 
 
 def test_serve_does_not_set_node_env(monkeypatch, no_env_file):

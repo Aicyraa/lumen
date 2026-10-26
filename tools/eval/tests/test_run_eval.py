@@ -352,7 +352,7 @@ def test_unchanged_answer_is_still_skipped(env):
     assert len(rag.calls) == 3
 
 
-def test_changed_held_out_or_judge_model_reruns(env):
+def test_changed_held_out_reruns(env):
     q, envp, rag, judge, tmp = env
     main(args(env, "--limit", "1"))
     q.write_text(
@@ -363,9 +363,6 @@ def test_changed_held_out_or_judge_model_reruns(env):
     )
     main(args(env, "--limit", "1", "--resume"))
     assert len(rag.calls) == 6
-    envp.write_text(envp.read_text().replace("EVAL_JUDGE_MODEL=jm", "EVAL_JUDGE_MODEL=other-judge"))
-    main(args(env, "--limit", "1", "--resume"))
-    assert len(rag.calls) == 9
 
 
 def test_same_query_for_two_tenants_runs_for_each(env):
@@ -458,18 +455,18 @@ def test_changing_the_grading_rule_version_reruns_only_rule_graded_rows(env, mon
 # ---- the resume key covers what the run depends on; errors are not accuracy ----
 
 
-def test_changed_model_under_test_reruns(env):
+@pytest.mark.parametrize(
+    "old, new",
+    [
+        ("EVAL_MODEL_CHEAP=small", "EVAL_MODEL_CHEAP=small2"),
+        ("EVAL_PROVIDER=openai", "EVAL_PROVIDER=google"),
+        ("EVAL_JUDGE_MODEL=jm", "EVAL_JUDGE_MODEL=other-judge"),
+    ],
+)
+def test_a_changed_model_provider_or_judge_reruns(env, old, new):
     q, envp, rag, judge, tmp = env
     main(args(env, "--limit", "1"))
-    envp.write_text(envp.read_text().replace("EVAL_MODEL_CHEAP=small", "EVAL_MODEL_CHEAP=small2"))
-    main(args(env, "--limit", "1", "--resume"))
-    assert len(rag.calls) == 6
-
-
-def test_changed_provider_reruns(env):
-    q, envp, rag, judge, tmp = env
-    main(args(env, "--limit", "1"))
-    envp.write_text(envp.read_text().replace("EVAL_PROVIDER=openai", "EVAL_PROVIDER=google"))
+    envp.write_text(envp.read_text().replace(old, new))
     main(args(env, "--limit", "1", "--resume"))
     assert len(rag.calls) == 6
 
