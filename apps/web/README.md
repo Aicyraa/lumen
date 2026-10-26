@@ -43,6 +43,6 @@ Tests import source with relative paths (`../../../src/...`). Do not put tests u
 
 ## Icons
 
-`public/favicon.svg` is the single source of the mark; `favicon.ico` (16, 32, 48), `icon-32.png` and `icon-180.png` (apple-touch) are rendered from it,
-and `logo-mark-light.svg` / `logo-mark-dark.svg` are the standalone variants. Every icon link in `index.html` carries `?v=<tag>`: change the tag
+`public/favicon.svg` is the single source of the mark; `favicon.ico` (16, 32, 48), `icon-32.png` and `icon-180.png` (apple-touch) are rendered from it.
+Every icon link in `index.html` carries `?v=<tag>`: change the tag
 whenever the mark changes, because browsers cache favicons by URL for a long time. `test/app/icons.test.ts` checks the links, the files and the ICO.
