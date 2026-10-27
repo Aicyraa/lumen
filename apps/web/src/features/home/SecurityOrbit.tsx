@@ -21,8 +21,9 @@ function lap(f: number) {
 
 // The four guarantees as a list with their icons, and the same icons circling a shield on a flat ellipse. The ring is drawing
 // only (hidden from assistive tech, not interactive); the list carries the text. Each node is one Motion animation of its
-// translate (x and y are hardware accelerated, so the icons glide on the compositor). The animation pauses while the ring is
-// off screen. Without script, or under prefers-reduced-motion, the CSS puts each node at its place on the ring and it stays.
+// x and y (percent keyframes, so Motion writes the transform from script on the main thread, not on the compositor). The
+// animation pauses while the ring is off screen. Without script, or when prefers-reduced-motion is set at mount, the CSS puts
+// each node at its place on the ring and it stays.
 export function SecurityOrbit({
   items,
   icons,
@@ -45,8 +46,9 @@ export function SecurityOrbit({
     const io =
       typeof IntersectionObserver === "undefined"
         ? undefined
-        : new IntersectionObserver(([e]) => {
-            for (const r of runs) e.isIntersecting ? r.play() : r.pause();
+        : new IntersectionObserver((entries) => {
+            const last = entries[entries.length - 1]; // a queued batch can hold several; the newest state wins
+            for (const r of runs) last.isIntersecting ? r.play() : r.pause();
           });
     io?.observe(el);
     return () => {

@@ -58,7 +58,10 @@ describe("SwitchProject", () => {
 
   it("keeps the title out of the description so a screen reader does not say it twice", () => {
     renderWithProviders(<SwitchProject />);
-    expect(screen.getByText("Switch project", { selector: "strong" })).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByText("Switch project", { selector: "strong" })).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
   });
 
   it("Escape dismisses it while the link keeps focus", () => {

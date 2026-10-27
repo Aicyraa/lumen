@@ -86,7 +86,7 @@ export function Analytics() {
                   "—"
                 )
               }
-              note="Weak or no match"
+              note="No match or not found"
             />
           </div>
           <div className="an-row an-row-top">
@@ -248,7 +248,7 @@ export function Analytics() {
             <UnansweredCard
               id="an-not-found"
               title="Not found"
-              hint="A model answered, but found nothing in your documents. These matched loosely, so a document may need rewording or adding."
+              hint="A model answered, but its answer cited no passage from your documents. A document may need rewording or adding."
               empty="Nothing marked not found in this range."
               query={unanswered}
               group={unanswered.data?.not_found}

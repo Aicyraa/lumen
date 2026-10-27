@@ -18,18 +18,15 @@ export function SwitchProject() {
     setOpen(false);
   };
   useEffect(() => () => clearTimeout(timer.current), []);
+  // Escape works wherever focus is while the tip is open (a hover-opened tip leaves focus elsewhere).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
   return (
-    <span
-      className="side-switch"
-      onMouseEnter={show}
-      onMouseLeave={hide}
-      onKeyDown={(e) => {
-        if (e.key === "Escape" && open) {
-          e.stopPropagation();
-          hide();
-        }
-      }}
-    >
+    <span className="side-switch" onMouseEnter={show} onMouseLeave={hide}>
       <Link
         to="/projects"
         className="side-switch-link"
@@ -41,7 +38,7 @@ export function SwitchProject() {
         <LogoMark className="side-mark" />
       </Link>
       <span id={id} role="tooltip" className="side-tip" hidden={!open}>
-        <strong>Switch project</strong>
+        <strong aria-hidden="true">Switch project</strong>
         <span>Open your projects</span>
       </span>
     </span>
