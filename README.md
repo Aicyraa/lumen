@@ -1,8 +1,31 @@
+<div align="center">
+
+<img src="apps/web/public/favicon.svg" alt="Lumen logo" width="88" height="88">
+
 # Lumen
+
+**A multi-tenant RAG gateway that answers only from your documents, and shows its sources.**
+
+[![CI](https://github.com/bruhasu/lumen/actions/workflows/ci.yml/badge.svg)](https://github.com/bruhasu/lumen/actions/workflows/ci.yml)
+![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-0c0c0b?logo=nodedotjs&logoColor=cee654)
+![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-0c0c0b?logo=python&logoColor=cee654)
+![TypeScript](https://img.shields.io/badge/TypeScript-0c0c0b?logo=typescript&logoColor=cee654)
+![Postgres + pgvector](https://img.shields.io/badge/Postgres-pgvector-0c0c0b?logo=postgresql&logoColor=cee654)
+![License: all rights reserved](https://img.shields.io/badge/license-all%20rights%20reserved-0c0c0b)
+
+[How it works](#how-it-works) · [Features](#key-features) · [Quick start](#quick-start) · [Commands](#commands) · [Deployment](#deployment) · [Docs](#documentation)
+
+</div>
+
+---
 
 Lumen is a multi-tenant RAG gateway. A business signs in, uploads documents and gets an API key; its own chatbot then calls a single chat endpoint. Lumen answers only from that business's documents, picks a cheap or an expensive model per question, quotes the passages it used, and says so when the documents do not contain the answer. Every project is an isolated tenant, and the dashboard shows usage, routing and the tenant's estimated provider cost.
 
-## Contents
+> [!NOTE]
+> Phases 0 to 5 are built and the hosted setup runs end to end. See [Status](#status).
+
+<details>
+<summary><b>Contents</b></summary>
 
 - [How it works](#how-it-works)
 - [Key features](#key-features)
@@ -14,6 +37,8 @@ Lumen is a multi-tenant RAG gateway. A business signs in, uploads documents and 
 - [Documentation](#documentation)
 - [Status](#status)
 - [License](#license)
+
+</details>
 
 ## How it works
 
@@ -45,9 +70,13 @@ flowchart LR
 
 The browser and the customer's chatbot talk only to the API. The API handles identity, API keys, limits and logging, then calls the RAG service, which is internal and never public: every `/internal/*` call needs the `X-Internal-Secret` header.
 
-**Upload path.** The API checks the file type, size and the tenant's document limit, stores a document row as `processing` and answers at once. The RAG service extracts the text, splits it into chunks, embeds them (`all-MiniLM-L6-v2`, 384 dimensions) and stores them in pgvector with the `tenant_id`. The API then marks the document `ready` (or `failed`, with a readable reason).
+### Upload path
 
-**Chat path and router.** For each question the service embeds it, checks how well the best chunk matches, and decides which tier answers.
+The API checks the file type, size and the tenant's document limit, stores a document row as `processing` and answers at once. The RAG service extracts the text, splits it into chunks, embeds them (`all-MiniLM-L6-v2`, 384 dimensions) and stores them in pgvector with the `tenant_id`. The API then marks the document `ready` (or `failed`, with a readable reason).
+
+### Chat path and router
+
+For each question the service embeds it, checks how well the best chunk matches, and decides which tier answers.
 
 ```mermaid
 flowchart TD
@@ -70,16 +99,30 @@ Models inside a tier are tried top to bottom. The answer travels back with its r
 
 ## Key features
 
-- **Tenant isolation.** Every query on tenant data filters by `tenant_id`, taken from the session or API key and never from the request body. Another tenant's id behaves like a missing id (`404`). An isolation suite with a negative control checks this (see [Tests](#tests)).
-- **Hybrid retrieval.** Tenant-local BM25 and vector search, fused by rank, then reranked by a local cross-encoder.
-- **Cost-aware routing.** Easy questions go to the tenant's cheap model, hard or uncertain ones to the expensive model; a question the documents cannot answer calls no model at all.
-- **Honest answers.** The model must return exact evidence quotes; the service validates them against the retrieved passages and writes the citations itself.
-- **Bring your own models.** Each tenant adds its own provider models and keys. Keys are encrypted at rest (AES-256-GCM), never returned after saving, and tenant-supplied endpoints are checked against private and metadata addresses.
-- **Dashboard.** Documents, API keys, a Try it box, analytics, a request log with per-request detail, a Models page and usage meters for documents, requests per minute and requests per month.
-- **Accounts and projects.** Email and password with verification, Google and GitHub sign-in without implicit account linking, several projects per user.
-- **No pricing of its own.** Lumen has no prices. A tenant may enter the price per 1M tokens of its own models; the dashboard then shows an "estimated provider cost".
+| Feature | What it means |
+| --- | --- |
+| **Tenant isolation** | Every query on tenant data filters by `tenant_id`, taken from the session or API key and never from the request body. Another tenant's id behaves like a missing id (`404`). An isolation suite with a negative control checks this (see [Tests](#tests)). |
+| **Hybrid retrieval** | Tenant-local BM25 and vector search, fused by rank, then reranked by a local cross-encoder. |
+| **Cost-aware routing** | Easy questions go to the tenant's cheap model, hard or uncertain ones to the expensive model; a question the documents cannot answer calls no model at all. |
+| **Honest answers** | The model must return exact evidence quotes; the service validates them against the retrieved passages and writes the citations itself. |
+| **Bring your own models** | Each tenant adds its own provider models and keys. Keys are encrypted at rest (AES-256-GCM), never returned after saving, and tenant-supplied endpoints are checked against private and metadata addresses. |
+| **Dashboard** | Documents, API keys, a Try it box, analytics, a request log with per-request detail, a Models page and usage meters for documents, requests per minute and requests per month. |
+| **Accounts and projects** | Email and password with verification, Google and GitHub sign-in without implicit account linking, several projects per user. |
+| **No pricing of its own** | Lumen has no prices. A tenant may enter the price per 1M tokens of its own models; the dashboard then shows an "estimated provider cost". |
 
 ## Repository layout
+
+| Path | What lives there | Read more |
+| --- | --- | --- |
+| `apps/api` | Express + Better Auth API (TypeScript), grouped by feature in `src/modules` | [README](apps/api/README.md) |
+| `apps/rag-service` | FastAPI RAG service (Python): api, core, ingest, retrieval, llm | [README](apps/rag-service/README.md) |
+| `apps/web` | React + Vite dashboard and public site, grouped by feature in `src/features` | [README](apps/web/README.md) |
+| `tools/eval` | Tenant isolation suite and router evaluation (Python, standard library only) | [README](tools/eval/README.md) |
+| `infra/sql` | Numbered SQL migrations, applied with `pnpm db:migrate` | [README](infra/sql/README.md) |
+| `scripts` | Repo-level Node helpers behind the root `package.json` scripts | [README](scripts/README.md) |
+
+<details>
+<summary>Full directory tree</summary>
 
 ```text
 lumen/
@@ -107,20 +150,14 @@ lumen/
   skills-lock.json    lock file for the vendored agent skills in .agents/
 ```
 
-Each app keeps its environment file next to it (`apps/api/.env`, `apps/rag-service/.env`, `apps/web/.env`, `infra/.env`); there is no repo-root `.env`.
+</details>
 
-| Path | Read more |
-| --- | --- |
-| `apps/api` | [apps/api/README.md](apps/api/README.md) |
-| `apps/rag-service` | [apps/rag-service/README.md](apps/rag-service/README.md) |
-| `apps/web` | [apps/web/README.md](apps/web/README.md) |
-| `tools/eval` | [tools/eval/README.md](tools/eval/README.md) |
-| `infra/sql` | [infra/sql/README.md](infra/sql/README.md) |
-| `scripts` | [scripts/README.md](scripts/README.md) |
+Each app keeps its environment file next to it (`apps/api/.env`, `apps/rag-service/.env`, `apps/web/.env`, `infra/.env`); there is no repo-root `.env`.
 
 ## Quick start
 
-Local development needs Node.js 22 or newer, pnpm 12 or newer, Python 3.12 or newer, and Podman or Docker for the database.
+> [!TIP]
+> **Prerequisites:** Node.js 22+, pnpm 12+, Python 3.12+, and Podman or Docker for the database.
 
 ```bash
 pnpm bootstrap      # install JS dependencies, create the rag-service .venv, create each app's .env from .env.example
@@ -157,7 +194,8 @@ Apps document their own scripts in `apps/*/README.md`. Python commands go throug
 
 ## Tests
 
-Tests need a test database once: `pnpm db:psql`, then `CREATE DATABASE lumen_test;`.
+> [!NOTE]
+> Tests need a test database once: `pnpm db:psql`, then `CREATE DATABASE lumen_test;`.
 
 ```bash
 pnpm test                                                        # api, rag-service and web, one app at a time
@@ -183,22 +221,31 @@ The intended hosting is free-tier friendly and split across four places:
 | RAG service (`apps/rag-service`) | Your own machine behind a Tailscale Funnel | It needs about 1 GB of RAM, more than Render's free plan. Run `pnpm rag:funnel`; the Funnel publishes `127.0.0.1:8000` at a public HTTPS address that the API calls. The machine must stay on, and `INTERNAL_SECRET` is the only protection on that address, so keep it long, random and out of git |
 | Database | Supabase (Postgres + pgvector) | Use the session pooler (port 5432), not the transaction pooler (6543). Apply the SQL in `infra/sql` once |
 
-Variables an operator must set (names only; set them as the host's secrets, never in git):
+<details>
+<summary><b>Variables an operator must set</b> (names only; set them as the host's secrets, never in git)</summary>
 
 - **API (Render):** `NODE_ENV` (`production`), `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` and `DASHBOARD_ORIGIN` (both the Vercel origin), `INTERNAL_SECRET`, `RAG_SERVICE_URL` (the Funnel address), `MODEL_KEY_ENCRYPTION_SECRET`, `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE`, `MAX_REQUESTS_PER_MONTH`, `MAX_PROJECTS_PER_USER`, `SMTP_URL` and `MAIL_FROM` (required in production), and `TRUST_PROXY` (the number of proxy hops in front of the API). Optional: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`.
 - **Web (Vercel):** `VITE_API_URL`.
 - **RAG service (your machine, `apps/rag-service/.env.funnel`):** `DATABASE_URL` and `INTERNAL_SECRET` (the same value as the API's).
 
-Run exactly one API instance: rate-limit counters, the create-project lock and background ingests are kept in memory. The hosted setup has been run end to end (sign-up with a verification email, upload, and chat through the Funnel). Two limits of the free plans to know:
+</details>
 
-- Render's free web services cannot open outbound SMTP connections on ports 25, 465 or 587, so point `SMTP_URL` at a provider port that is not blocked (for example Brevo on 2525).
-- With `pg`, `sslmode=require` verifies the certificate by default, and the Supabase pooler's chain then fails; add `&uselibpqcompat=true` to the API's `DATABASE_URL`.
+> [!IMPORTANT]
+> Run exactly one API instance: rate-limit counters, the create-project lock and background ingests are kept in memory.
+
+The hosted setup has been run end to end (sign-up with a verification email, upload, and chat through the Funnel).
+
+> [!WARNING]
+> **Two limits of the free plans to know**
+>
+> - Render's free web services cannot open outbound SMTP connections on ports 25, 465 or 587, so point `SMTP_URL` at a provider port that is not blocked (for example Brevo on 2525).
+> - With `pg`, `sslmode=require` verifies the certificate by default, and the Supabase pooler's chain then fails; add `&uselibpqcompat=true` to the API's `DATABASE_URL`.
 
 See [apps/api/README.md](apps/api/README.md), [apps/rag-service/README.md](apps/rag-service/README.md) and [apps/web/README.md](apps/web/README.md) for each service's variables.
 
 ## Documentation
 
-Start at the [documentation index](docs/README.md).
+Start at the **[documentation index](docs/README.md)**.
 
 | Document | What it covers |
 | --- | --- |
@@ -212,7 +259,13 @@ Start at the [documentation index](docs/README.md).
 
 ## Status
 
-Phases 0 to 5 are built: scaffold, RAG core, the Python service, the Express API with Better Auth, tenant models, the dashboard, accounts and projects, a normalized schema, and the isolation suite and evaluation harness. The evaluation results are preliminary: the reference answers were drafted by an agent from the source PDFs and are not yet verified by a human. A trained router classifier (Phase 6) is planned only if the rule-based router proves insufficient, and Lumen's own pricing (Phase 7) is on hold. The project is under active development.
+| Phase | State |
+| --- | --- |
+| 0 to 5: scaffold, RAG core, the Python service, the Express API with Better Auth, tenant models, the dashboard, accounts and projects, a normalized schema, the isolation suite and evaluation harness | Built |
+| 6: trained router classifier | Planned only if the rule-based router proves insufficient |
+| 7: Lumen's own pricing | On hold |
+
+The evaluation results are preliminary: the reference answers were drafted by an agent from the source PDFs and are not yet verified by a human. The project is under active development.
 
 ## License
 
