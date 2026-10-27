@@ -1,17 +1,15 @@
 <div align="center">
 
-<img src="apps/web/public/favicon.svg" alt="Lumen logo" width="88" height="88">
-
-# Lumen
+<h1><img src="apps/web/public/favicon.svg" alt="" width="48" height="48" align="absmiddle">&nbsp;Lumen</h1>
 
 **A multi-tenant RAG gateway that answers only from your documents, and shows its sources.**
 
 [![CI](https://github.com/bruhasu/lumen/actions/workflows/ci.yml/badge.svg)](https://github.com/bruhasu/lumen/actions/workflows/ci.yml)
-![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-0c0c0b?logo=nodedotjs&logoColor=cee654)
-![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-0c0c0b?logo=python&logoColor=cee654)
-![TypeScript](https://img.shields.io/badge/TypeScript-0c0c0b?logo=typescript&logoColor=cee654)
-![Postgres + pgvector](https://img.shields.io/badge/Postgres-pgvector-0c0c0b?logo=postgresql&logoColor=cee654)
-![License: all rights reserved](https://img.shields.io/badge/license-all%20rights%20reserved-0c0c0b)
+![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-cee654?logo=nodedotjs&logoColor=0c0c0b)
+![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-cee654?logo=python&logoColor=0c0c0b)
+![TypeScript](https://img.shields.io/badge/TypeScript-cee654?logo=typescript&logoColor=0c0c0b)
+![Postgres + pgvector](https://img.shields.io/badge/Postgres-pgvector-cee654?logo=postgresql&logoColor=0c0c0b)
+![License: all rights reserved](https://img.shields.io/badge/license-all%20rights%20reserved-6e6e68)
 
 [How it works](#how-it-works) · [Features](#key-features) · [Quick start](#quick-start) · [Commands](#commands) · [Deployment](#deployment) · [Docs](#documentation)
 
@@ -22,7 +20,7 @@
 Lumen is a multi-tenant RAG gateway. A business signs in, uploads documents and gets an API key; its own chatbot then calls a single chat endpoint. Lumen answers only from that business's documents, picks a cheap or an expensive model per question, quotes the passages it used, and says so when the documents do not contain the answer. Every project is an isolated tenant, and the dashboard shows usage, routing and the tenant's estimated provider cost.
 
 > [!NOTE]
-> Phases 0 to 5 are built and the hosted setup runs end to end. See [Status](#status).
+> Phases 0 to 5 are built and the hosted setup runs end to end.
 
 <details>
 <summary><b>Contents</b></summary>
@@ -35,7 +33,6 @@ Lumen is a multi-tenant RAG gateway. A business signs in, uploads documents and 
 - [Tests](#tests)
 - [Deployment](#deployment)
 - [Documentation](#documentation)
-- [Status](#status)
 - [License](#license)
 
 </details>
@@ -256,16 +253,6 @@ Start at the **[documentation index](docs/README.md)**.
 | [docs/lumen-website-ui-mockups/README.md](docs/lumen-website-ui-mockups/README.md) | The exported UI mockups |
 | [docs/NOTES.md](docs/NOTES.md) | Dated project log |
 | [AGENTS.md](AGENTS.md) | Instructions for AI coding agents |
-
-## Status
-
-| Phase | State |
-| --- | --- |
-| 0 to 5: scaffold, RAG core, the Python service, the Express API with Better Auth, tenant models, the dashboard, accounts and projects, a normalized schema, the isolation suite and evaluation harness | Built |
-| 6: trained router classifier | Planned only if the rule-based router proves insufficient |
-| 7: Lumen's own pricing | On hold |
-
-The evaluation results are preliminary: the reference answers were drafted by an agent from the source PDFs and are not yet verified by a human. The project is under active development.
 
 ## License
 
