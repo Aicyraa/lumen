@@ -15,6 +15,7 @@ vi.mock("../../src/shared/lib/auth-client", () => ({
 import { SignIn } from "../../src/features/auth/SignIn";
 import { Docs } from "../../src/features/docs/Docs";
 import { Privacy } from "../../src/features/docs/Privacy";
+import { Terms } from "../../src/features/docs/Terms";
 import { Home } from "../../src/features/home/Home";
 
 const view = (ui: React.ReactElement) =>
@@ -32,6 +33,7 @@ describe("public copy", () => {
     ["Home", <Home />],
     ["Docs", <Docs />],
     ["Privacy", <Privacy />],
+    ["Terms", <Terms />],
     ["SignIn", <SignIn />],
   ])("%s has no retention, savings or pricing copy", (_n, ui) => {
     expect(view(ui as React.ReactElement).textContent).not.toMatch(FORBIDDEN);
@@ -39,6 +41,7 @@ describe("public copy", () => {
   it.each([
     ["Home", <Home />],
     ["Privacy", <Privacy />],
+    ["Terms", <Terms />],
     ["SignIn", <SignIn />],
   ])("%s makes no cost claims", (_n, ui) => {
     expect(view(ui as React.ReactElement).textContent).not.toMatch(NO_MONEY_AT_ALL);
@@ -73,6 +76,7 @@ describe("Home", () => {
     expect(screen.getAllByRole("link", { name: "Sign in" })[0]).toHaveAttribute("href", "/signin");
     expect(screen.getByRole("link", { name: "Read the docs" })).toHaveAttribute("href", "/docs");
     expect(screen.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
+    expect(screen.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms");
     expect(screen.getAllByRole("link", { name: "Docs" }).length).toBeGreaterThan(0);
   });
 
@@ -142,6 +146,7 @@ describe("claims the product can back up", () => {
     ["Home", <Home />],
     ["Docs", <Docs />],
     ["Privacy", <Privacy />],
+    ["Terms", <Terms />],
     ["SignIn", <SignIn />],
   ])("%s hard-codes no megabyte figure (the server enforces the upload limit)", (_n, ui) => {
     expect(view(ui as React.ReactElement).textContent).not.toMatch(/\d+\s*MB/i);
@@ -183,5 +188,37 @@ describe("Privacy", () => {
     expect(text).toMatch(/questions are logged/i);
     expect(text).toMatch(/never written to logs/i);
     expect(text).toMatch(/encrypted/i);
+  });
+});
+
+describe("Terms", () => {
+  it("is a public terms of service with the sections a user needs, in order", () => {
+    const c = view(<Terms />);
+    expect(screen.getByRole("heading", { level: 1, name: "Terms of service" })).toBeInTheDocument();
+    const titles = [...c.querySelectorAll("h2")].map((h) => h.textContent);
+    expect(titles).toEqual([
+      "Using Lumen",
+      "Your content",
+      "Acceptable use",
+      "API keys and model providers",
+      "Limits and availability",
+      "Answers can be wrong",
+      "Suspension and ending",
+      "No warranty and liability",
+      "Changes to these terms",
+    ]);
+  });
+
+  it("matches what the product does: your content stays yours, other workspaces are off limits, keys are private", () => {
+    const text = view(<Terms />).textContent!;
+    expect(text).toMatch(/you keep ownership/i);
+    expect(text).toMatch(/another workspace/i);
+    expect(text).toMatch(/keep (your|the) (api )?keys? (secret|private)/i);
+    expect(text).toMatch(/Privacy/);
+  });
+
+  it("links to the privacy page", () => {
+    view(<Terms />);
+    expect(screen.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
   });
 });

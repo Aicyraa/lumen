@@ -34,6 +34,7 @@ describe("API unreachable", () => {
     ["/", /Answers from your documents/],
     ["/docs", /API reference/],
     ["/privacy", /What Lumen does with your data/],
+    ["/terms", /Terms of service/],
   ])("%s renders fully with no API", async (route, heading) => {
     mount(route);
     expect(await screen.findByRole("heading", { level: 1, name: heading })).toBeInTheDocument();
