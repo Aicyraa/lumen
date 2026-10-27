@@ -26,7 +26,7 @@ def test_header_and_size():
 
 
 def test_agent_drafted_answers_and_the_documented_held_out_rule():
-    """AGENT-DRAFTED, unverified by the human (see DRAFT_ANSWERS_REVIEW.md)."""
+    """AGENT-DRAFTED, unverified by the human (they were drafted from the source PDFs only)."""
     from evalkit.heldout import pick_held_out
 
     rs = rows()

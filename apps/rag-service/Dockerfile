@@ -22,7 +22,7 @@ RUN useradd --create-home --uid 10001 app
 USER app
 
 # RAG_HOST=0.0.0.0 only because inside a container 127.0.0.1 is unreachable from the platform's private network; the CLI default stays
-# 127.0.0.1. Never publish this port to the internet: the host must expose it to the private network only (see infra/DEPLOY.md).
+# 127.0.0.1. Never publish this port to the internet: the host must expose it to the private network only.
 ENV NODE_ENV=production RAG_HOST=0.0.0.0 RAG_PORT=8000 RAG_WORKERS=1 HF_HUB_OFFLINE=1 TOKENIZERS_PARALLELISM=false
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \

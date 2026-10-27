@@ -1,5 +1,5 @@
 // Runs the rag-service for a Tailscale Funnel: production mode, 127.0.0.1 only, settings from apps/rag-service/.env.funnel.
-// `--check` validates the file and exits. Never prints a value. See infra/TAILSCALE.md.
+// `--check` validates the file and exits. Never prints a value.
 import { spawn } from "node:child_process";
 import { lookup } from "node:dns/promises";
 import { existsSync } from "node:fs";
@@ -11,7 +11,7 @@ const file = join(dir, ".env.funnel");
 const python = join(dir, ".venv/bin/python");
 const fail = (msg) => (console.error(`rag-funnel: ${msg}`), process.exit(1));
 
-if (!existsSync(file)) fail("apps/rag-service/.env.funnel is missing. Create it as described in infra/TAILSCALE.md, step 4.");
+if (!existsSync(file)) fail("apps/rag-service/.env.funnel is missing. Create it with two lines, DATABASE_URL=<Supabase session pooler string> and INTERNAL_SECRET=<openssl rand -hex 32>.");
 if (!existsSync(python)) fail("apps/rag-service/.venv is missing. Run `pnpm --filter @lumen/rag-service bootstrap` first.");
 
 const env = parseEnv(file);

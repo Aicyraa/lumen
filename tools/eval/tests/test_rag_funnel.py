@@ -36,6 +36,7 @@ def test_a_complete_file_passes_and_prints_no_value(tmp_path):
 def test_a_missing_file_says_where_to_create_it(tmp_path):
     r = check(tmp_path, None)
     assert r.returncode == 1 and ".env.funnel" in r.stderr
+    assert "DATABASE_URL" in r.stderr and "INTERNAL_SECRET" in r.stderr
 
 
 def test_a_short_secret_is_refused_without_echoing_it(tmp_path):
