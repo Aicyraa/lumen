@@ -84,7 +84,7 @@ The console is only as good as what you log. Log one row per request in a `reque
 | Estimated provider cost per day and per model (tenant-entered prices); savings estimates are on hold | `cost_usd`, `tokens_in`, `tokens_out` | The headline number: what routing saved versus always using the expensive model. Mark it as an estimate. Not built until Phase 7 |
 | Route mix | `model_tier`, `escalated` | How often the cheap path is enough |
 | Latency | `latency_ms` | Median and slow requests |
-| Unanswered questions | Low `top_score` | Tells the owner which documents to add |
+| Unanswered questions | `top_score`, `model_tier`, cited sources | Two sections that tell the owner which documents to add: No match (weak best-match score or no model called) and Not found (a model ran but the answer cited no sources) |
 | Feedback | `feedback` | Where answers disappoint users |
 | Requests (log and detail) | Every column, plus `sources` joined to `documents.filename` | Lets the owner check one answer: which tier, how many tokens, which files it came from (and, from Phase 7, what it cost) |
 | Usage meters | Counts on `documents` and `request_logs`, limits from environment variables | Shows how close the tenant is to its limits |

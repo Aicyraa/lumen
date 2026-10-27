@@ -79,7 +79,7 @@ Browser calls need `credentials: "include"`; CORS allows `DASHBOARD_ORIGIN` with
 | --- | --- |
 | `GET /usage` | `{ documents: {used,max}, requests_per_minute: {used,max}, requests_this_month: {used,max} }`. `max` = `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE`, `MAX_REQUESTS_PER_MONTH`; per-minute `used` is the rate limiter's own counter (shared by `/v1/chat` and `/try`); the month is the calendar month in UTC |
 | `GET /analytics/summary?range=` | see below |
-| `GET /analytics/unanswered?range=` | `{ range, threshold, total, items: [{ id, query, top_score, tier, time }] }`, newest first, at most `unansweredPageSize` items. An item is tier `none` or a best match below `threshold` (`unansweredScoreBelow`) |
+| `GET /analytics/unanswered?range=` | `{ range, threshold, no_match: { total, items: [{ id, query, top_score, tier, time }] }, not_found: { total, items: [{ id, query, top_score, tier, model, difficulty, escalated, time }] } }`. Each list is newest first, at most `unansweredPageSize` items; `total` counts the whole range. The groups never overlap. `no_match`: tier `none` or a best match below `threshold` (`unansweredScoreBelow`). `not_found`: a model ran (tier not `none`), best match at or above `threshold`, `status` ok and no `request_sources` row (the answer cited nothing); a NULL tier or NULL score is never `not_found`. `model` is `{ provider, model_id }` from the request's last `model_calls` attempt, or `null` when it has none |
 | `GET /requests?range=&tier=all\|cheap\|expensive\|none&limit=&cursor=` | `{ items: [{ id, time, query, tier, k, escalated, latency_ms, tokens_in, tokens_out, cost_usd, status }], next_cursor }`. Newest first; `limit` defaults to `requestsPageSizeDefault` and is capped at `requestsPageSizeMax`; pass `next_cursor` back as `cursor` (`null` = last page). A failed call (provider error) has `tier: null`, shown under `all` only |
 | `GET /requests/:id` | see below |
 | `POST /feedback` `{ request_id, rating: 1 \| -1 }` | `204`; for the Try it "Helpful?" buttons (`request_id` is the `request_id` of the try response). `404` for another tenant's request |
@@ -133,7 +133,7 @@ when the request was logged are stored as unknown (`null`) the same way. Tokens 
 
 Config keys added to `config.json` (each can be overridden by an upper-snake env var, e.g. `UNANSWERED_SCORE_BELOW`):
 `passageMaxChars` (300), `unansweredScoreBelow` (0.3, the same value as the Python router's `weak_score`),
-`unansweredPageSize` (50). Existing: `requestsPageSizeDefault` (50), `requestsPageSizeMax` (200).
+`unansweredPageSize` (50, per list). Existing: `requestsPageSizeDefault` (50), `requestsPageSizeMax` (200).
 
 ### API keys (Better Auth client, no custom routes)
 

@@ -332,7 +332,7 @@ All errors use one shape: `{ "error": { "code": "<snake_case>", "message": "<hum
 | `POST /api/dashboard/documents` | Upload, same rules as `POST /v1/documents` |
 | `DELETE /api/dashboard/documents/:id` | Delete a document and its chunks |
 | `GET /api/dashboard/analytics/summary?range=7d` | Requests, route mix, latency (`range` is `7d` or `30d`). Phase 7 adds cost and estimated savings |
-| `GET /api/dashboard/analytics/unanswered?range=7d` | Questions with a low best-match score |
+| `GET /api/dashboard/analytics/unanswered?range=7d` | Questions the documents did not answer, in two lists: `no_match` (no model was called, or the best-match score is below `UNANSWERED_SCORE_BELOW`) and `not_found` (a model ran on a match at or above the threshold but the answer cited no sources; each item also carries the model that answered, `difficulty` and `escalated`). Each list has `total` and `items`, newest first |
 | `POST /api/dashboard/try` | The "Try it" box, same as `/v1/chat` without an API key, except each source also carries `filename` and a `snippet` (about 200 characters of the chunk). Snippets are returned live to the owner and are never stored or logged; `/v1/chat` keeps ids and scores only |
 | `GET /api/dashboard/requests?range=7d&tier=all&limit=...&cursor=...` | The request log, newest first. `range` is `7d` or `30d`, `tier` is `all`, `cheap`, `expensive` or `none`. Page size and its maximum come from config |
 | `GET /api/dashboard/requests/:id` | One request: query, route, usage, feedback and sources (with `filename` joined from `documents`). Another tenant's id returns `404 not_found` |
@@ -566,7 +566,7 @@ Do Phase 4 only. Build the React dashboard in apps/web/ per sections 4 and 6.
 - An API keys page using the API key plugin's client methods: create (show the key once), list, revoke.
 - A Documents page: upload, status polling until ready or failed, delete.
 - A Try it box calling POST /api/dashboard/try that shows the answer, sources and route.
-- An Analytics page: requests per day, route mix, median latency, and the unanswered-questions list, all from the dashboard analytics endpoints.
+- An Analytics page: requests per day, route mix, median latency, and the unanswered-questions lists (No match and Not found), all from the dashboard analytics endpoints.
 - A Requests page: the request log from GET /api/dashboard/requests with a tier filter, and a detail view per request from GET /api/dashboard/requests/:id showing route, usage and sources with filenames.
 - Usage meters in the sidebar (documents, requests per minute, requests this month) from GET /api/dashboard/usage. The limits come from config, never from the front end.
 - A public Docs page at /docs (quickstart, authentication with the x-api-key header, the POST /v1/chat and document endpoints with request and response examples, error codes) and a Privacy page at /privacy, both linked from the home page hero ("Read the docs") and footer, in the same design. Write them from the real contracts in section 6; the Privacy page may only state what the product does (queries are logged for analytics, full document text is never logged, provider keys are stored encrypted) and must not promise a retention period.
