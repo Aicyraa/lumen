@@ -1,5 +1,41 @@
 # AI build brief
 
+> **Purpose:** the authoritative product brief that coding agents receive one phase at a time: mission, hard rules, stack, contracts, router rules, and the phase prompts with their acceptance checks.
+>
+> **Audience:** the project owner and the AI coding agents that build Lumen.
+>
+> **Status:** authoritative. If another file disagrees, this one wins. Agents cite its section numbers (for example "hard rules, section 2"), so sections are not renumbered.
+
+## Contents
+
+- [How to use this brief (for you, not the AI)](#how-to-use-this-brief-for-you-not-the-ai)
+- [1. Mission and context](#1-mission-and-context)
+- [2. Hard rules](#2-hard-rules)
+- [3. Stack, repo layout and environment variables](#3-stack-repo-layout-and-environment-variables)
+- [4. Better Auth setup (reference)](#4-better-auth-setup-reference)
+- [5. Database schema](#5-database-schema)
+- [6. API contracts](#6-api-contracts)
+- [7. Router rules and answer prompt](#7-router-rules-and-answer-prompt)
+- [8. Phases 0 to 3](#8-phases-0-to-3)
+  - [Phase 0: scaffold](#phase-0-scaffold)
+  - [Phase 1: RAG core](#phase-1-rag-core)
+  - [Phase 2: the Python service](#phase-2-the-python-service)
+  - [Phase R: folder structure refactor (extra phase, done between Phase 2 and Phase 3)](#phase-r-folder-structure-refactor-extra-phase-done-between-phase-2-and-phase-3)
+  - [Phase 3: Express API and Better Auth](#phase-3-express-api-and-better-auth)
+- [9. Phases 4 to 7 and the report format](#9-phases-4-to-7-and-the-report-format)
+  - [Phase 3B: tenant models (backend; added 2026-10-23 from docs/WEBSITE.md)](#phase-3b-tenant-models-backend-added-2026-10-23-from-docswebsitemd)
+  - [Phase 4: dashboard](#phase-4-dashboard)
+  - [Phase 4B: accounts, projects and website polish (extra phase, added 2026-10-24 after the first manual test)](#phase-4b-accounts-projects-and-website-polish-extra-phase-added-2026-10-24-after-the-first-manual-test)
+  - [Phase R2: codebase restructure for scalability and maintainability (extra phase, 2026-10-24; goal: easy to grow and maintain)](#phase-r2-codebase-restructure-for-scalability-and-maintainability-extra-phase-2026-10-24-goal-easy-to-grow-and-maintain)
+  - [Phase DB: normalized schema (extra phase, after R2)](#phase-db-normalized-schema-extra-phase-after-r2)
+  - [Phase 4C: UI tweaks (extra phase, after DB; the human's 13 tweaks of 2026-10-24)](#phase-4c-ui-tweaks-extra-phase-after-db-the-humans-13-tweaks-of-2026-10-24)
+  - [Phase 4E: third round of UI tweaks and removal of the fallback model (2026-10-24)](#phase-4e-third-round-of-ui-tweaks-and-removal-of-the-fallback-model-2026-10-24)
+  - [Phase 5: isolation suite and evaluation](#phase-5-isolation-suite-and-evaluation)
+  - [Phase 6: classifier (only if needed)](#phase-6-classifier-only-if-needed)
+  - [Phase 7: pricing (reconsidering; not planned for now)](#phase-7-pricing-reconsidering-not-planned-for-now)
+  - [Report format for every phase](#report-format-for-every-phase)
+- [10. Tools that help](#10-tools-that-help)
+
 Paste this tab into your repo as `AGENTS.md` or `CLAUDE.md`, then give an AI coding agent one phase at a time.
 
 ## How to use this brief (for you, not the AI)
@@ -669,7 +705,7 @@ Order: api-engineer (account endpoint, small), then web-engineer. Work lands in 
 - Analytics: redesign the layout so it reads cleanly (a stat row, a requests chart card, a route mix card, then unanswered questions and by-model as cards in a consistent grid, with aligned headings, consistent spacing and proper empty states); no overlapping or stretched blocks at 1366x768, 1440x900 and tablet.
 - Models: redesign the layout (tier cards for Cheap, Expensive and Fallback with model rows, status, usage and limits aligned in columns) and make Add model a modal dialog (focus trap, Escape, key field write-only as today).
 - Account page: add useful data: name, email and verification, member since, sign-in methods with when each was linked, projects owned versus the allowed maximum, totals across the user's projects (documents, requests this month, API keys, models), and sign out. Data comes from a new `GET /api/dashboard/account` (session only, no active project needed) that returns only the caller's own data: `{ user: { name, email, email_verified, image, created_at }, providers: [{ provider, linked_at }], projects: { owned, max }, totals: { documents, requests_this_month, api_keys, models } }`.
-- Logo: recreate the supplied mark (`/tmp/claude-1000/-home-jee-Desktop-Code-Projects-lumen/14037824-13f9-4a53-932e-885450f2007b/images/12.png`: a lime rounded document shape with its lower-left corner heavily rounded and three dark horizontal bars of different lengths, shown on dark, on light and as a favicon) as a hand-written SVG that stays crisp at any size, with a light and a dark variant, used for the in-app logo, the sign-in page and the favicon (`favicon.svg`, plus a PNG fallback and an apple-touch icon rendered from the SVG).
+- Logo: recreate the supplied mark (`12.png`: a lime rounded document shape with its lower-left corner heavily rounded and three dark horizontal bars of different lengths, shown on dark, on light and as a favicon) as a hand-written SVG that stays crisp at any size, with a light and a dark variant, used for the in-app logo, the sign-in page and the favicon (`favicon.svg`, plus a PNG fallback and an apple-touch icon rendered from the SVG).
 
 ### Phase 4E: third round of UI tweaks and removal of the fallback model (2026-10-24)
 
@@ -681,7 +717,7 @@ Order: api-engineer (tier removal, migration 010), rag-engineer (service), then 
 
 ### Phase 5: isolation suite and evaluation
 
-The fake customer test website is out of scope (outside work). Order: rag-engineer (`force_tier`, small), then eval-engineer (everything in `tools/eval/`). Branch `phase-5-eval` in the worktree `/home/jee/Desktop/Code/Projects/lumen-p5` (another agent, Codex, works in the main checkout).
+The fake customer test website is out of scope (outside work). Order: rag-engineer (`force_tier`, small), then eval-engineer (everything in `tools/eval/`). Branch `phase-5-eval` in the worktree `../lumen-p5` (another agent, Codex, works in the main checkout).
 
 **Design (decided 2026-10-24).**
 - `force_tier` (rag-service): optional `force_tier: "cheap" | "expensive"` in the `/internal/query` body, internal only (Express never forwards it). It replaces the router's tier choice (k follows the forced tier), keeps retrieval, validation and the no-answer rules, reports `route.escalated: false`, and an invalid value is `422 invalid_request`.

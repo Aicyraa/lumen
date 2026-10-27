@@ -1,8 +1,34 @@
 # Project workflow
 
+> **Purpose:** supporting workflow context: how upload and chat flow through the system, auth and sessions, analytics, the tech stack, model and hosting choices, the setup stage, the build phases and the security checklist.
+>
+> **Audience:** the project owner and the AI coding agents.
+>
+> **Status:** supporting. `AI_BUILD_BRIEF.md` wins where they disagree.
+
+## Contents
+
+- [System overview](#system-overview)
+- [Upload and chat, end to end](#upload-and-chat-end-to-end)
+- [Onboarding and document upload flow](#onboarding-and-document-upload-flow)
+- [Auth and sessions](#auth-and-sessions)
+- [Analytics console](#analytics-console)
+- [Tech stack: development and production](#tech-stack-development-and-production)
+- [Models and hosting choices](#models-and-hosting-choices)
+- [Project flow](#project-flow)
+- [Security and isolation checklist](#security-and-isolation-checklist)
+
 ## System overview
 
-&#91;embedded content: system overview · 6 components\]
+```mermaid
+flowchart LR
+  dash[Dashboard] --> api[Express API]
+  bot[Customer chatbot] --> api
+  api --> rag[Python RAG service]
+  api --> db[(Postgres + pgvector)]
+  rag --> db
+  rag --> llm[Model providers]
+```
 
 The dashboard and the customer's chatbot both talk only to Express. Express handles identity, keys, limits and logging, then calls the Python service, which owns chunking, embeddings, retrieval, routing and the model calls. Postgres holds both the platform tables and the vectors, and every vector row carries a `tenant_id`.
 
@@ -10,21 +36,49 @@ The dashboard and the customer's chatbot both talk only to Express. Express hand
 
 ### Upload journey
 
-&#91;embedded content: upload journey · 6 steps\]
+```mermaid
+flowchart LR
+  A[Owner uploads a file] --> B[Express checks it, saves it, marks it processing]
+  B --> C[Python extracts the text]
+  C --> D[Python splits it into chunks and embeds them]
+  D --> E[Chunks stored in pgvector with tenant_id]
+  E --> F[Express marks the document ready]
+```
 
 Express checks the file and answers right away. Python does the slow work (extract the text, split it into chunks, turn each chunk into numbers, store them), and Express marks the document `ready` when Python finishes.
 
 ### Chat journey
 
-&#91;embedded content: chat journey · 7 steps\]
+```mermaid
+flowchart LR
+  A[Chatbot sends a question with its API key] --> B[Express checks key and limits]
+  B --> C[Router picks tier and k]
+  C --> D[BM25 + vector search, fused and reranked]
+  D --> E[Chosen model answers with quotes]
+  E --> F[Quotes validated, citations written]
+  F --> G[Answer with route and estimated provider cost]
+```
 
 The router first checks how well the best chunk matches the question (a strong keyword match can rescue a weak one), then decides the model tier and how many chunks (`k`) to fetch. Python finds candidates with keyword (BM25) and vector search fused by rank, reranks them with a local cross-encoder, sends the best passages to the chosen model, checks that every claim in the model's answer is backed by an exact quote from a passage, and writes the `[1]` citations itself. The answer travels back with its route and the tenant's estimated provider cost.
 
 ### How a document is stored in the vector database
 
-&#91;embedded content: how a document is stored · 2 tables, example values\]
+```mermaid
+erDiagram
+  documents ||--o{ chunks : "has (cascade delete)"
+  documents {
+    text tenant_id
+    text filename
+    text status
+  }
+  chunks {
+    text tenant_id
+    text content
+    vector embedding "VECTOR(384)"
+  }
+```
 
-The values shown are examples. In the database:
+In the database:
 
 - The file itself is not stored as a vector. Its text is cut into chunks, and each chunk becomes one row in `chunks`.
 - Each `chunks` row holds three things: the chunk's text (`content`), its meaning as a list of numbers (`embedding`), and the owner (`tenant_id`).

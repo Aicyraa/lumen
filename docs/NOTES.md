@@ -1,5 +1,42 @@
 # Notes
 
+> **Purpose:** a dated log of decisions, phase results, reviews and ideas that are noted but not planned.
+>
+> **Audience:** the project owner, the lead agent and reviewers.
+>
+> **Status:** living log, one section per date or phase, newest at the bottom. It records what happened; it is not a specification.
+
+## Contents
+
+- [2026-10-23](#2026-10-23)
+- [2026-10-23 Phase 1 (RAG core)](#2026-10-23-phase-1-rag-core)
+- [2026-10-23 Phase 2 (Python service)](#2026-10-23-phase-2-python-service)
+- [2026-10-23 Phase R (folder structure refactor, extra phase)](#2026-10-23-phase-r-folder-structure-refactor-extra-phase)
+- [2026-10-23 Phase 3 (Express API + Better Auth)](#2026-10-23-phase-3-express-api--better-auth)
+- [2026-10-23 Alignment with docs/WEBSITE.md](#2026-10-23-alignment-with-docswebsitemd)
+- [2026-10-23 Phase 3B (tenant models)](#2026-10-23-phase-3b-tenant-models)
+- [2026-10-23 Phase 4 prep](#2026-10-23-phase-4-prep)
+- [2026-10-24 Phase 4 (dashboard and website)](#2026-10-24-phase-4-dashboard-and-website)
+- [2026-10-24 Phase 4B planned (accounts, projects, website polish)](#2026-10-24-phase-4b-planned-accounts-projects-website-polish)
+- [2026-10-24 Phase 4B (accounts, projects, website polish) results](#2026-10-24-phase-4b-accounts-projects-website-polish-results)
+- [2026-10-24 Round 3 requests (UI tweaks, database, codebase)](#2026-10-24-round-3-requests-ui-tweaks-database-codebase)
+- [2026-10-24 Phase R2 (codebase restructure) results](#2026-10-24-phase-r2-codebase-restructure-results)
+- [2026-10-24 Phase DB planning](#2026-10-24-phase-db-planning)
+- [2026-10-24 Phase DB results](#2026-10-24-phase-db-results)
+- [2026-10-24 Phase 4C (UI tweaks) results](#2026-10-24-phase-4c-ui-tweaks-results)
+- [2026-10-24 Phase 4D (second round of UI tweaks)](#2026-10-24-phase-4d-second-round-of-ui-tweaks)
+- [2026-10-24 Phase 4E (fallback removed, third round of UI tweaks)](#2026-10-24-phase-4e-fallback-removed-third-round-of-ui-tweaks)
+- [2026-10-24 RAG quality adjustment (five uploaded synthetic PDFs)](#2026-10-24-rag-quality-adjustment-five-uploaded-synthetic-pdfs)
+- [2026-10-24 BM25, reranker and known answer-quality fixes](#2026-10-24-bm25-reranker-and-known-answer-quality-fixes)
+- [2026-10-24 Integration of codex_rag (branch `integrate-codex-rag`, worktree ../lumen-integration)](#2026-10-24-integration-of-codex_rag-branch-integrate-codex-rag-worktree-lumen-integration)
+- [2026-10-24 Phase 5 (isolation suite and evaluation harness) results](#2026-10-24-phase-5-isolation-suite-and-evaluation-harness-results)
+- [2026-10-25 Provider rate limits (branch `fix-rate-limit`, worktree ../lumen-rl)](#2026-10-25-provider-rate-limits-branch-fix-rate-limit-worktree-lumen-rl)
+- [2026-10-25 Evaluation reference review and not-found sources](#2026-10-25-evaluation-reference-review-and-not-found-sources)
+- [2026-10-25 Polish audit (branch `polish-audit`, worktree ../lumen-polish)](#2026-10-25-polish-audit-branch-polish-audit-worktree-lumen-polish)
+- [2026-10-26 Groq evaluation continuation](#2026-10-26-groq-evaluation-continuation)
+- [2026-10-26 Groq evaluation completed](#2026-10-26-groq-evaluation-completed)
+- [2026-10-27 Ideas noted, not planned](#2026-10-27-ideas-noted-not-planned)
+
 ## 2026-10-23
 
 - Phase 0 scaffold created: folders, docker-compose.yml, .env.example, infra/sql/001_app_tables.sql, README.
@@ -149,7 +186,7 @@
 - Logic: the fallback tier/model is removed. API (tier type cheap|expensive, POST rejects 'fallback', models list `{ cheap, expensive }`, no `fallback_uses`, migration 010 deletes fallback tenant_models rows and restricts the tier check; model_calls.tier keeps 'fallback' for history only), rag-service (plan_models: chosen tier top to bottom, empty tier uses the other, whole tier fails -> 502 with attempts, stray `fallback` key ignored), web (two tier cards, no fallback copy). Counts: api 395, rag-service 169, web 280. Migration 010 is applied to the local dev database only; NOT yet applied to Supabase (human to approve).
 - UI (web, in a git worktree because Codex works in the main checkout on `codex_rag`): sidebar (logo + Projects icon, plain project label, full-width Sign out, dropdown and brand footer removed), three-line logo, favicon fix (cause: same URLs with no cache-busting, /favicon.ico 404; now ?v=4e, real favicon.ico, new file names), Docs/Privacy full-height layout with only the content region scrolling, Home (section 02 rescaled, Demo removed, Built in 05, Quickstart 06, Security 07, interactive routing diagram with four scenarios, replayable enter/leave animations), edge labels on chips, entrance <= 0.56 s.
 - Reviewer: no critical/high; fixed label overlap, entrance timing, docs anchor offsets for the inner scroller, duplicate CSS, brief and guide leftovers. Not run: Google/GitHub, other browsers, touch.
-- Process: two agents share the repository: Codex on branch `codex_rag` in /home/jee/Desktop/Code/Projects/lumen (docs/ is in its .gitignore only), UI work in the worktree /home/jee/Desktop/Code/Projects/lumen-ui on phase-4e-ui-and-fallback. Watch for conflicts in apps/rag-service when merging codex_rag with this branch.
+- Process: two agents share the repository: Codex on branch `codex_rag` in ../lumen (docs/ is in its .gitignore only), UI work in the worktree ../lumen-ui on phase-4e-ui-and-fallback. Watch for conflicts in apps/rag-service when merging codex_rag with this branch.
 
 ## 2026-10-24 RAG quality adjustment (five uploaded synthetic PDFs)
 
@@ -169,7 +206,7 @@
 - Live: 34/34 HTTP successes plus 7/7 final targeted rechecks. Latest six absent-information answers use exact not-found wording; citations are ASCII and in range, and housing attribution is corrected. Manual review marks 32/34 satisfactory and two partial: broad renewal answer still omits the reduced-load qualification, and the PHP 29,500 budget answer still omits the requested component breakdown. Prompt-only tightening did not resolve those omissions; they are not reported as fixed. Full records: docs/rag-testing/2026-10-24-bm25-reranker/REPORT.md (local, under the user's ignored docs directory).
 - Limits/tradeoff: 28-query offline comparison measured median 75 ms retrieval + 1,574 ms reranking. Full live median 3,028 ms. Comparable 10-question expanded-corpus subset: median 1,237 → 3,356 ms; mean input tokens 1,055 → 1,275, output 397 → 914 (reasoning/repairs included). The subset's core facts were already correct before changes; no controlled accuracy gain is claimed. Initial 1024-token runs hit output/provider limits, so allowance is now 2048 and live requests were spaced 20 seconds apart. BM25 scans per-tenant content per request; larger datasets, other languages/topics, production and concurrent load are unverified. No push, merge or deployment.
 
-## 2026-10-24 Integration of codex_rag (branch `integrate-codex-rag`, worktree /home/jee/Desktop/Code/Projects/lumen-integration)
+## 2026-10-24 Integration of codex_rag (branch `integrate-codex-rag`, worktree ../lumen-integration)
 
 - `phase-4e-ui-and-fallback` was merged into `c_v1` (c2cb387). `integrate-codex-rag` was created from c_v1 and `codex_rag` (nine commits: hybrid BM25 + vector rank fusion, tenant-local BM25, cross-encoder reranker, quote-backed claim answers with one repair attempt) merged into it. Only conflict: docs/NOTES.md (both sides kept). Codex's RAG code won in apps/rag-service (no overlap with the fallback removal: Codex's branch already contained it). `.gitignore` `docs/` line and `.codex/` from the Codex checkout were uncommitted there and are NOT part of this merge; c_v1 is untouched by this integration.
 - Verified in the integration worktree: rag-service 212 passed (dedicated scratch database), api 395, web 280; ruff check and format clean; biome clean for api, web warnings only.
@@ -178,12 +215,12 @@
 
 ## 2026-10-24 Phase 5 (isolation suite and evaluation harness) results
 
-- Worktree `/home/jee/Desktop/Code/Projects/lumen-p5`, branch `phase-5-eval` (from c_v1 with the merged codex_rag pipeline). rag-service: optional internal-only `force_tier` on /internal/query (rag tests 226). tools/eval: questions.csv (43 drafted queries: 13 easy, 12 hard, 9 multi-document, 9 unanswerable; expected_answer, held_out, cheap_ok, expensive_ok EMPTY for the human), run_eval.py (three setups, LLM judge, verdicts.csv with a 20% review sample, results.csv, backoff, resume keyed by setup/tenant/query/answer/judge, dry run, system-error handling), isolation suite (`pnpm eval:isolation`). tools/eval tests 111.
+- Worktree `../lumen-p5`, branch `phase-5-eval` (from c_v1 with the merged codex_rag pipeline). rag-service: optional internal-only `force_tier` on /internal/query (rag tests 226). tools/eval: questions.csv (43 drafted queries: 13 easy, 12 hard, 9 multi-document, 9 unanswerable; expected_answer, held_out, cheap_ok, expensive_ok EMPTY for the human), run_eval.py (three setups, LLM judge, verdicts.csv with a 20% review sample, results.csv, backoff, resume keyed by setup/tenant/query/answer/judge, dry run, system-error handling), isolation suite (`pnpm eval:isolation`). tools/eval tests 111.
 - Isolation suite (lead re-ran twice, reviewer once): scratch database, own API and rag-service, stub model that quotes the first retrieved passage, two tenants with planted code words; 64 cross-tenant questions + 14 positive checks + 30 object-level and dashboard checks: zero leaks in 108 checks. Negative controls (combined, vector-only, keyword-only predicate removal) detect leaks (A 110/B 109, A 110/B 109, A 58/B 64) with 0 problems. Mandatory guards: at least 50 cross-tenant questions and 10 positive checks.
 - Bugs found on the way: the cross-tenant counter was never incremented (summary showed 0) and a loop variable shadowed the scratch database name once (left lumen_isolation_1792853852 behind, dropped by hand; now guarded by a drop helper that only accepts lumen_isolation_<digits>); Groq answers 403 to urllib's default User-Agent.
 - Not run: the real evaluation (needs expected_answer values from the human and tools/eval/.env), a real provider for the isolation suite (stub only), direct rag-service calls with a mismatched tenant_id (Express supplies the tenant). The human's checklist: fill expected_answer for every question; mark about a quarter held_out across all types and do not tune on them; copy tools/eval/.env.example to .env; run run_eval.py; spot-check flagged rows in verdicts.csv; read every confident-and-wrong case. Phase 6 (classifier) only if the rule router misroutes many questions; the cost ratio must be written in NOTES before running.
 
-## 2026-10-25 Provider rate limits (branch `fix-rate-limit`, worktree /home/jee/Desktop/Code/Projects/lumen-rl)
+## 2026-10-25 Provider rate limits (branch `fix-rate-limit`, worktree ../lumen-rl)
 
 - Cause of the Try it failure ("The language model provider failed"): Groq answered 429 for openai/gpt-oss-20b with retry-after 855 s (daily token allowance nearly used up by eval and testing; big requests rejected, tiny ones pass). model_calls showed outcome rate_limited, one attempt, no backup. The same quota caused the last 7 evaluation failures.
 - rag-service: reads retry-after (seconds and 8m38.4s forms, then x-ratelimit-reset-*), retries once only when the wait <= llm.rate_limit_max_wait_seconds (10); a longer wait returns rate_limited immediately so the next model in the tier is tried at once; when every attempt was rate limited the query returns 429 provider_rate_limited with Retry-After and error.retry_after_seconds (any other failure mix stays 502). Tests 257.
@@ -200,7 +237,7 @@
 - Final live status: 39/129 fresh pairs completed; answering provider repeatedly returned 429 with waits of 194 then 386 seconds while the judge was healthy. Stopped the temporary run and server. Saved matching partial CSV/state in git-ignored tools/eval/review-run/ for --out-dir tools/eval/review-run --resume; restored the original results/verdicts/state byte-for-byte. No new complete benchmark claim. Human reference approval and the remaining 90 provider pairs are outstanding.
 - Groq-only continuation (2026-10-25, about 09:55 UTC): user explicitly chose Groq only after considering the account's NVIDIA primary. Resumed the same fresh review-run state from 39 pairs, with gpt-oss-20b and gpt-oss-120b through Groq. NVIDIA was not called. At 10:00 UTC, 41/129 pairs were saved; the process remained running through provider backoff. Non-secret model/endpoint/price metadata is in review-run/run-config.json; original results remain untouched.
 - Groq continuation reached 80/129 at 10:51 UTC: cheap 17/43, expensive 43/43 (36 correct; held-out 9/10), rules 20/43. No recorded system/judge errors; all ten live not-found replies had zero sources. Replaced the head-of-line-blocked CLI process with a disposable sequential ready-pair driver after 50 saved pairs; it honors retry deadlines, checkpoints state/CSVs, retains deferred attempts for provider-cost accounting, and passed offline self-checks. Same models, provider, key, retrieval and judge; no parallel model calls. Read-only check confirmed both saved Groq keys match the evaluation key. Forty-nine cheap-tier pairs remain queued; see review-run/progress.json. Original benchmark artifacts remain untouched.
-## 2026-10-25 Polish audit (branch `polish-audit`, worktree /home/jee/Desktop/Code/Projects/lumen-polish)
+## 2026-10-25 Polish audit (branch `polish-audit`, worktree ../lumen-polish)
 
 - The human approved fixing every finding of the ponytail audit (20 findings), test-first, in small commits. Fixed per area:
   - rag-service: one psycopg_pool pool per process with statement and pool timeouts; ingest locks the document row and aborts when it is failed or missing; ingest page and chunk limits with `unreadable_document` and a token-size chunk guard; evidence quotes below `llm.min_quote_chars` / `min_quote_words` are rejected; BM25 over a stored tsvector with a GIN index (migration 011) and one dense search per query; logging configured from `LOG_LEVEL`, new `serve` command; bounded embed/rerank/ingest concurrency with `503 busy`, eager reranker load, `/internal/ready`; `constraints.txt` pins Python dependencies (bootstrap and CI install with `-c`); production unless `NODE_ENV` is `development` or `test`.

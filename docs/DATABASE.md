@@ -1,5 +1,19 @@
 # Lumen database design
 
+> **Purpose:** the database design and the reasons behind it: tenancy, tables, decisions, environments and what was applied to Supabase.
+>
+> **Audience:** developers changing the schema or the queries.
+>
+> **Status:** current. The authoritative schema is the numbered SQL in `infra/sql/`; this page records the design and why.
+
+## Contents
+
+- [Tenancy](#tenancy)
+- [Tables (third normal form)](#tables-third-normal-form)
+- [Decisions](#decisions)
+- [Environments](#environments)
+- [Supabase status (applied 2026-10-24)](#supabase-status-applied-2026-10-24)
+
 The authoritative schema is the numbered SQL in `infra/sql/` (applied with `pnpm db:migrate`, each file once, recorded in `schema_migrations`). This page records the design and the reasons. Better Auth owns its own tables (`user`, `session`, `account`, `verification`, `organization`, `member`, `invitation`, `apikey`); we never edit them by hand.
 
 ## Tenancy
