@@ -160,7 +160,7 @@ Taken from the official Better Auth docs on 2026-10-21 (docs listed version 1.7.
 
 **Install and migrate:** `npm install better-auth @better-auth/api-key`, then `npx auth@latest migrate` (re-run after adding a plugin). Better Auth creates its own tables, so do not hand-write them.
 
-**Server config** (`apps/api/src/auth/auth.ts`):
+**Server config** (`apps/api/src/modules/auth/auth.ts`):
 
 ```ts
 import { betterAuth } from "better-auth";
@@ -211,7 +211,7 @@ export async function requireSession(req: any, res: any, next: any) {
 }
 ```
 
-**Client** (`apps/web/src/lib/auth-client.ts`):
+**Client** (`apps/web/src/shared/lib/auth-client.ts`):
 
 ```ts
 import { createAuthClient } from "better-auth/react";
@@ -717,7 +717,7 @@ Order: api-engineer (tier removal, migration 010), rag-engineer (service), then 
 
 ### Phase 5: isolation suite and evaluation
 
-The fake customer test website is out of scope (outside work). Order: rag-engineer (`force_tier`, small), then eval-engineer (everything in `tools/eval/`). Branch `phase-5-eval` in the worktree `../lumen-p5` (another agent, Codex, works in the main checkout).
+The fake customer test website is out of scope (outside work). Order: rag-engineer (`force_tier`, small), then eval-engineer (everything in `tools/eval/`). Branch `phase-5-eval` in the worktree `lumen-p5` (another agent, Codex, works in the main checkout).
 
 **Design (decided 2026-10-24).**
 - `force_tier` (rag-service): optional `force_tier: "cheap" | "expensive"` in the `/internal/query` body, internal only (Express never forwards it). It replaces the router's tier choice (k follows the forced tier), keeps retrieval, validation and the no-answer rules, reports `route.escalated: false`, and an invalid value is `422 invalid_request`.

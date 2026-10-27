@@ -34,7 +34,7 @@ pnpm --filter @lumen/web test                 # type-check, then vitest
 LUMEN_REQUIRE_API_HOST=1 pnpm test            # deploy check: fails while REPLACE-WITH-API-HOST is still in vercel.json
 ```
 
-Tests live in `test/`, which mirrors `src/` (`app`, `features/<feature>`, `shared`); `helpers.tsx` and `setup.ts` are there too. Tests import source with relative paths (`../../../src/...`). Do not put tests under `src/`. `test/app/icons.test.ts` checks the icon links, files and the ICO.
+Tests live in `test/`, which mirrors `src/` (`app`, `features/<feature>`, `shared`); `helpers.tsx` and `setup.ts` are there too. Tests import source with relative paths into `src/`. Do not put tests under `src/`. `test/app/icons.test.ts` checks the icon links, files and the ICO.
 
 ## Layout
 

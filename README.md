@@ -167,6 +167,7 @@ pnpm --filter @lumen/api test                                    # api only (lum
 pnpm --filter @lumen/rag-service test                            # rag-service only (lumen_test database)
 apps/rag-service/.venv/bin/python -m pytest tools/eval/tests -q  # evaluation tool tests (fake servers, no provider)
 pnpm eval:isolation                                              # tenant isolation suite and its negative control
+node scripts/check-docs.mjs                                      # every link and file reference in the Markdown files resolves
 ```
 
 No test calls a real model provider. GitHub Actions runs typechecking, lint, app and evaluation tests, tenant isolation with its negative control, and the web build on every push and pull request.
