@@ -83,17 +83,17 @@ describe("Shell", () => {
     expect(await screen.findByRole("meter", { name: "Documents" })).toBeInTheDocument();
   });
 
-  it("top row: logo mark beside an icon-only Projects button; no dropdown, no Docs link, no numbers", () => {
+  it("top row: the logo mark is the link to Projects; no Projects icon button, dropdown, Docs link or numbers", () => {
     mockFetch(handler);
     renderWithProviders(tree(), { route: "/projects/mayas/documents" });
     const side = screen.getByRole("complementary");
     const top = side.firstElementChild as HTMLElement;
     expect(top).toHaveClass("side-top");
-    expect(top.querySelector("svg.side-mark")).not.toBeNull();
-    const projects = within(top).getByRole("link", { name: "Projects" });
-    expect(projects).toHaveAttribute("href", "/projects");
-    expect(projects).toHaveAttribute("title", "Projects");
-    expect(projects.textContent).toBe("");
+    const switcher = within(top).getByRole("link", { name: "Switch project" });
+    expect(switcher).toHaveAttribute("href", "/projects");
+    expect(switcher.querySelector("svg.side-mark")).not.toBeNull();
+    expect(within(side).queryByRole("link", { name: "Projects" })).toBeNull();
+    expect(side.querySelector(".icon-btn")).toBeNull();
     expect(within(side).queryByRole("combobox")).toBeNull();
     expect(within(side).queryByRole("listbox")).toBeNull();
     expect(within(side).queryByRole("button", { name: /^Project:/ })).toBeNull();
@@ -102,7 +102,7 @@ describe("Shell", () => {
     expect(side.querySelector(".nav-num")).toBeNull();
   });
 
-  it("shows the current project's name as a plain label on the logo's row, before the Projects button", () => {
+  it("shows the current project's name as a plain label after the logo, on the same row", () => {
     mockFetch(handler);
     renderWithProviders(tree(), { route: "/projects/mayas/documents" });
     const side = screen.getByRole("complementary");
@@ -110,8 +110,10 @@ describe("Shell", () => {
     expect(label).toHaveClass("project-label");
     expect(label.closest("a, button, select, [role=option]")).toBeNull();
     expect(label.parentElement).toHaveClass("side-top");
-    expect(label.previousElementSibling).toBe(side.querySelector("svg.side-mark"));
-    expect(label.nextElementSibling).toBe(within(side).getByRole("link", { name: "Projects" }));
+    expect(label.previousElementSibling).toContainElement(
+      within(side).getByRole("link", { name: "Switch project" }),
+    );
+    expect(label.nextElementSibling).toBeNull();
   });
 
   it("marks the current tab with the sliding pill", async () => {
