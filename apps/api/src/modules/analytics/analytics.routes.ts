@@ -67,24 +67,45 @@ export function analyticsRouter({ pool, config }: Deps) {
     });
   });
 
-  // Questions the documents could not answer: no model was called, or the best match scored below the threshold.
+  // Two disjoint groups of questions the documents did not answer. Every statement filters by tenant_id.
+  //  no_match:  no model was called, or the best match scored below the threshold.
+  //  not_found: a model ran on a match at or above the threshold (status ok) but the answer cited no source.
+  // A NULL tier or NULL score never satisfies not_found; a NULL score never satisfies no_match either (a NULL tier with a weak score does, as before).
   r.get("/unanswered", async (req, res) => {
     const { range, days } = parseRange(req.query.range);
-    const where = "tenant_id = $1 AND created_at >= $2 AND (model_tier = 'none' OR top_score < $3)";
-    const args = [req.tenantId, rangeStart(days), config.unansweredScoreBelow];
-    const [list, count] = await Promise.all([
+    const base = [req.tenantId, rangeStart(days), config.unansweredScoreBelow];
+    const noMatch = "(r.model_tier = 'none' OR r.top_score < $3)";
+    const notFound = `r.status = 'ok' AND r.model_tier IS NOT NULL AND r.model_tier <> 'none' AND r.top_score >= $3
+      AND NOT EXISTS (SELECT 1 FROM request_sources s WHERE s.request_id = r.id AND s.tenant_id = r.tenant_id)`;
+    const time = `to_char(r.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS time`;
+    const where = (cond: string) => `r.tenant_id = $1 AND r.created_at >= $2 AND ${cond}`;
+    const [nmList, nmCount, nfList, nfCount] = await Promise.all([
       pool.query(
-        `SELECT id, query, top_score, model_tier AS tier, to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS time
-         FROM request_logs WHERE ${where} ORDER BY created_at DESC, id DESC LIMIT $4`,
-        [...args, config.unansweredPageSize],
+        `SELECT r.id, r.query, r.top_score, r.model_tier AS tier, ${time}
+         FROM request_logs r WHERE ${where(noMatch)} ORDER BY r.created_at DESC, r.id DESC LIMIT $4`,
+        [...base, config.unansweredPageSize],
       ),
-      pool.query(`SELECT count(*)::int AS n FROM request_logs WHERE ${where}`, args),
+      pool.query(`SELECT count(*)::int AS n FROM request_logs r WHERE ${where(noMatch)}`, base),
+      pool.query(
+        // model = the last attempt of the request (model_calls has no FK to request_logs, so tenant_id is on the join)
+        `SELECT r.id, r.query, r.top_score, r.model_tier AS tier,
+                CASE WHEN m.id IS NULL THEN NULL ELSE json_build_object('provider', m.provider, 'model_id', m.model_id) END AS model,
+                r.difficulty, r.escalated, ${time}
+         FROM request_logs r
+         LEFT JOIN LATERAL (
+           SELECT c.id, c.provider, c.model_id FROM model_calls c
+           WHERE c.tenant_id = r.tenant_id AND c.request_id = r.id ORDER BY c.created_at DESC, c.id DESC LIMIT 1
+         ) m ON true
+         WHERE ${where(notFound)} ORDER BY r.created_at DESC, r.id DESC LIMIT $4`,
+        [...base, config.unansweredPageSize],
+      ),
+      pool.query(`SELECT count(*)::int AS n FROM request_logs r WHERE ${where(notFound)}`, base),
     ]);
     res.json({
       range,
       threshold: config.unansweredScoreBelow,
-      total: count.rows[0].n,
-      items: list.rows,
+      no_match: { total: nmCount.rows[0].n, items: nmList.rows },
+      not_found: { total: nfCount.rows[0].n, items: nfList.rows },
     });
   });
 
