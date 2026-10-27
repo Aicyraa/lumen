@@ -1,12 +1,28 @@
-import type { CSSProperties } from "react";
+import { animate } from "motion/react";
+import { type CSSProperties, useEffect, useRef } from "react";
 import { Reveal } from "../../shared/motion/motion";
+import { prefersReducedMotion } from "../../shared/motion/useInViewOnce";
 import { LineIcon } from "./art";
 
+const PERIOD_S = 48; // one lap
+const STEPS = 72; // frames per lap (every 5 degrees; the chord error is about 0.1% of the radius)
+
+// Frames of one lap round the ellipse, starting at fraction `f` of a turn, clockwise on screen. Percentages of the node's
+// own box, which is as wide and as tall as the ellipse, so +-50% is the radius and the numbers need no pixel measuring.
+// The last frame repeats the first so the loop has no seam.
+function lap(f: number) {
+  const pts = Array.from({ length: STEPS }, (_, k) => 2 * Math.PI * (k / STEPS + f));
+  const pct = (fn: (a: number) => number) => {
+    const v = pts.map((a) => `${(fn(a) * 50).toFixed(3)}%`);
+    return [...v, v[0]];
+  };
+  return { x: pct(Math.cos), y: pct(Math.sin) };
+}
+
 // The four guarantees as a list with their icons, and the same icons circling a shield on a flat ellipse. The ring is drawing
-// only (hidden from assistive tech, not interactive); the list carries the text. Each node moves by two eased `translate`
-// animations (sideways and up-down, a quarter turn apart) that together trace the ellipse and run on the compositor, so the
-// icons glide instead of snapping from pixel to pixel. The keyframes are fixed percentages of the boxes (no var()), the form
-// browsers reliably hand to the compositor.
+// only (hidden from assistive tech, not interactive); the list carries the text. Each node is one Motion animation of its
+// translate (x and y are hardware accelerated, so the icons glide on the compositor). The animation pauses while the ring is
+// off screen. Without script, or under prefers-reduced-motion, the CSS puts each node at its place on the ring and it stays.
 export function SecurityOrbit({
   items,
   icons,
@@ -14,6 +30,30 @@ export function SecurityOrbit({
   items: readonly (readonly [title: string, body: string, short: string])[];
   icons: readonly string[];
 }) {
+  const stage = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = stage.current;
+    if (!el || prefersReducedMotion()) return;
+    const nodes = [...el.querySelectorAll<HTMLElement>(".orbit-node")];
+    const runs = nodes.map((node, i) =>
+      animate(node, lap(i / nodes.length + 0.125), {
+        duration: PERIOD_S,
+        ease: "linear",
+        repeat: Number.POSITIVE_INFINITY,
+      }),
+    );
+    const io =
+      typeof IntersectionObserver === "undefined"
+        ? undefined
+        : new IntersectionObserver(([e]) => {
+            for (const r of runs) e.isIntersecting ? r.play() : r.pause();
+          });
+    io?.observe(el);
+    return () => {
+      io?.disconnect();
+      for (const r of runs) r.cancel();
+    };
+  }, []);
   return (
     <div className="sec-orbit">
       <ul className="sec-list">
@@ -27,7 +67,7 @@ export function SecurityOrbit({
           </Reveal>
         ))}
       </ul>
-      <div className="orbit-stage" aria-hidden="true">
+      <div ref={stage} className="orbit-stage" aria-hidden="true">
         <span className="orbit-ring" />
         <span className="orbit-ring orbit-ring-in" />
         <span className="orbit-core icon-tile">
@@ -39,13 +79,11 @@ export function SecurityOrbit({
             className="orbit-node"
             style={{ "--f": i / items.length + 0.125 } as CSSProperties}
           >
-            <div className="orbit-node-y">
-              <div className="orbit-node-body">
-                <span className="icon-tile">
-                  <LineIcon name={icons[i]} />
-                </span>
-                <span className="orbit-tag mono">{short}</span>
-              </div>
+            <div className="orbit-node-body">
+              <span className="icon-tile">
+                <LineIcon name={icons[i]} />
+              </span>
+              <span className="orbit-tag mono">{short}</span>
             </div>
           </div>
         ))}

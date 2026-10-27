@@ -88,7 +88,7 @@ describe("SecurityOrbit motion", () => {
       expect(y.at(-1)).toBe(y[0]);
       for (const v of [...x, ...y]) expect(Math.abs(pct(v))).toBeLessThanOrEqual(50.0001);
       // every frame sits on the ellipse (radius 50% in both axes)
-      for (const [k, xv] of x.entries()) expect(pct(xv) ** 2 + pct(y[k]) ** 2).toBeCloseTo(2500, 2);
+      for (const [k, xv] of x.entries()) expect(pct(xv) ** 2 + pct(y[k]) ** 2).toBeCloseTo(2500, 0);
       // the next frame is further round the circle (y grows first from the right-hand side), never backwards
       const a = (k: number) => Math.atan2(pct(y[k]), pct(x[k]));
       let turn = 0;

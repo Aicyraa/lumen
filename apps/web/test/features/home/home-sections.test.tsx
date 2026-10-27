@@ -202,27 +202,16 @@ describe("Section 07 is a list with a ring of the same icons", () => {
     expect(css).not.toMatch(/\.orbit[^{]*:(?:hover|focus)/);
   });
 
-  it("is drawn flat and moved by two eased translate animations a quarter turn apart, so the icons glide and stay sharp", () => {
+  it("is drawn flat; each node's box is the ellipse's size, with a static place on the ring that Motion replaces", () => {
     expect(css).not.toMatch(/preserve-3d|perspective:/);
+    expect(css).not.toMatch(/@keyframes orbit-/); // the motion lives in SecurityOrbit.tsx now
     const node = css.match(/\n\.orbit-node\s*\{([^}]*)\}/)![1];
-    const nodeY = css.match(/\n\.orbit-node-y\s*\{([^}]*)\}/)![1];
-    expect(node).toMatch(/animation:\s*orbit-x[^;]*calc\(var\(--f\) \* -48s\)/);
-    expect(nodeY).toMatch(/animation:\s*orbit-y[^;]*calc\(\(var\(--f\) \+ 0\.25\) \* -48s\)/);
-    // keyframes are plain percentages of boxes as wide and as tall as the ellipse: no var(), so the compositor can run them
-    expect(css).toMatch(
-      /@keyframes orbit-x\s*\{[^@]*?from\s*\{\s*translate:\s*50% 0;[^@]*?to\s*\{\s*translate:\s*-50% 0;/,
+    expect(node).not.toMatch(/animation/);
+    // the same place without animation, so reduced motion or no script keeps the nodes on the ring
+    expect(node).toMatch(
+      /\btransform:\s*translate\(calc\(cos\(var\(--f\)[^;]*calc\(sin\(var\(--f\)/,
     );
-    expect(css).toMatch(
-      /@keyframes orbit-y\s*\{[^@]*?from\s*\{\s*translate:\s*0 -50%;[^@]*?to\s*\{\s*translate:\s*0 50%;/,
-    );
-    const frames = [...css.matchAll(/@keyframes orbit-[xy]\s*\{(?:[^{}]*\{[^}]*\})*\s*\}/g)].map(
-      (m) => m[0],
-    );
-    expect(frames).toHaveLength(2);
-    for (const f of frames) expect(f).not.toMatch(/var\(/);
-    // the same place without animation, so reduced motion keeps the nodes on the ring
-    expect(node).toMatch(/\btranslate:\s*calc\(cos\(/);
-    expect(nodeY).toMatch(/\btranslate:\s*0 calc\(sin\(/);
+    expect(node).toMatch(/will-change:\s*transform/);
     // the ellipse's short radius (0.27 of the width, at least 300px wide) clears the shield (38px) and a node (26px) half-sizes
     expect(0.27 * 300).toBeGreaterThan(38 + 26);
   });
