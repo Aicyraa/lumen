@@ -74,7 +74,7 @@ Traffic and routing overview with a **7D / 30D** toggle.
 - Stat tiles: requests, median latency (p95 in the note); estimated provider cost is shown (tenant-entered model prices); savings stay on hold.
 - Requests-per-day bar chart split cheap vs expensive.
 - Route mix: cheap, escalated (caution), expensive (hard), no answer (no model called).
-- **Unanswered questions**, in two sections so you know which documents to add: **No match** (the best-match score was weak, or no model was called) and **Not found** (a model ran, but its answer cited no sources).
+- **Unanswered questions**, in two sections so you know which documents to add: **No match** (the best-match score was weak, or no model was called) and **Not found** (a model ran, but its answer cited no sources; each row also shows the best score, the model that answered, the difficulty, and "escalated" when the router sent it to the larger model). The UNANSWERED tile is the sum of both.
 
 ### 05 Requests (request log)
 One row per call: time, query, route, `k`, latency (and estimated provider cost).
