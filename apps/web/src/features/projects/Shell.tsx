@@ -4,10 +4,10 @@ import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { authClient } from "../../shared/lib/auth-client";
 import { PageFade } from "../../shared/motion/motion";
 import { Loading } from "../../shared/ui/Loading";
-import { LogoMark } from "../../shared/ui/Logo";
 import { readSession } from "../auth/sessionShape";
 import { useSignOut } from "../auth/useSignOut";
 import { useProject } from "./projectsContext";
+import { SwitchProject } from "./SwitchProject";
 import { UsageMeters } from "./UsageMeters";
 
 const TABS = [
@@ -33,18 +33,8 @@ export function Shell() {
     <div className="app">
       <aside className="sidebar">
         <div className="side-top">
-          <LogoMark className="side-mark" />
+          <SwitchProject />
           <div className="project-label ellipsis">{project.name}</div>
-          <Link to="/projects" className="icon-btn" aria-label="Projects" title="Projects">
-            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
-              <g fill="none" stroke="currentColor" strokeWidth="1.3">
-                <rect x="2" y="2" width="5" height="5" rx="1" />
-                <rect x="9" y="2" width="5" height="5" rx="1" />
-                <rect x="2" y="9" width="5" height="5" rx="1" />
-                <rect x="9" y="9" width="5" height="5" rx="1" />
-              </g>
-            </svg>
-          </Link>
         </div>
         <nav aria-label="Dashboard" className="nav">
           {TABS.map(([path, label]) => (

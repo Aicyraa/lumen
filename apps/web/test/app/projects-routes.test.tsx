@@ -215,7 +215,7 @@ describe("project routes", () => {
     await screen.findByRole("complementary");
     await waitFor(() => expect(document.title).toBe("Requests · Lumen"));
     await userEvent.click(
-      within(screen.getByRole("complementary")).getByRole("link", { name: "Projects" }),
+      within(screen.getByRole("complementary")).getByRole("link", { name: "Switch project" }),
     );
     await waitFor(() => expect(document.title).toBe("Projects · Lumen"));
   });
@@ -232,7 +232,7 @@ describe("project routes", () => {
       "href",
       "/projects/my-project/requests",
     );
-    await userEvent.click(within(side).getByRole("link", { name: "Projects" }));
+    await userEvent.click(within(side).getByRole("link", { name: "Switch project" }));
     await userEvent.click(await screen.findByRole("link", { name: /Shop support/ }));
     await waitFor(() => expect(setActive).toHaveBeenCalledWith({ organizationId: "p2" }));
     await waitFor(() =>
