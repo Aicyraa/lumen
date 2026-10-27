@@ -11,7 +11,7 @@
 ![Postgres + pgvector](https://img.shields.io/badge/Postgres-pgvector-cee654?logo=postgresql&logoColor=0c0c0b)
 ![License: all rights reserved](https://img.shields.io/badge/license-all%20rights%20reserved-6e6e68)
 
-[How it works](#how-it-works) · [Features](#key-features) · [Quick start](#quick-start) · [Commands](#commands) · [Deployment](#deployment) · [Docs](#documentation)
+[How it works](#how-it-works) · [Features](#key-features) · [Quick start](#quick-start) · [Commands](#commands) · [Deployment](#deployment)
 
 </div>
 
@@ -32,7 +32,6 @@ Lumen is a multi-tenant RAG gateway. A business signs in, uploads documents and 
 - [Commands](#commands)
 - [Tests](#tests)
 - [Deployment](#deployment)
-- [Documentation](#documentation)
 - [License](#license)
 
 </details>
@@ -239,20 +238,6 @@ The hosted setup has been run end to end (sign-up with a verification email, upl
 > - With `pg`, `sslmode=require` verifies the certificate by default, and the Supabase pooler's chain then fails; add `&uselibpqcompat=true` to the API's `DATABASE_URL`.
 
 See [apps/api/README.md](apps/api/README.md), [apps/rag-service/README.md](apps/rag-service/README.md) and [apps/web/README.md](apps/web/README.md) for each service's variables.
-
-## Documentation
-
-Start at the **[documentation index](docs/README.md)**.
-
-| Document | What it covers |
-| --- | --- |
-| [docs/AI_BUILD_BRIEF.md](docs/AI_BUILD_BRIEF.md) | The authoritative product brief: hard rules, stack, contracts, router rules, phases |
-| [docs/PROJECT_WORKFLOW.md](docs/PROJECT_WORKFLOW.md) | System overview, journeys, auth, analytics, tech stack, security checklist |
-| [docs/DATABASE.md](docs/DATABASE.md) | Database design and the reasons behind it |
-| [docs/WEBSITE.md](docs/WEBSITE.md) | What each page and tab does, and the design system |
-| [docs/lumen-website-ui-mockups/README.md](docs/lumen-website-ui-mockups/README.md) | The exported UI mockups |
-| [docs/NOTES.md](docs/NOTES.md) | Dated project log |
-| [AGENTS.md](AGENTS.md) | Instructions for AI coding agents |
 
 ## License
 
