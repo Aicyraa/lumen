@@ -4,7 +4,7 @@
 >
 > **Audience:** anyone building or extending a screen in `apps/web`, and anyone checking what the product shows.
 >
-> **Status:** current. If this file and `AI_BUILD_BRIEF.md` disagree, the brief wins. Merged on 2026-10-27 from the former `WEBSITE_GUIDE.md` and `DESIGN.md`.
+> **Status:** current. If this file and `AI_BUILD_BRIEF.md` disagree, the brief wins. Merged on 2026-10-27 from the former website guide and design guide.
 
 ## Contents
 
