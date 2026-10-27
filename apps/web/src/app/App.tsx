@@ -17,6 +17,7 @@ const SignIn = page(() => import("../features/auth/SignIn"), "SignIn");
 const VerifyEmail = page(() => import("../features/auth/VerifyEmail"), "VerifyEmail");
 const Docs = page(() => import("../features/docs/Docs"), "Docs");
 const Privacy = page(() => import("../features/docs/Privacy"), "Privacy");
+const Terms = page(() => import("../features/docs/Terms"), "Terms");
 const Documents = page(() => import("../features/documents/Documents"), "Documents");
 const Home = page(() => import("../features/home/Home"), "Home");
 const ApiKeys = page(() => import("../features/keys/ApiKeys"), "ApiKeys");
@@ -38,6 +39,7 @@ export function App() {
             <Route path="/" element={<Home />} />
             <Route path="/docs" element={<Docs />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
             <Route path="/signin" element={<SignIn />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/sign-in" element={<Navigate to="/signin" replace />} />

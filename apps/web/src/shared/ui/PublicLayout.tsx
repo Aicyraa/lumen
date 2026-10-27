@@ -39,6 +39,7 @@ export function PublicLayout({ children, fill = false }: { children: ReactNode; 
         <nav aria-label="Footer">
           <Link to="/docs">Docs</Link>
           <Link to="/privacy">Privacy</Link>
+          <Link to="/terms">Terms</Link>
         </nav>
       </footer>
     </div>

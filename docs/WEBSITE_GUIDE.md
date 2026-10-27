@@ -28,7 +28,7 @@ page) and the **dashboard** (six tabs behind sign-in).
 | 06 | Built in | Three feature cards: cost-aware routing, tenant isolation, honest "no answer". |
 | 07 | Security | Four cards: isolated per workspace, keys shown once (hashed), no document text in logs, documents treated as data (prompt-injection safe). |
 | 08 | FAQ (postponed) | Accordion: file types and limits, what happens with no answer, cross-customer visibility, how savings are calculated, question retention. |
-| end | CTA and footer | "Ask your documents anything." plus Sign in; footer links Docs, Pricing, Privacy. |
+| end | CTA and footer | "Ask your documents anything." plus Sign in; footer links Docs, Privacy, Terms. |
 
 The first design version (1a) had only sections 01-04 (Built in was 04). Version 2a
 is the current one.

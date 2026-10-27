@@ -217,8 +217,8 @@ describe("Terms", () => {
     expect(text).toMatch(/Privacy/);
   });
 
-  it("links to the privacy page", () => {
+  it("links to the privacy page from the text", () => {
     view(<Terms />);
-    expect(screen.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
+    expect(screen.getByRole("link", { name: "Privacy page" })).toHaveAttribute("href", "/privacy");
   });
 });

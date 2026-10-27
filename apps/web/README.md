@@ -29,7 +29,7 @@ Reads only `apps/web/.env` (copy `.env.example`); only `VITE_` variables reach t
 src/
   app/        main.tsx, App.tsx (routes), ErrorBoundary, ConfigMissing, NoProjectRedirect
   features/   one folder per feature; code used by one feature lives in it
-    home/  docs/ (Docs, Privacy, DocLayout)  auth/ (SignIn, VerifyEmail, RequireSession, SessionCacheGuard, session helpers)
+    home/  docs/ (Docs, Privacy, Terms, DocLayout)  auth/ (SignIn, VerifyEmail, RequireSession, SessionCacheGuard, session helpers)
     projects/ (list, settings, shell + sidebar, usage meters)  documents/  keys/  try-it/  analytics/  requests/  models/  account/
   shared/     code used by two or more features
     ui/       Dialog, ui.tsx, Logo, Loading, icons, RouteCard, UsageCard, PublicLayout, AppFrame
