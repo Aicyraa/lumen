@@ -189,7 +189,12 @@ Variables an operator must set (names only; set them as the host's secrets, neve
 - **Web (Vercel):** `VITE_API_URL`.
 - **RAG service (your machine, `apps/rag-service/.env.funnel`):** `DATABASE_URL` and `INTERNAL_SECRET` (the same value as the API's).
 
-Run exactly one API instance: rate-limit counters, the create-project lock and background ingests are kept in memory. The deployment configuration was verified locally only; the hosted setup has not been run end to end. See [apps/api/README.md](apps/api/README.md), [apps/rag-service/README.md](apps/rag-service/README.md) and [apps/web/README.md](apps/web/README.md) for each service's variables.
+Run exactly one API instance: rate-limit counters, the create-project lock and background ingests are kept in memory. The hosted setup has been run end to end (sign-up with a verification email, upload, and chat through the Funnel). Two limits of the free plans to know:
+
+- Render's free web services cannot open outbound SMTP connections on ports 25, 465 or 587, so point `SMTP_URL` at a provider port that is not blocked (for example Brevo on 2525).
+- With `pg`, `sslmode=require` verifies the certificate by default, and the Supabase pooler's chain then fails; add `&uselibpqcompat=true` to the API's `DATABASE_URL`.
+
+See [apps/api/README.md](apps/api/README.md), [apps/rag-service/README.md](apps/rag-service/README.md) and [apps/web/README.md](apps/web/README.md) for each service's variables.
 
 ## Documentation
 

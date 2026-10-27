@@ -28,3 +28,7 @@ tools/eval/.pytest_cache/
 tools/eval/.ruff_cache/
 .vercel
 .env.local
+
+# local-only operator notes (kept off GitHub)
+infra/DEPLOYMENT.md
+tools/eval/REPORTS.md
