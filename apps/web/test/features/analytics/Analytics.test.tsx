@@ -51,26 +51,70 @@ const summary = (range: string) => ({
     },
   ],
 });
+const longQuery = `${"What is the notice period for terminating the lease agreement early ".repeat(4)}?`;
 const unanswered = {
   range: "7d",
   threshold: 0.3,
-  total: 2,
-  items: [
-    {
-      id: "u1",
-      query: "Is there visitor parking?",
-      top_score: 0.09,
-      tier: "none",
-      time: "2026-10-23T10:00:00Z",
-    },
-    {
-      id: "u2",
-      query: "Weak match question",
-      top_score: null,
-      tier: "none",
-      time: "2026-10-23T11:00:00Z",
-    },
-  ],
+  no_match: {
+    total: 2,
+    items: [
+      {
+        id: "u1",
+        query: "Is there visitor parking?",
+        top_score: 0.09,
+        tier: "none",
+        time: "2026-10-23T10:00:00Z",
+      },
+      {
+        id: "u2",
+        query: "Weak match question",
+        top_score: null,
+        tier: "none",
+        time: "2026-10-23T11:00:00Z",
+      },
+    ],
+  },
+  not_found: {
+    total: 3,
+    items: [
+      {
+        id: "n1",
+        query: "Who signs the invoices?",
+        top_score: 0.42,
+        tier: "expensive",
+        model: { provider: "openai", model_id: "gpt-backup" },
+        difficulty: 0.5,
+        escalated: true,
+        time: "2026-10-23T12:00:00Z",
+      },
+      {
+        id: "n2",
+        query: "Where is the archive?",
+        top_score: 0.38,
+        tier: "cheap",
+        model: null,
+        difficulty: null,
+        escalated: false,
+        time: "2026-10-23T13:00:00Z",
+      },
+      {
+        id: "n3",
+        query: longQuery,
+        top_score: 0.35,
+        tier: "cheap",
+        model: { provider: "openai_compatible", model_id: "gpt-oss-20b" },
+        difficulty: 0.1,
+        escalated: false,
+        time: "2026-10-23T14:00:00Z",
+      },
+    ],
+  },
+};
+const emptyUnanswered = {
+  range: "7d",
+  threshold: 0.3,
+  no_match: { total: 0, items: [] },
+  not_found: { total: 0, items: [] },
 };
 
 const handler = (url: string) =>
@@ -92,6 +136,7 @@ describe("Analytics", () => {
     expect(within(mix).getByText("50%")).toBeInTheDocument(); // 5 of 10 cheap
     expect(screen.getByText("Is there visitor parking?")).toBeInTheDocument();
     expect(screen.getByText("0.09")).toBeInTheDocument();
+    expect(screen.getByText("Who signs the invoices?")).toBeInTheDocument();
     const table = screen.getByRole("table", { name: "By model" });
     expect(within(table).getByText("gpt-backup")).toBeInTheDocument(); // backup models included
     expect(within(table).getByText("no price set")).toBeInTheDocument();
@@ -115,23 +160,24 @@ describe("Analytics", () => {
     expect(container.textContent).not.toMatch(/saving|pricing|retention|retain/i);
   });
 
-  it("lays the page out as cards with headings: chart, route mix, unanswered, by model", async () => {
+  it("lays the page out as cards with headings: chart, route mix, no match, not found, by model", async () => {
     mockFetch(handler);
     renderWithProviders(<Analytics />);
     await screen.findByText("840 ms");
-    for (const name of ["Requests per day", "Route mix", "Unanswered questions", "By model"]) {
+    for (const name of ["Requests per day", "Route mix", "No match", "Not found", "By model"]) {
       const h = screen.getByRole("heading", { level: 2, name });
       expect(h.closest(".card")).not.toBeNull();
     }
   });
 
-  it("puts By model before Unanswered questions", async () => {
+  it("puts By model before the two unanswered cards", async () => {
     mockFetch(handler);
     renderWithProviders(<Analytics />);
     await screen.findByText("840 ms");
     const heads = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
     expect(heads.indexOf("By model")).toBeGreaterThan(-1);
-    expect(heads.indexOf("By model")).toBeLessThan(heads.indexOf("Unanswered questions"));
+    expect(heads.indexOf("By model")).toBeLessThan(heads.indexOf("No match"));
+    expect(heads.indexOf("No match")).toBeLessThan(heads.indexOf("Not found"));
   });
 
   it("shows a centred loading message, then data", async () => {
@@ -160,7 +206,7 @@ describe("Analytics", () => {
   it("has proper empty states for chart, unanswered and by-model when there is no data", async () => {
     mockFetch((url) =>
       url.includes("/unanswered")
-        ? { range: "7d", threshold: 0.3, total: 0, items: [] }
+        ? emptyUnanswered
         : {
             range: "7d",
             total_requests: 0,
@@ -173,9 +219,80 @@ describe("Analytics", () => {
     );
     renderWithProviders(<Analytics />);
     expect(await screen.findByText(/No requests in this range yet/)).toBeInTheDocument();
-    expect(screen.getByText(/No unanswered questions/)).toBeInTheDocument();
+    expect(screen.getByText("Nothing without a match in this range.")).toBeInTheDocument();
+    expect(screen.getByText("Nothing marked not found in this range.")).toBeInTheDocument();
     expect(screen.getByText(/No models yet/)).toBeInTheDocument();
     expect(screen.queryByRole("list", { name: "Requests per day" })).toBeNull();
+  });
+
+  it("explains each card, with the threshold in the No match hint", async () => {
+    mockFetch(handler);
+    renderWithProviders(<Analytics />);
+    await screen.findByText("840 ms");
+    expect(
+      screen.getByText(
+        "No model was called, or the best match scored below 0.30. Add documents that cover these.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "A model answered, but found nothing in your documents. These matched loosely, so a document may need rewording or adding.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("the UNANSWERED tile is no match plus not found", async () => {
+    mockFetch(handler);
+    renderWithProviders(<Analytics />);
+    await screen.findByText("840 ms");
+    const tile = screen.getByText("UNANSWERED").closest(".stat") as HTMLElement;
+    await waitFor(() => expect(within(tile).getByText("5")).toBeInTheDocument());
+  });
+
+  it("Not found rows show score, model, difficulty and an escalated marker only when true", async () => {
+    mockFetch(handler);
+    renderWithProviders(<Analytics />);
+    await screen.findByText("840 ms");
+    const card = screen.getByRole("heading", { name: "Not found" }).closest(".card") as HTMLElement;
+    const rows = within(card).getAllByRole("listitem");
+    expect(rows).toHaveLength(3);
+    expect(within(rows[0]).getByText("0.42")).toBeInTheDocument();
+    expect(within(rows[0]).getByText("openai / gpt-backup")).toBeInTheDocument();
+    expect(within(rows[0]).getByText("difficulty 0.50")).toBeInTheDocument();
+    expect(within(rows[0]).getByText("escalated")).toBeInTheDocument();
+    expect(within(rows[1]).getByText("model not recorded")).toBeInTheDocument();
+    expect(within(rows[1]).queryByText(/difficulty/)).toBeNull();
+    expect(within(rows[1]).queryByText("escalated")).toBeNull();
+    expect(within(rows[2]).queryByText("escalated")).toBeNull();
+  });
+
+  it("a long query is truncated by CSS but keeps its full text and a title", async () => {
+    mockFetch(handler);
+    renderWithProviders(<Analytics />);
+    await screen.findByText("840 ms");
+    const q = screen.getByText(longQuery);
+    expect(q).toHaveClass("ellipsis");
+    expect(q).toHaveAttribute("title", longQuery);
+  });
+
+  it("each unanswered card fails and retries on its own", async () => {
+    let fail = true;
+    const { calls } = mockFetch((url) =>
+      fail && url.includes("/unanswered")
+        ? reply(500, { error: { code: "boom", message: "Server error." } })
+        : handler(url),
+    );
+    renderWithProviders(<Analytics />);
+    const msgs = await screen.findAllByText(/Could not load unanswered questions/);
+    expect(msgs).toHaveLength(2);
+    expect(screen.getByRole("heading", { name: "No match" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Not found" })).toBeInTheDocument();
+    fail = false;
+    const before = calls.length;
+    await userEvent.click(screen.getAllByRole("button", { name: "Retry" })[0]);
+    expect(await screen.findByText("Who signs the invoices?")).toBeInTheDocument();
+    expect(screen.getByText("Is there visitor parking?")).toBeInTheDocument();
+    expect(calls.length).toBeGreaterThan(before);
   });
 
   it("starts the bar animation once the page is seen, even though the data arrives after the first render", async () => {
