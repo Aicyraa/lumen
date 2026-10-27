@@ -309,7 +309,11 @@ def run_object_checks(api: Api, tenants, run: Run):
         run.add(L, "dashboard analytics summary", fs)
         un = api.call("GET", "/api/dashboard/analytics/unanswered?range=30d", cookie=t.cookie)
         uids = (
-            [i.get("id") for i in (un.body or {}).get("items", [])]
+            [
+                i.get("id")
+                for group in ("no_match", "not_found")
+                for i in ((un.body or {}).get(group) or {}).get("items", [])
+            ]
             if isinstance(un.body, dict)
             else []
         )
