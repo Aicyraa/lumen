@@ -236,7 +236,7 @@ describe("Analytics", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "A model answered, but found nothing in your documents. These matched loosely, so a document may need rewording or adding.",
+        "A model answered, but its answer cited no passage from your documents. A document may need rewording or adding.",
       ),
     ).toBeInTheDocument();
   });
@@ -247,6 +247,7 @@ describe("Analytics", () => {
     await screen.findByText("840 ms");
     const tile = screen.getByText("UNANSWERED").closest(".stat") as HTMLElement;
     await waitFor(() => expect(within(tile).getByText("5")).toBeInTheDocument());
+    expect(within(tile).getByText("No match or not found")).toBeInTheDocument();
   });
 
   it("Not found rows show score, model, difficulty and an escalated marker only when true", async () => {

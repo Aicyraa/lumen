@@ -47,6 +47,20 @@ describe("SwitchProject", () => {
     expect(tip()).not.toBeVisible();
   });
 
+  it("Escape dismisses a tooltip opened by hover alone, with focus elsewhere", () => {
+    renderWithProviders(<SwitchProject />);
+    fireEvent.mouseEnter(link());
+    act(() => vi.advanceTimersByTime(500));
+    expect(tip()).toBeVisible();
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(tip()).not.toBeVisible();
+  });
+
+  it("keeps the title out of the description so a screen reader does not say it twice", () => {
+    renderWithProviders(<SwitchProject />);
+    expect(screen.getByText("Switch project", { selector: "strong" })).toHaveAttribute("aria-hidden", "true");
+  });
+
   it("Escape dismisses it while the link keeps focus", () => {
     renderWithProviders(<SwitchProject />);
     act(() => link().focus());
