@@ -2442,22 +2442,6 @@ html.snap-home {
   display: none;
 }
 
-/* project dropdown and sidebar brand footer */
-.icon-btn {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  color: var(--text-3);
-}
-.icon-btn:hover {
-  color: var(--text);
-}
-
 /* home: stacked section heads, icon tiles, security cards, decoration */
 .sec-head {
   display: flex;
@@ -2664,13 +2648,54 @@ html.snap-home {
 .side-top {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 0 0 12px;
+  gap: 5px;
+  padding: 0 0 0 7px; /* the link's 5px padding puts the mark back at 12px, in line with the nav text */
   margin-bottom: 12px;
+  min-height: 34px;
 }
 .side-mark {
-  width: 30px;
-  height: 30px;
+  display: block;
+  width: 23px;
+  height: 23px;
+}
+.side-switch {
+  position: relative;
+  flex: none;
+}
+.side-switch-link {
+  display: block;
+  padding: 5px;
+  border-radius: 8px;
+}
+.side-tip {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: max-content;
+  max-width: 200px;
+  padding: 8px 12px;
+  background: var(--surface-active);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  font: 400 12px / 1.45 var(--sans);
+  color: var(--text-2);
+  animation: fade 0.15s ease;
+}
+.side-tip::before {
+  content: ""; /* bridges the gap so the pointer can move from the logo onto the tip */
+  position: absolute;
+  inset: -8px 0 100%;
+}
+.side-tip strong {
+  font-weight: 500;
+  color: var(--text);
+}
+.side-tip[hidden] {
+  display: none;
 }
 .project-label {
   flex: 1;
