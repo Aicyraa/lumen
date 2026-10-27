@@ -1980,6 +1980,25 @@ html.snap-home {
 .an-row-bottom {
   grid-template-columns: minmax(0, 1fr);
 }
+.an-row-unanswered {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.an .list li.un-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 16px;
+}
+.un-meta {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.un-esc {
+  color: var(--amber);
+}
 .an .card {
   padding: 32px;
   gap: 20px;
@@ -2010,7 +2029,8 @@ html.snap-home {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .an-row-top,
-  .an-row-bottom {
+  .an-row-bottom,
+  .an-row-unanswered {
     grid-template-columns: minmax(0, 1fr);
   }
 }

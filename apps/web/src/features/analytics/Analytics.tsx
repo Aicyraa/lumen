@@ -1,8 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "../../shared/lib/api";
 import { fmtCost, fmtDay, fmtInt, fmtMs, fmtScore } from "../../shared/lib/format";
-import type { Range, Summary, Unanswered } from "../../shared/lib/types";
+import type { Range, Summary, Unanswered, UnansweredGroup } from "../../shared/lib/types";
 import { CountUp } from "../../shared/motion/motion";
 import { useInViewOnce } from "../../shared/motion/useInViewOnce";
 import { StatusMessage } from "../../shared/ui/StatusMessage";
@@ -77,7 +77,15 @@ export function Analytics() {
             />
             <Stat
               label="UNANSWERED"
-              value={unanswered.data ? <CountUp value={unanswered.data.total} /> : "—"}
+              value={
+                unanswered.data ? (
+                  <CountUp
+                    value={unanswered.data.no_match.total + unanswered.data.not_found.total}
+                  />
+                ) : (
+                  "—"
+                )
+              }
               note="Weak or no match"
             />
           </div>
@@ -216,36 +224,51 @@ export function Analytics() {
                 </div>
               )}
             </section>
-            <section className="card" aria-labelledby="an-unanswered">
-              <h2 className="card-title" id="an-unanswered">
-                Unanswered questions
-              </h2>
-              <div className="small muted-3">Add documents that cover these.</div>
-              {unanswered.isPending && <div className="card-empty">Loading…</div>}
-              {unanswered.isError && (
-                <div className="card-empty">
-                  Could not load unanswered questions.{" "}
-                  <button type="button" className="link-btn" onClick={() => unanswered.refetch()}>
-                    Retry
-                  </button>
-                </div>
+          </div>
+          <div className="an-row an-row-unanswered">
+            <UnansweredCard
+              id="an-no-match"
+              title="No match"
+              hint={`No model was called, or the best match scored below ${unanswered.data ? fmtScore(unanswered.data.threshold) : "the threshold"}. Add documents that cover these.`}
+              empty="Nothing without a match in this range."
+              query={unanswered}
+              group={unanswered.data?.no_match}
+            >
+              {(u) => (
+                <li key={u.id}>
+                  <span className="grow ellipsis" title={u.query}>
+                    {u.query}
+                  </span>
+                  <span className="mono red">
+                    {u.top_score == null ? "no match" : fmtScore(u.top_score)}
+                  </span>
+                </li>
               )}
-              {unanswered.isSuccess && !unanswered.data.items.length && (
-                <div className="card-empty">No unanswered questions in this range.</div>
+            </UnansweredCard>
+            <UnansweredCard
+              id="an-not-found"
+              title="Not found"
+              hint="A model answered, but found nothing in your documents. These matched loosely, so a document may need rewording or adding."
+              empty="Nothing marked not found in this range."
+              query={unanswered}
+              group={unanswered.data?.not_found}
+            >
+              {(u) => (
+                <li key={u.id} className="un-row">
+                  <span className="grow ellipsis" title={u.query}>
+                    {u.query}
+                  </span>
+                  <span className="mono red">{fmtScore(u.top_score)}</span>
+                  <span className="un-meta mono">
+                    <span>
+                      {u.model ? `${u.model.provider} / ${u.model.model_id}` : "model not recorded"}
+                    </span>
+                    {u.difficulty != null && <span>difficulty {fmtScore(u.difficulty)}</span>}
+                    {u.escalated && <span className="un-esc">escalated</span>}
+                  </span>
+                </li>
               )}
-              {unanswered.isSuccess && unanswered.data.items.length > 0 && (
-                <ul className="list">
-                  {unanswered.data.items.map((u) => (
-                    <li key={u.id}>
-                      <span className="grow ellipsis">{u.query}</span>
-                      <span className="mono red">
-                        {u.top_score == null ? "no match" : fmtScore(u.top_score)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            </UnansweredCard>
           </div>
         </div>
       )}
@@ -260,5 +283,43 @@ function Stat({ label, value, note }: { label: string; value: React.ReactNode; n
       <div className="stat-value">{value}</div>
       <div className="small muted-3">{note}</div>
     </div>
+  );
+}
+
+function UnansweredCard<T extends { id: string }>({
+  id,
+  title,
+  hint,
+  empty,
+  query,
+  group,
+  children,
+}: {
+  id: string;
+  title: string;
+  hint: string;
+  empty: string;
+  query: UseQueryResult<Unanswered>;
+  group: UnansweredGroup<T> | undefined;
+  children: (item: T) => React.ReactNode;
+}) {
+  return (
+    <section className="card" aria-labelledby={id}>
+      <h2 className="card-title" id={id}>
+        {title}
+      </h2>
+      <div className="small muted-3">{hint}</div>
+      {query.isPending && <div className="card-empty">Loading…</div>}
+      {query.isError && (
+        <div className="card-empty">
+          Could not load unanswered questions.{" "}
+          <button type="button" className="link-btn" onClick={() => query.refetch()}>
+            Retry
+          </button>
+        </div>
+      )}
+      {group && !group.items.length && <div className="card-empty">{empty}</div>}
+      {group && group.items.length > 0 && <ul className="list">{group.items.map(children)}</ul>}
+    </section>
   );
 }

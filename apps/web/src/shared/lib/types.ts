@@ -105,11 +105,30 @@ export interface Summary {
   total_cost_usd: number | null;
   by_model: ModelUsage[];
 }
+export interface UnansweredGroup<T> {
+  total: number;
+  items: T[];
+}
 export interface Unanswered {
   range: Range;
   threshold: number;
-  total: number;
-  items: { id: string; query: string; top_score: number | null; tier: Tier; time: string }[];
+  no_match: UnansweredGroup<{
+    id: string;
+    query: string;
+    top_score: number | null;
+    tier: Tier;
+    time: string;
+  }>;
+  not_found: UnansweredGroup<{
+    id: string;
+    query: string;
+    top_score: number | null;
+    tier: Tier;
+    model: { provider: string; model_id: string } | null;
+    difficulty: number | null;
+    escalated: boolean;
+    time: string;
+  }>;
 }
 
 export interface RequestRow {
