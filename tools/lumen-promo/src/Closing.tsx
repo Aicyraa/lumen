@@ -6,6 +6,7 @@ import {
   staticFile,
   Easing,
 } from "remotion";
+import { Fragment } from "react";
 import { C, Frame, ease } from "./design";
 
 // Eight-second logo signature: enter, build the name, reveal the line, exit.
@@ -105,33 +106,36 @@ export const Closing = () => {
             fontSize: portrait ? 56 : 58,
             fontWeight: 400,
             letterSpacing: -2,
-            lineHeight: 1.25,
+            lineHeight: portrait ? 1.4 : 1.25,
+            whiteSpace: portrait ? "nowrap" : undefined,
           }}
         >
           {["“Where", "knowledge", "becomes", "an", "answer.”"].map(
             (word, i) => (
-              <span
-                key={word}
-                style={{
-                  display: "inline-block",
-                  marginRight: 15,
-                  color: i === 4 ? C.lime : C.text,
-                  opacity: interpolate(
-                    f,
-                    [(3.35 + i * 0.12) * fps, (3.95 + i * 0.12) * fps],
-                    [0, 1],
-                    ease,
-                  ),
-                  translate: interpolate(
-                    f,
-                    [(3.35 + i * 0.12) * fps, (4.1 + i * 0.12) * fps],
-                    ["0px 35px", "0px 0px"],
-                    ease,
-                  ),
-                }}
-              >
-                {word}
-              </span>
+              <Fragment key={word}>
+                {portrait && i === 2 ? <br /> : null}
+                <span
+                  style={{
+                    display: "inline-block",
+                    marginRight: 15,
+                    color: i === 4 ? C.lime : C.text,
+                    opacity: interpolate(
+                      f,
+                      [(3.35 + i * 0.12) * fps, (3.95 + i * 0.12) * fps],
+                      [0, 1],
+                      ease,
+                    ),
+                    translate: interpolate(
+                      f,
+                      [(3.35 + i * 0.12) * fps, (4.1 + i * 0.12) * fps],
+                      ["0px 35px", "0px 0px"],
+                      ease,
+                    ),
+                  }}
+                >
+                  {word}
+                </span>
+              </Fragment>
             ),
           )}
         </div>

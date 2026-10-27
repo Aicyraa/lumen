@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 const destination = fileURLToPath(
   new URL("../public/lumen-score.wav", import.meta.url),
 );
-const version = "5-warm-keys-master",
+const version = "6-warm-keys-no-percussion",
   marker = destination + ".version";
 const rate = 24000,
   seconds = 60,
@@ -41,7 +41,8 @@ const add = (start, duration, fn, pan = 0.5) => {
   const first = Math.floor(start * rate),
     last = Math.min(count, Math.floor((start + duration) * rate));
   for (let i = Math.max(0, first); i < last; i++) {
-    const v = fn((i - first) / rate);
+    // Fade every finite voice to zero to prevent clicks at note cutoffs.
+    const v = fn((i - first) / rate) * Math.min(1, (last - i) / (rate * 0.03));
     left[i] += v * Math.sqrt(1 - pan);
     right[i] += v * Math.sqrt(pan);
   }
@@ -75,28 +76,7 @@ for (let step = 0; (step * beat) / 2 < seconds; step++) {
       0.5,
     );
   }
-  if (step % 4 === 0)
-    add(
-      start,
-      0.28,
-      (a) =>
-        0.12 *
-        Math.exp(-a * 24) *
-        Math.sin(tau * (45 * a + 0.85 * (1 - Math.exp(-a * 65)))),
-      0.5,
-    );
-  // A soft brushed backbeat, replacing the earlier high electronic ticks.
-  if (step % 4 === 2)
-    add(
-      start,
-      0.16,
-      (a) =>
-        0.016 *
-        Math.exp(-a * 34) *
-        (Math.sin(a * 10331) + Math.sin(a * 16447) + Math.sin(a * 20593)) *
-        0.33,
-      0.55,
-    );
+  // No kick, brushed backbeat or click track: keep keys, bass and pad.
 }
 const chordFreq = chords.map((c) => c.slice(1, 4).map(hz));
 for (let i = 0; i < count; i++) {

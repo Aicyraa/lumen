@@ -6,6 +6,35 @@ import {
 } from "remotion";
 import { C, mono, ease } from "./design";
 
+// Project the four plane corners through the same CSS rotations and perspective.
+// The portrait parent centers the visible stack, rather than its empty 850px wrapper.
+export function documentCenterX(frame: number, fps: number) {
+  const t = frame / fps,
+    rad = Math.PI / 180;
+  const rx = (18 + Math.sin(t * 0.65) * 7) * rad,
+    ry = (-24 + Math.sin(t * 0.4) * 12) * rad,
+    rz = -8 * rad;
+  const spread = interpolate(
+    frame,
+    [0, 1.8 * fps, 7 * fps, 10 * fps],
+    [15, 100, 100, 30],
+    ease,
+  );
+  const xs: number[] = [];
+  for (let i = 0; i < 4; i++)
+    for (const x of [-215, 215])
+      for (const y of [-215, 215]) {
+        const z = (i - 1.5) * spread;
+        const x1 = x * Math.cos(rz) - y * Math.sin(rz),
+          y1 = x * Math.sin(rz) + y * Math.cos(rz);
+        const x2 = x1 * Math.cos(ry) + z * Math.sin(ry),
+          z2 = -x1 * Math.sin(ry) + z * Math.cos(ry);
+        const z3 = y1 * Math.sin(rx) + z2 * Math.cos(rx);
+        xs.push(425 + ((415 + x2 - 425) * 1600) / (1600 - z3));
+      }
+  return (Math.min(...xs) + Math.max(...xs)) / 2;
+}
+
 // Perspective planes add deterministic depth without a WebGL dependency.
 export const DocumentRig = ({ engine = false }: { engine?: boolean }) => {
   const f = useCurrentFrame();
@@ -53,6 +82,7 @@ export const DocumentRig = ({ engine = false }: { engine?: boolean }) => {
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
+            data-document-plane={i}
             style={{
               position: "absolute",
               width: 430,

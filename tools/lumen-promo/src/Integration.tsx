@@ -1,3 +1,4 @@
+import { FitLine } from "./FitLine";
 import {
   interpolate,
   interpolateColors,
@@ -170,8 +171,22 @@ export const Integration = () => {
           letterSpacing: -1.5,
         }}
       >
-        One request.{" "}
-        <span style={{ color: C.lime }}>Answer + sources + route.</span>
+        {portrait ? (
+          <FitLine
+            text="One request. Answer + sources + route."
+            width={780}
+            maxFontSize={44}
+            spacing={-1.5}
+          >
+            One request.{" "}
+            <span style={{ color: C.lime }}>Answer + sources + route.</span>
+          </FitLine>
+        ) : (
+          <>
+            One request.{" "}
+            <span style={{ color: C.lime }}>Answer + sources + route.</span>
+          </>
+        )}
       </Reveal>
       <Reveal
         at={7}
@@ -185,7 +200,18 @@ export const Integration = () => {
           color: C.muted,
         }}
       >
-        Your documents stay at the center of the conversation.
+        {portrait ? (
+          <>
+            <FitLine
+              text="Your documents stay at the center"
+              width={780}
+              maxFontSize={40}
+            />
+            <FitLine text="of the conversation." width={780} maxFontSize={40} />
+          </>
+        ) : (
+          "Your documents stay at the center of the conversation."
+        )}
       </Reveal>
     </Frame>
   );

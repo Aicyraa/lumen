@@ -1,3 +1,4 @@
+import { FitLine } from "./FitLine";
 import { interpolateColors, useCurrentFrame, useVideoConfig } from "remotion";
 import { C, Frame, Reveal, mono } from "./design";
 import { routeFocus } from "./motion";
@@ -101,7 +102,26 @@ export const Routing = () => {
                   "0px " + (1 - w) * (t < [0, 4.5, 9][i] ? 90 : -90) + "px",
               }}
             >
-              {q}
+              {portrait ? (
+                i === 1 ? (
+                  <>
+                    <FitLine
+                      text="“Compare the policies"
+                      width={840}
+                      maxFontSize={44}
+                    />
+                    <FitLine
+                      text="and explain the exceptions.”"
+                      width={840}
+                      maxFontSize={44}
+                    />
+                  </>
+                ) : (
+                  <FitLine text={q} width={840} maxFontSize={44} />
+                )
+              ) : (
+                q
+              )}
             </div>
           );
         })}
@@ -182,7 +202,16 @@ export const Routing = () => {
                 letterSpacing: -3,
               }}
             >
-              {name}
+              {portrait ? (
+                <FitLine
+                  text={name}
+                  width={i === 2 ? 780 : 410}
+                  maxFontSize={i === 2 ? 42 : 52}
+                  spacing={-3}
+                />
+              ) : (
+                name
+              )}
             </div>
             <div
               style={{
@@ -190,13 +219,25 @@ export const Routing = () => {
                 marginTop: 14,
               }}
             >
-              {
+              {portrait ? (
+                <FitLine
+                  text={
+                    [
+                      "Straightforward questions",
+                      "Complexity + escalation",
+                      "An honest not-found reply.",
+                    ][i]
+                  }
+                  width={i === 2 ? 780 : 410}
+                  maxFontSize={36}
+                />
+              ) : (
                 [
                   "Straightforward questions",
                   "Complexity + escalation",
                   "An honest not-found reply.",
                 ][i]
-              }
+              )}
             </div>
           </div>
         ),
@@ -213,7 +254,22 @@ export const Routing = () => {
           color: C.muted,
         }}
       >
-        Bring your own models. Order primary and backups within each tier.
+        {portrait ? (
+          <>
+            <FitLine
+              text="Bring your own models."
+              width={870}
+              maxFontSize={32}
+            />
+            <FitLine
+              text="Order primary and backups within each tier."
+              width={870}
+              maxFontSize={32}
+            />
+          </>
+        ) : (
+          "Bring your own models. Order primary and backups within each tier."
+        )}
       </Reveal>
     </Frame>
   );

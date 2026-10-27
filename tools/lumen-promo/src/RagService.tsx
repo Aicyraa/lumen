@@ -1,3 +1,4 @@
+import { FitLine } from "./FitLine";
 import {
   interpolate,
   interpolateColors,
@@ -53,7 +54,24 @@ export const RagService = () => {
           letterSpacing: -3,
         }}
       >
-        From documents to relevant context.
+        {portrait ? (
+          <>
+            <FitLine
+              text="From documents"
+              width={860}
+              maxFontSize={76}
+              spacing={-3}
+            />
+            <FitLine
+              text="to relevant context."
+              width={860}
+              maxFontSize={76}
+              spacing={-3}
+            />
+          </>
+        ) : (
+          "From documents to relevant context."
+        )}
       </Reveal>
       <div
         style={{
@@ -210,7 +228,11 @@ export const RagService = () => {
               translate: "0px " + (1 - w) * 40 * (position > i ? -1 : 1) + "px",
             }}
           >
-            {text}
+            {portrait ? (
+              <FitLine text={text} width={860} maxFontSize={46} spacing={-1} />
+            ) : (
+              text
+            )}
           </div>
         );
       })}

@@ -17,8 +17,9 @@ No navbar, chapter bar, footer, progress rule or dashboard-style information car
 The closing signature slides the icon in from the right, builds “lumen” letter by
 letter, reveals “Where knowledge becomes an answer.”, then slides the group left.
 These are deterministic CSS 3D planes, not externally rendered stock footage.
-A new original stereo soundtrack uses warm keys, soft bass and a brushed beat at 90 BPM.
-It replaces the earlier bright electronic track and transition sweeps.
+A new original stereo soundtrack uses warm keys, soft bass and a pad at 90 BPM.
+The melody is preserved; kick and brushed percussion are removed. Finite notes
+have a short fade to zero to prevent clicks at their cutoffs.
 Text-led; no voiceover or external provider credentials required.
 
 ## Preview
@@ -113,3 +114,15 @@ The portrait release uses H.264 / yuv420p / BT.709, stereo AAC at 48 kHz,
 30 fps and fast-start MP4 packaging. The one-minute file was fully decoded for
 validation, and stills from all six scenes were checked for portrait layout.
 Studio preview playback was verified without browser exceptions.
+
+The Instagram opening centers the projected bounds of all four 3D document
+planes, not the larger invisible wrapper. Portrait captions use explicit phrase
+breaks, and single-line labels are measured after the local fonts load. Closing
+copy is balanced into “Where knowledge / becomes an answer.” rather than leaving
+“answer” alone on the next line. Layout checks cover all six scenes.
+
+The corrected opening was measured in Studio at three points in its rotation;
+the projected stack stayed centered within 0.01 display pixels. Single-line
+caption checks reported zero horizontal overflow across the six scenes. Both
+release videos use the percussion-free score; the landscape H.264 video-stream
+hash was unchanged by its audio replacement.

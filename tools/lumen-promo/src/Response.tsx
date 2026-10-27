@@ -1,3 +1,4 @@
+import { FitLine } from "./FitLine";
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { C, Frame, Reveal, mono, ease } from "./design";
 export const Response = () => {
@@ -5,6 +6,10 @@ export const Response = () => {
   const { fps, width, height } = useVideoConfig();
   const portrait = height > width;
   const reply = "Your knowledge.\nAn answer with evidence.";
+  const typed = reply.slice(
+    0,
+    Math.floor(interpolate(f, [0.5 * fps, 2.7 * fps], [0, reply.length], ease)),
+  );
   return (
     <Frame>
       <Reveal
@@ -24,30 +29,63 @@ export const Response = () => {
           position: "absolute",
           left: portrait ? 90 : 120,
           top: portrait ? 330 : 265,
-          width: portrait ? 850 : 1500,
+          width: portrait ? 900 : 1500,
           fontSize: portrait ? 86 : 112,
           letterSpacing: -5,
           lineHeight: 1.1,
           whiteSpace: "pre-line",
         }}
       >
-        {reply.slice(
-          0,
-          Math.floor(
-            interpolate(f, [0.5 * fps, 2.7 * fps], [0, reply.length], ease),
-          ),
+        {portrait ? (
+          <>
+            <FitLine
+              text="Your knowledge."
+              width={900}
+              maxFontSize={86}
+              spacing={-5}
+            >
+              {typed.split("\n")[0]}
+            </FitLine>
+            <FitLine
+              text="An answer with evidence. [1]"
+              width={900}
+              maxFontSize={84}
+              spacing={-3}
+            >
+              {typed.split("\n")[1] ?? ""}
+              <span
+                style={{
+                  color: C.lime,
+                  opacity: interpolate(f, [2.5 * fps, 3 * fps], [0, 1], ease),
+                }}
+              >
+                {" "}
+                [1]
+              </span>
+            </FitLine>
+          </>
+        ) : (
+          <>
+            {" "}
+            {reply.slice(
+              0,
+              Math.floor(
+                interpolate(f, [0.5 * fps, 2.7 * fps], [0, reply.length], ease),
+              ),
+            )}
+            <span
+              style={{
+                fontFamily: "Geist Mono",
+                fontSize: 65,
+                color: C.lime,
+                opacity: interpolate(f, [2.5 * fps, 3 * fps], [0, 1], ease),
+              }}
+            >
+              {" "}
+              [1]
+            </span>
+          </>
         )}
-        <span
-          style={{
-            fontFamily: "Geist Mono",
-            fontSize: 65,
-            color: C.lime,
-            opacity: interpolate(f, [2.5 * fps, 3 * fps], [0, 1], ease),
-          }}
-        >
-          {" "}
-          [1]
-        </span>
       </div>
       <svg width={width} height={height} style={{ position: "absolute" }}>
         <path
@@ -89,9 +127,26 @@ export const Response = () => {
             marginTop: 22,
           }}
         >
-          Retrieved from your project.
-          <br />
-          Quotes checked before citations.
+          {portrait ? (
+            <>
+              <FitLine
+                text="Retrieved from your project."
+                width={800}
+                maxFontSize={44}
+              />
+              <FitLine
+                text="Quotes checked before citations."
+                width={800}
+                maxFontSize={44}
+              />
+            </>
+          ) : (
+            <>
+              Retrieved from your project.
+              <br />
+              Quotes checked before citations.
+            </>
+          )}
         </div>
       </Reveal>
       <Reveal
@@ -127,7 +182,17 @@ export const Response = () => {
           color: C.muted,
         }}
       >
-        SUPPORT BOTS / INTERNAL KNOWLEDGE / DOCUMENT Q&A
+        {portrait ? (
+          <FitLine
+            text="SUPPORT BOTS / INTERNAL KNOWLEDGE / DOCUMENT Q&A"
+            width={850}
+            maxFontSize={28}
+            spacing={2}
+            family="Geist Mono"
+          />
+        ) : (
+          "SUPPORT BOTS / INTERNAL KNOWLEDGE / DOCUMENT Q&A"
+        )}
       </Reveal>
     </Frame>
   );

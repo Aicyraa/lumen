@@ -1,6 +1,7 @@
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { C, Frame, Label, Reveal, Title, ease, mono } from "./design";
-import { DocumentRig, Packets } from "./Depth";
+import { DocumentRig, Packets, documentCenterX } from "./Depth";
+import { FitLine } from "./FitLine";
 export const Opening = () => {
   const f = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
@@ -69,7 +70,22 @@ export const Opening = () => {
             lineHeight: 1.3,
           }}
         >
-          Turn the documents you already have into answers your app can use.
+          {portrait ? (
+            <>
+              <FitLine
+                text="Turn the documents you already have"
+                width={850}
+                maxFontSize={44}
+              />
+              <FitLine
+                text="into answers your app can use."
+                width={850}
+                maxFontSize={44}
+              />
+            </>
+          ) : (
+            "Turn the documents you already have into answers your app can use."
+          )}
         </Reveal>
         <Reveal at={4.2} style={{ ...mono, marginTop: 45, color: C.lime }}>
           A RAG GATEWAY. YOUR MODELS. ONE API.
@@ -78,11 +94,12 @@ export const Opening = () => {
       <div
         style={{
           position: "absolute",
-          left: portrait ? 80 : 1020,
+          left: portrait ? width / 2 - documentCenterX(f, fps) * 0.9 : 1020,
           top: portrait ? 920 : 195,
           scale: portrait ? 0.9 : 1.08,
           transformOrigin: portrait ? "top left" : undefined,
         }}
+        data-document-stack
       >
         <DocumentRig />
       </div>
