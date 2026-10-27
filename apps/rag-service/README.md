@@ -2,27 +2,18 @@
 
 Python RAG service: ingestion, retrieval, routing and LLM calls behind `/internal/*`. Only the Express API calls it (header `X-Internal-Secret`).
 
-## Structure
+## Contents
 
-```text
-pyproject.toml        dependencies (single source), pytest and ruff config
-.env.example          every variable, empty; copy to .env
-app/
-  main.py             uvicorn entry (app.main:app): loads .env, creates the app
-  cli.py              python -m app.cli <command>
-  config.yaml         models, router thresholds, limits, messages
-  api/                factory (app, error handlers), routes, deps (secret, LLM caller), schemas
-  core/               config loader and settings, env loader, errors, logging
-  ingest/             chunking, text extraction, ingest_file (used by the CLI)
-  retrieval/          embeddings, BM25/pgvector store, reranker, router (decide), ask_chunks
-  llm/                client (call_model, Attempt), quote-backed prompt and rendering, endpoint_guard
-samples/              sample documents
-tests/                mirrors app/ (api, core, ingest, retrieval, llm) plus conftest.py
-```
+- [Run](#run)
+- [Configuration](#configuration)
+- [Tests](#tests)
+- [Layout](#layout)
+- [Ingest limits and errors](#ingest-limits-and-errors)
+- [Retrieval and answers](#retrieval-and-answers)
 
-## Commands
+## Run
 
-Run from `apps/rag-service` (or `pnpm --filter @lumen/rag-service <script>`).
+Run from `apps/rag-service` (or `pnpm --filter @lumen/rag-service <script>`). The first-time setup is `pnpm --filter @lumen/rag-service bootstrap`.
 
 | Script | What it does |
 | --- | --- |
@@ -40,9 +31,7 @@ The handler also has `ingest <tenant_id> <file>` (.txt, .md, .pdf) and `ask <ten
 `.venv/bin/python -m app.cli ingest tenant_a samples/harbor_cafe_handbook.md`.
 `ingest` creates the tenant's `tenants` row if missing (local testing only); the service endpoint does not, because the API inserts it before the document. Chunk counts are not stored: read them from the `document_stats` view.
 
-Ingest limits and errors (`/internal/ingest`): `ingest.max_pages` and `ingest.max_chunks` give `422 document_too_large` before any embedding; a corrupt or encrypted PDF is `422 unreadable_document`; `ingest.max_chunk_tokens` (estimated as the larger of the word count and characters / `ingest.chars_per_token`, not a real tokenizer) splits chunks that could pass the embedding model's window. A document marked `failed` gets no chunks (`409 document_not_ingestable`). Model work is bounded per process by `concurrency.embed_max`, `rerank_max` and `ingest_max`; an upload that waits longer than `concurrency.ingest_wait_seconds` gets `503 busy` with `Retry-After`, and so does a query that waits longer than `concurrency.query_wait_seconds` for an embed or rerank slot. The database pool also answers `503 busy` when no connection frees up within `database.pool_timeout_seconds`.
-
-## Production start
+### Production start
 
 ```sh
 NODE_ENV=production LOG_LEVEL=INFO RAG_WORKERS=2 .venv/bin/python -m app.cli serve
@@ -51,23 +40,71 @@ NODE_ENV=production LOG_LEVEL=INFO RAG_WORKERS=2 .venv/bin/python -m app.cli ser
 
 No `--reload`, and bind to 127.0.0.1: only the Express API calls this service. Every worker loads the embedder and the reranker and has its own database pool (`database.pool_max_size`) and its own model semaphores, so size workers by memory and CPU. Liveness: `GET /internal/health`; readiness (database connection and models loaded): `GET /internal/ready` (sends `X-Internal-Secret`). Only health is public.
 
-## Running behind a Tailscale Funnel
+### Running behind a Tailscale Funnel
 
-To serve the Render-hosted API from your own machine, run `pnpm rag:funnel` from the repo root: it reads `apps/rag-service/.env.funnel` (`DATABASE_URL`, `INTERNAL_SECRET`), forces production mode and `127.0.0.1`, and `pnpm rag:funnel -- --check` validates the file. Funnel setup, the public address and its risks are in `infra/TAILSCALE.md`.
+To serve the Render-hosted API from your own machine, run `pnpm rag:funnel` from the repo root: it reads `apps/rag-service/.env.funnel` (`DATABASE_URL`, `INTERNAL_SECRET`), forces production mode and `127.0.0.1`, and `pnpm rag:funnel -- --check` validates the file without starting the service.
 
-## Logging
+1. Install Tailscale (version 1.38.3 or newer), sign in, and in the admin console turn on MagicDNS and HTTPS certificates.
+2. Create `apps/rag-service/.env.funnel` (git-ignored) with `DATABASE_URL` (the Supabase session pooler string with `?sslmode=require`; never port 6543) and `INTERNAL_SECRET` (`openssl rand -hex 32`). Optional: `RAG_PORT`, `RAG_WORKERS`, `LOG_LEVEL`.
+3. Start the service with `pnpm rag:funnel`, then publish it with `tailscale funnel --bg 8000`. `tailscale funnel status` prints the public address (`https://MACHINE.TAILNET.ts.net`); `tailscale funnel reset` removes it.
+4. Check it from outside: `/internal/health` answers, `/internal/ready` answers `401` without the secret.
+5. Set that address as `RAG_SERVICE_URL`, and the same `INTERNAL_SECRET`, on the API.
+
+The address is public and `INTERNAL_SECRET` is the only protection of `/internal/*`: anyone holding it can read or delete any tenant's data, so keep it out of git. The machine must stay on and awake, and Tailscale documents Funnel as a beta feature with bandwidth limits you cannot configure.
+
+## Configuration
+
+The app reads only `apps/rag-service/.env` (copy `.env.example`) plus the real environment (real variables win). There is no repo-root `.env` lookup. Models, router thresholds, limits and messages live in `app/config.yaml`.
+
+| Variable | Required | Meaning |
+| --- | --- | --- |
+| `DATABASE_URL` | yes | Postgres connection string |
+| `INTERNAL_SECRET` | yes | Shared secret the API sends in `X-Internal-Secret`; must equal `INTERNAL_SECRET` in `apps/api/.env` |
+| `NODE_ENV` | yes | The service refuses to start without it. It is production unless it is `development` or `test` (empty or misspelled counts as production): only then the `LLM_*` default model and `http://localhost` endpoints are allowed |
+| `RAG_PORT` | no | Port for `dev` and `serve` (default 8000) |
+| `RAG_HOST` | no | Bind address for `serve` (default 127.0.0.1) |
+| `RAG_WORKERS` | no | Worker count for `serve` (default 1) |
+| `LOG_LEVEL` | no | `DEBUG`, `INFO` (default), `WARNING` or `ERROR` for the `lumen.rag` log lines |
+| `TEST_DATABASE_URL` | no | Test database URL (default: `DATABASE_URL` with the database name replaced by `lumen_test`) |
+| `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL_CHEAP`, `LLM_MODEL_EXPENSIVE` | no | Dev/test default model, used only when a request carries no tenant models |
+
+### Logging
 
 `lumen.rag` lines go to stderr at `LOG_LEVEL` (default INFO), one line each: `time level=INFO logger=lumen.rag msg=...`. They carry tenant ids, counts, tiers, outcomes and latencies, never keys, prompts, passages, questions or snippets.
 
-## Dependencies
+### Dependencies
 
 `pyproject.toml` lists the direct dependencies; `constraints.txt` pins everything they resolve to (without torch and CUDA packages, which CI installs as the CPU build first). Install with `pip install -c constraints.txt -e ".[dev]"`. To refresh after changing dependencies: install from `pyproject.toml` unconstrained in a clean venv, run the tests, then rewrite `constraints.txt` from `pip freeze --exclude-editable`, minus `torch`, `triton`, `nvidia-*` and `cuda-*`, sorted, one `name==version` per line (a test checks the direct dependencies are all pinned).
 
-## Environment
+## Tests
 
-The app reads only `apps/rag-service/.env` plus the real environment (real variables win). There is no repo-root `.env` lookup.
-`DATABASE_URL`, `INTERNAL_SECRET` and `NODE_ENV` are required; the service refuses to start without them. The service is production unless `NODE_ENV` is `development` or `test` (empty or misspelled counts as production): only then the `LLM_*` default model and `http://localhost` endpoints are allowed. `LOG_LEVEL`, `RAG_HOST` and `RAG_WORKERS` are optional. `INTERNAL_SECRET` must equal the one in `apps/api/.env`.
-Tests use `TEST_DATABASE_URL`, or `DATABASE_URL` with the database name replaced by `lumen_test` (every `infra/sql/NNN_*.sql` is applied in order, including 011, the stored BM25 tsvector; tests insert the `tenants` rows they need). Tests use a fake LLM client and never call a provider.
+```sh
+pnpm --filter @lumen/rag-service test        # python -m app.cli test: pytest; extra args pass through
+```
+
+Tests use `TEST_DATABASE_URL`, or `DATABASE_URL` with the database name replaced by `lumen_test` (every `infra/sql/NNN_*.sql` is applied in order, including 011, the stored BM25 tsvector; tests insert the `tenants` rows they need). Tests use a fake LLM client and never call a provider. The embedding model and reranker files must be downloaded first (see "Retrieval and answers"); automated tests replace reranker inference with deterministic fakes.
+
+## Layout
+
+```text
+pyproject.toml        dependencies (single source), pytest and ruff config
+.env.example          every variable, empty; copy to .env
+app/
+  main.py             uvicorn entry (app.main:app): loads .env, creates the app
+  cli.py              python -m app.cli <command>
+  config.yaml         models, router thresholds, limits, messages
+  api/                factory (app, error handlers), routes, deps (secret, LLM caller), schemas
+  core/               config loader and settings, env loader, errors, logging
+  ingest/             chunking, text extraction, ingest_file (used by the CLI)
+  retrieval/          embeddings, BM25/pgvector store, reranker, router (decide), ask_chunks
+  llm/                client (call_model, Attempt), quote-backed prompt and rendering, endpoint_guard
+samples/              sample documents
+tests/                mirrors app/ (api, core, ingest, retrieval, llm) plus conftest.py
+```
+
+## Ingest limits and errors
+
+Applies to `/internal/ingest`: `ingest.max_pages` and `ingest.max_chunks` give `422 document_too_large` before any embedding; a corrupt or encrypted PDF is `422 unreadable_document`; `ingest.max_chunk_tokens` (estimated as the larger of the word count and characters / `ingest.chars_per_token`, not a real tokenizer) splits chunks that could pass the embedding model's window. A document marked `failed` gets no chunks (`409 document_not_ingestable`). Model work is bounded per process by `concurrency.embed_max`, `rerank_max` and `ingest_max`; an upload that waits longer than `concurrency.ingest_wait_seconds` gets `503 busy` with `Retry-After`, and so does a query that waits longer than `concurrency.query_wait_seconds` for an embed or rerank slot. The database pool also answers `503 busy` when no connection frees up within `database.pool_timeout_seconds`.
 
 ## Retrieval and answers
 

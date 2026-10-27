@@ -1,39 +1,18 @@
 # tools/eval
 
-Phase 5: the tenant isolation suite and the router evaluation. Python, standard library only, run with the
-rag-service interpreter (`apps/rag-service/.venv`: pytest, ruff, psycopg, uvicorn). There is no test website.
+The tenant isolation suite and the router evaluation (Phase 5). Python, standard library only, run with the rag-service interpreter (`apps/rag-service/.venv`: pytest, ruff, psycopg, uvicorn). There is no test website.
 
-```text
-questions.csv        the evaluation questions (drafted by the agent, answers filled in by the human)
-run_eval.py          entry point of the evaluation; the code is in evalkit/
-evalkit/             questions loader, config, HTTP with 429 backoff, rag-service client, judge, metrics, CLI
-isolation/           the isolation suite (python -m isolation, or pnpm eval:isolation from the repo root)
-tests/               pytest, with fake rag-service and judge servers (no provider is ever called)
-.env.example         every setting; copy to .env (git-ignored)
-```
+## Contents
 
-Run the tests from this directory: `../../apps/rag-service/.venv/bin/python -m pytest -q`
-(`ruff check .` and `ruff format .` with the same venv).
+- [Run](#run)
+- [Configuration](#configuration)
+- [Tests](#tests)
+- [Layout](#layout)
+- [Evaluation status](#evaluation-status)
 
-## questions.csv
+## Run
 
-Header, exactly: `query,tenant,domain,type,expected_answer,source_doc,held_out,cheap_ok,expensive_ok`.
-
-| Column | Who fills it | Meaning |
-| --- | --- | --- |
-| `query` | agent | The question, as a user would ask it. |
-| `tenant` | agent | Tenant name; `.env` `TENANT_IDS` maps it to the tenant id (`Lumen` is the campus project with the eight PDFs). |
-| `domain` | agent | Topic area (admissions, aid, careers, research, student-life, awards-policy, facilities). |
-| `type` | agent | `easy` (one fact), `hard` (comparison, exception, several conditions), `multi-document`, `unanswerable` (not in the documents). |
-| `source_doc` | agent | The PDF filename(s) holding the answer, separated by `;`. Empty for `unanswerable`. |
-| `expected_answer` | **human** | The correct answer, in your own words, checked against the PDFs. For an `unanswerable` row write anything non-empty (for example `not in the documents`); that row is graded by rule, not by the judge. |
-| `held_out` | **human** | `true` for the rows kept for the final comparison, `false` or empty for the rest. Held-out rows are reported as their own split and must never be used to tune thresholds, `k` or prompts. Aim for roughly a quarter, spread over all four types. |
-| `cheap_ok`, `expensive_ok` | **human** | Phase 6 only (does the cheap / expensive tier answer it acceptably, `true` or `false`). Leave empty for now. |
-
-The agent never writes `expected_answer`, `held_out`, `cheap_ok` or `expensive_ok`. A row without an `expected_answer` is
-skipped (and counted in the output), so you can fill the file in gradually.
-
-## run_eval.py
+### Evaluation (`run_eval.py`)
 
 ```sh
 cp tools/eval/.env.example tools/eval/.env      # fill it in; never commit it
@@ -47,8 +26,7 @@ It refuses to run when no row has an `expected_answer`, when the header is not e
 
 Edited reference answers and queries get new resume keys. A service, retrieval, prompt, model configuration or price
 change does **not** invalidate saved runs: omit `--resume` for a fresh comparison after such a change. Keep the previous
-outputs separately if you need to compare runs. Human reference approval is still required; agent source checks in
-`DRAFT_ANSWERS_REVIEW.md` and the verdict audit in `EVALUATION_REVIEW.md` do not supply that approval.
+outputs separately if you need to compare runs. Human reference approval is still required; the agent's source checks and verdict audit do not supply that approval.
 
 For each answered question it runs three setups against `POST {RAG_URL}/internal/query` (secret header, models built
 from `.env`): `always_cheap` (`force_tier: "cheap"`), `always_expensive` (`force_tier: "expensive"`) and `rule_router`
@@ -76,7 +54,7 @@ Outputs (both git-ignored):
 
 The judge is an LLM: it can be wrong in both directions, which is why part of its work is yours to check.
 
-## Isolation suite
+### Isolation suite
 
 `pnpm eval:isolation` (from the repo root) needs the dev Postgres container up (`pnpm db:up`), `node_modules` installed and
 the rag-service venv with its model weights cached. It never touches dev data and uses no real provider:
@@ -113,10 +91,67 @@ Logs of the child processes are in the temporary directory printed at the start 
 What it does not cover: Supabase (RLS, pooler), more than one API instance, the real model providers, the dashboard in a
 browser, and leaks that need data volumes (it uses six tiny documents; the reranker and BM25 see only 3 chunks per tenant).
 
-## Preliminary evaluation setup (eval-run-1)
+## Configuration
+
+Copy `tools/eval/.env.example` to `tools/eval/.env` (git-ignored; never commit it). Real environment variables win over the file.
+
+| Variable | Meaning |
+| --- | --- |
+| `EVAL_BASE_URL`, `EVAL_API_KEY`, `EVAL_PROVIDER`, `EVAL_MODEL_CHEAP`, `EVAL_MODEL_EXPENSIVE` | The tenant's own models the three setups call (`EVAL_PROVIDER` is `openai`, `anthropic`, `google` or `openai_compatible`); the judge uses the same endpoint by default |
+| `EVAL_JUDGE_MODEL` | Model that grades answers (`POST {EVAL_BASE_URL}/chat/completions`, temperature 0) |
+| `EVAL_JUDGE_BASE_URL`, `EVAL_JUDGE_API_KEY` | Optional: a different endpoint or key for the judge |
+| `EVAL_PRICE_CHEAP_INPUT`, `EVAL_PRICE_CHEAP_OUTPUT`, `EVAL_PRICE_EXPENSIVE_INPUT`, `EVAL_PRICE_EXPENSIVE_OUTPUT` | Optional prices per 1M tokens, the tenant's own. Both input and output are needed for a tier; without them `estimated_cost_per_query_usd` stays empty |
+| `EVAL_CONFIDENT_TOP_SCORE` | A wrong answer whose best passage scored at least this is listed as confident and wrong (`0.5` in the example) |
+| `TENANT_IDS` | Tenant name (the `tenant` column of `questions.csv`) to tenant id, comma separated |
+| `RAG_URL`, `INTERNAL_SECRET` | The rag-service and the secret it shares with the API |
+| `EVAL_NOT_FOUND_MESSAGE`, `EVAL_TIMEOUT_SECONDS`, `EVAL_BACKOFF_RETRIES`, `EVAL_ROUTER_CONFIG` | Optional (the not-found text defaults to the rag-service's; `EVAL_ROUTER_CONFIG` is the path of the router config hashed into the resume key) |
+
+### `questions.csv`
+
+Header, exactly: `query,tenant,domain,type,expected_answer,source_doc,held_out,cheap_ok,expensive_ok`.
+
+| Column | Who fills it | Meaning |
+| --- | --- | --- |
+| `query` | agent | The question, as a user would ask it. |
+| `tenant` | agent | Tenant name; `.env` `TENANT_IDS` maps it to the tenant id (`Lumen` is the campus project with the eight PDFs). |
+| `domain` | agent | Topic area (admissions, aid, careers, research, student-life, awards-policy, facilities). |
+| `type` | agent | `easy` (one fact), `hard` (comparison, exception, several conditions), `multi-document`, `unanswerable` (not in the documents). |
+| `source_doc` | agent | The PDF filename(s) holding the answer, separated by `;`. Empty for `unanswerable`. |
+| `expected_answer` | **human** | The correct answer, in your own words, checked against the PDFs. For an `unanswerable` row write anything non-empty (for example `not in the documents`); that row is graded by rule, not by the judge. |
+| `held_out` | **human** | `true` for the rows kept for the final comparison, `false` or empty for the rest. Held-out rows are reported as their own split and must never be used to tune thresholds, `k` or prompts. Aim for roughly a quarter, spread over all four types. |
+| `cheap_ok`, `expensive_ok` | **human** | Phase 6 only (does the cheap / expensive tier answer it acceptably, `true` or `false`). Leave empty for now. |
+
+The agent never writes `expected_answer`, `held_out`, `cheap_ok` or `expensive_ok`. A row without an `expected_answer` is
+skipped (and counted in the output), so you can fill the file in gradually.
+
+## Tests
+
+Run the tests from this directory, or from the repo root with the same interpreter:
+
+```sh
+../../apps/rag-service/.venv/bin/python -m pytest -q                  # from tools/eval
+apps/rag-service/.venv/bin/python -m pytest tools/eval/tests -q       # from the repo root
+```
+
+`ruff check .` and `ruff format .` use the same venv. The tests use fake rag-service and judge servers, so no provider is ever called.
+
+## Layout
+
+```text
+questions.csv        the evaluation questions (drafted by the agent, answers filled in by the human)
+run_eval.py          entry point of the evaluation; the code is in evalkit/
+evalkit/             questions loader, config, HTTP with 429 backoff, rag-service client, judge, metrics, CLI
+isolation/           the isolation suite (python -m isolation, or pnpm eval:isolation from the repo root)
+tests/               pytest, with fake rag-service and judge servers (no provider is ever called)
+.env.example         every setting; copy to .env (git-ignored)
+```
+
+## Evaluation status
+
+### Preliminary evaluation setup (eval-run-1)
 
 - **The `expected_answer` values are agent-drafted and unverified by the human.** They were written from the eight source PDFs
-  only (never from system output); `DRAFT_ANSWERS_REVIEW.md` lists each draft with its PDF page and, for the nine unanswerable
+  only (never from system output); an agent source check recorded each draft's PDF page and, for the nine unanswerable
   rows, the terms searched to confirm the information is absent. Every result built on them is **preliminary** until the
   human verifies them.
 - **Held-out rule (fixed before any system answer was seen):** per `type`, take the rows in file order, shuffle them with
@@ -124,10 +159,9 @@ browser, and leaks that need data volumes (it uses six tiny documents; the reran
   2 unanswerable (10 of 43). Code: `evalkit/heldout.py`; a test checks that `questions.csv` matches the rule.
   `cheap_ok` and `expensive_ok` stay empty (Phase 6).
 
-## Completed preserved rerun (2026-10-26)
+### Completed preserved rerun (2026-10-26)
 
-The revised-reference Groq-only comparison completed all 129 cases. See [RESULTS_REVIEW_RUN.md](RESULTS_REVIEW_RUN.md)
-for results and limitations. Raw outputs are in git-ignored `review-run/`; the original default outputs remain preserved.
+The revised-reference Groq-only comparison completed all 129 cases. The results and limitations were written up in a working report kept outside the repository. Raw outputs are in git-ignored `review-run/`; the original default outputs remain preserved.
 This run uses its original frozen pipeline and resume keys. It does not validate the later audit changes. One output
 validation failure is a completed failed test, not an unfinished case. References and disputed judge calls still need
 human approval; Phase 6 was not started.

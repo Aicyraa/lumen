@@ -1,6 +1,6 @@
 # apps/web
 
-React 19 + Vite + React Router + TanStack Query + Better Auth client. Dashboard and public pages (see `docs/WEBSITE.md`).
+The Lumen dashboard and public site: React 19, Vite, React Router, TanStack Query and the Better Auth client. What each page does and the design system are in [docs/WEBSITE.md](../../docs/WEBSITE.md).
 
 ## Run
 
@@ -17,11 +17,24 @@ pnpm --filter @lumen/web dev      # http://localhost:5173 (strict port); the API
 | `lint` / `format` | `biome check .` / `biome format --write .` (root `biome.json`) |
 | `clean` | removes `dist` and `node_modules/.cache` |
 
-## Environment
+## Configuration
 
-Reads only `apps/web/.env` (copy `.env.example`); only `VITE_` variables reach the browser. `VITE_API_URL` defaults to
-`http://localhost:3000` in development and is required for a production build (otherwise the app shows a "Missing VITE_API_URL" screen).
-`VITE_API_URL=/` (a single slash) makes it call its own origin; that is how the Vercel deployment works (`vercel.json` proxies `/api` and `/v1` to the API, see `infra/DEPLOY.md`). The `REPLACE-WITH-API-HOST` placeholder in `vercel.json` stays until deploy; `LUMEN_REQUIRE_API_HOST=1 pnpm test` fails while it is still there.
+The app reads only `apps/web/.env` (copy `.env.example`); only `VITE_` variables reach the browser.
+
+| Variable | Meaning |
+| --- | --- |
+| `VITE_API_URL` | Base URL of the API. Defaults to `http://localhost:3000` in development. Required for a production build: without it the app shows a "Missing VITE_API_URL" screen. `/` (a single slash) makes the app call its own origin, which is how the Vercel deployment works |
+
+`vercel.json` proxies `/api` and `/v1` to the API (see "Deployment" in the root [README](../../README.md)). Its `REPLACE-WITH-API-HOST` placeholder stays until deploy.
+
+## Tests
+
+```sh
+pnpm --filter @lumen/web test                 # type-check, then vitest
+LUMEN_REQUIRE_API_HOST=1 pnpm test            # deploy check: fails while REPLACE-WITH-API-HOST is still in vercel.json
+```
+
+Tests live in `test/`, which mirrors `src/` (`app`, `features/<feature>`, `shared`); `helpers.tsx` and `setup.ts` are there too. Tests import source with relative paths (`../../../src/...`). Do not put tests under `src/`. `test/app/icons.test.ts` checks the icon links, files and the ICO.
 
 ## Layout
 
@@ -39,10 +52,6 @@ src/
 test/         mirrors src/ (app, features/<feature>, shared); helpers.tsx and setup.ts live here
 ```
 
-Tests import source with relative paths (`../../../src/...`). Do not put tests under `src/`.
-
 ## Icons
 
-`public/favicon.svg` is the single source of the mark; `favicon.ico` (16, 32, 48), `icon-32.png` and `icon-180.png` (apple-touch) are rendered from it.
-Every icon link in `index.html` carries `?v=<tag>`: change the tag
-whenever the mark changes, because browsers cache favicons by URL for a long time. `test/app/icons.test.ts` checks the links, the files and the ICO.
+`public/favicon.svg` is the single source of the mark; `favicon.ico` (16, 32, 48), `icon-32.png` and `icon-180.png` (apple-touch) are rendered from it. Every icon link in `index.html` carries `?v=<tag>`: change the tag whenever the mark changes, because browsers cache favicons by URL for a long time.

@@ -1,6 +1,19 @@
 # apps/api
 
-Express + Better Auth (ES modules). Reads configuration only from `apps/api/.env` (copy `.env.example`; real environment variables win). There is no repo-root `.env` lookup.
+The Lumen public API: Better Auth sessions and organizations (a project is a tenant), API keys, document upload, the chat endpoint, the dashboard endpoints and tenant models. It calls the internal rag-service for ingestion and answers. Express + Better Auth, ES modules. Reads configuration only from `apps/api/.env` (copy `.env.example`; real environment variables win). There is no repo-root `.env` lookup.
+
+## Contents
+
+- [Run](#run)
+- [Configuration](#configuration)
+- [Tests](#tests)
+- [Layout](#layout)
+- [Tenant models](#tenant-models)
+- [Dashboard endpoints](#dashboard-endpoints)
+- [Accounts, verification and projects](#accounts-verification-and-projects)
+- [Dev-only API key](#dev-only-api-key)
+- [Limits, errors and the project header](#limits-errors-and-the-project-header)
+- [Running more than one API process](#running-more-than-one-api-process)
 
 ## Run
 
@@ -19,9 +32,27 @@ pnpm --filter @lumen/api dev            # http://localhost:3000 (tsx watch src/s
 | `clean` | removes `node_modules/.cache` (tsc build info) |
 | `auth:migrate` | `tsx scripts/migrate.ts` |
 
-The server refuses to start while `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `DASHBOARD_ORIGIN`,
-`INTERNAL_SECRET`, `RAG_SERVICE_URL`, `MODEL_KEY_ENCRYPTION_SECRET` (exactly 64 hex characters; changing it makes stored model keys unreadable), `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE`, `MAX_REQUESTS_PER_MONTH`, `MAX_PROJECTS_PER_USER` or `NODE_ENV`
-is missing. `NODE_ENV` must be `development`, `test` or `production`: only `development` and `test` get the dev shortcuts (`/dev/*` routes for `development`, `http://localhost` model endpoints), anything else counts as production, and an unset or empty value refuses to start. In production it also refuses to start without `SMTP_URL` and `MAIL_FROM`. Google/GitHub sign-in is skipped while its client id/secret are empty; email + password always works.
+## Configuration
+
+The server refuses to start while any required variable is missing.
+
+| Variable | Required | Meaning |
+| --- | --- | --- |
+| `DATABASE_URL` | yes | Postgres connection string (the same database as the rag-service) |
+| `BETTER_AUTH_SECRET` | yes | Better Auth signing secret (long random string) |
+| `BETTER_AUTH_URL` | yes | Public URL of this API, for example `http://localhost:3000` (its port is the default `PORT`) |
+| `DASHBOARD_ORIGIN` | yes | Origin of the dashboard: CORS and the verification-email redirect |
+| `INTERNAL_SECRET` | yes | Shared with the rag-service (must be equal); also guards `/dev/*` |
+| `RAG_SERVICE_URL` | yes | Base URL of the rag-service, for example `http://localhost:8000` |
+| `MODEL_KEY_ENCRYPTION_SECRET` | yes | Exactly 64 hex characters (AES-256-GCM key for tenant model keys); changing it makes stored model keys unreadable |
+| `MAX_DOCUMENTS_PER_TENANT`, `RATE_LIMIT_PER_MINUTE`, `MAX_REQUESTS_PER_MONTH`, `MAX_PROJECTS_PER_USER` | yes | The limits; never hard-coded |
+| `NODE_ENV` | yes | `development`, `test` or `production`. Only `development` and `test` get the dev shortcuts (`/dev/*` routes for `development`, `http://localhost` model endpoints); anything else counts as production (SMTP required, no `/dev/*`, https model endpoints only), and an unset or empty value refuses to start with a message saying so |
+| `SMTP_URL`, `MAIL_FROM` | production | Verification email; see "Accounts, mail and proxy" below. Without them the API refuses to start in production |
+| `PORT` | no | Listen port (default: the port of `BETTER_AUTH_URL`, else 3000) |
+| `TRUST_PROXY` | no | How Express reads the client address behind a reverse proxy; see below |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | no | Social sign-in is skipped while its id and secret are empty; email + password always works |
+
+### Tunables
 
 Other tunables live in `config.json` (ingest timeout, interrupted-ingest cutoff, global LLM cap per minute, upload
 limit, page sizes). Each can be overridden by an upper-snake env var, for example `INGEST_TIMEOUT_MS`.
@@ -29,6 +60,63 @@ limit, page sizes). Each can be overridden by an upper-snake env var, for exampl
 `globalLlmCapPerMinute` defaults to 8 (`GLOBAL_LLM_CAP_PER_MINUTE`). Groq documents base limits of 30 requests per
 minute and 8K tokens per minute for `openai/gpt-oss-20b` and `openai/gpt-oss-120b`. One chat call uses roughly
 700-1500 tokens, so tokens per minute, not requests, is the binding limit.
+
+### Accounts, mail and proxy
+
+| Variable | Meaning |
+| --- | --- |
+| `MAX_PROJECTS_PER_USER` | Required. How many projects (organizations) one user may own. The next one is `422 project_limit`. Counts owned projects only, not ones the user was added to |
+| `SMTP_URL` | Optional in development, **required in production** (the API refuses to start without it). A nodemailer connection URL such as `smtps://user:pass@smtp.example.com:465`. Never logged |
+| `MAIL_FROM` | Sender address, for example `Lumen <no-reply@example.com>`. Required in production; defaults to `Lumen <no-reply@localhost>` elsewhere |
+
+With `SMTP_URL` empty and `NODE_ENV=development`, the verification email is **not sent**: the API log prints it
+(`mail not sent (no SMTP_URL, development): open the link below`, with the link in the `text` field). With `SMTP_URL`
+empty in any other environment nothing is sent and no link is logged. New tunables in `config.json` (env-overridable):
+`projectNameMaxChars` (60), `projectDescriptionMaxChars` (500), `verificationResendWindowSeconds` (60),
+`verificationResendMax` (3), `verificationEmailExpiresSeconds` (3600), `verificationResendPerEmailWindowSeconds` (3600),
+`verificationResendPerEmailMax` (5), `dbConnectionTimeoutMs` (5000: a starved database pool errors after this long instead of hanging),
+`projectIdMaxChars` (100), `projectSlugMaxChars` (30), `projectSlugRandomBytes` (3), `projectCreateLockMs` (15000).
+
+`TRUST_PROXY` (optional, **off by default**): how Express reads the client address behind a reverse proxy. Unset, empty, `false` or `0` = ignore
+`X-Forwarded-For`, the right choice with no proxy (a client could otherwise pick its own address and dodge every per-address limit). A number is the count of
+proxy hops in front of the API (`1` for one load balancer); a list such as `loopback, 10.0.0.0/8` names trusted proxies. `true` is refused. Behind a
+proxy with the default, every client shares one per-address counter, so set it there.
+
+### Database
+
+The schema is the numbered SQL in `infra/sql/` (`pnpm db:migrate` from the repo root applies the pending files to the dev database; tests apply every file to `lumen_test` themselves). Design and reasons: `docs/DATABASE.md`. `pnpm --filter @lumen/api auth:migrate` also enables RLS on Better Auth's tables (`infra/sql/auth/001_auth_tables_rls.sql`). In short: every tenant table points at `tenants(id)` with `ON DELETE CASCADE`; a request's sources are `request_sources` rows; chunk counts and a request's tokens and cost are the views `document_stats` and `request_usage`, not stored columns.
+
+## Tests
+
+```sh
+pnpm --filter @lumen/api test      # tsc -b (all three projects), then vitest run
+```
+
+Tests use the `lumen_test` database only (create it once: `pnpm db:psql`, then `CREATE DATABASE lumen_test;`) and apply every `infra/sql` file to it themselves. In tests, `createTenant` marks the new user verified and `ctx.mails` captures every email the app tried to send. The not-exercised-by-tests items are called out in the sections below.
+
+## Layout
+
+```text
+.env.example         every variable, empty; copy to .env
+config.json          tunable defaults (overridable by env vars)
+tsconfig.json        references only; tsconfig.app / test / scripts extend ../../tsconfig.base.json
+scripts/migrate.ts   `auth:migrate`, creates/updates Better Auth's tables
+src/
+  server.ts          entry: load .env and config, start listening, run the startup ingest sweep
+  app.ts             builds the Express app, mounts middleware and routes
+  modules/<feature>/ code used by one feature
+    auth/            auth.ts (Better Auth setup), mailer.ts, windowCounter.ts, keyedLock.ts
+    chat/ documents/ feedback/ models/ projects/ analytics/ requests/ usage/ dev/
+                     <feature>.routes.ts, plus documents/sweep.ts and models/provider.ts
+  shared/            code used by two or more features
+    config/          config.ts (env + config.json -> Config), env.ts (loads apps/api/.env)
+    db/              pool.ts
+    middleware/      rateLimit, requireApiKey, requireSession, tenantModels
+    lib/             errors (error shape), validate (uuid guard, invalid_request), range (7d/30d, UTC month), crypto (AES-256-GCM), endpointGuard (SSRF guard), logger (key redaction), uploads
+    services/        rag.ts (rag-service client), modelCalls.ts (attempts, cost), modelUsage.ts, projects.ts
+    types/           types.ts (Deps, Express request fields)
+test/                mirrors src: modules/<feature>/, shared/, dashboardCors.test.ts (app level); helpers/ and global-setup.ts
+```
 
 ## Tenant models
 
@@ -64,7 +152,6 @@ failures stays `502 provider_error`.
 
 With no models: production answers `422 no_models_configured`, other environments let the Python service use its
 `LLM_*` default. The global LLM cap applies only to that shared default key.
-The schema is the numbered SQL in `infra/sql/` (`pnpm db:migrate` from the repo root applies the pending files to the dev database; tests apply every file to `lumen_test` themselves). Design and reasons: `docs/DATABASE.md`. `pnpm --filter @lumen/api auth:migrate` also enables RLS on Better Auth's tables (`infra/sql/auth/001_auth_tables_rls.sql`). In short: every tenant table points at `tenants(id)` with `ON DELETE CASCADE`; a request's sources are `request_sources` rows; chunk counts and a request's tokens and cost are the views `document_stats` and `request_usage`, not stored columns.
 
 ## Dashboard endpoints
 
@@ -153,27 +240,6 @@ authenticates `/v1/*` as that tenant straight away.
 
 ## Accounts, verification and projects
 
-### Environment
-
-| Variable | Meaning |
-| --- | --- |
-| `MAX_PROJECTS_PER_USER` | Required. How many projects (organizations) one user may own. The next one is `422 project_limit`. Counts owned projects only, not ones the user was added to |
-| `SMTP_URL` | Optional in development, **required in production** (the API refuses to start without it). An nodemailer connection URL such as `smtps://user:pass@smtp.example.com:465`. Never logged |
-| `MAIL_FROM` | Sender address, for example `Lumen <no-reply@example.com>`. Required in production; defaults to `Lumen <no-reply@localhost>` elsewhere |
-
-With `SMTP_URL` empty and `NODE_ENV=development`, the verification email is **not sent**: the API log prints it
-(`mail not sent (no SMTP_URL, development): open the link below`, with the link in the `text` field). With `SMTP_URL`
-empty in any other environment nothing is sent and no link is logged. New tunables in `config.json` (env-overridable):
-`projectNameMaxChars` (60), `projectDescriptionMaxChars` (500), `verificationResendWindowSeconds` (60),
-`verificationResendMax` (3), `verificationEmailExpiresSeconds` (3600), `verificationResendPerEmailWindowSeconds` (3600),
-`verificationResendPerEmailMax` (5), `dbConnectionTimeoutMs` (5000: a starved database pool errors after this long instead of hanging),
-`projectIdMaxChars` (100), `projectSlugMaxChars` (30), `projectSlugRandomBytes` (3), `projectCreateLockMs` (15000).
-
-`TRUST_PROXY` (optional, **off by default**): how Express reads the client address behind a reverse proxy. Unset, empty, `false` or `0` = ignore
-`X-Forwarded-For`, the right choice with no proxy (a client could otherwise pick its own address and dodge every per-address limit). A number is the count of
-proxy hops in front of the API (`1` for one load balancer); a list such as `loopback, 10.0.0.0/8` names trusted proxies. `true` is refused. Behind a
-proxy with the default, every client shares one per-address counter, so set it there.
-
 ### Email verification (email + password accounts)
 
 - `signUp.email` creates the user **unverified** and starts **no session** (`data.token` is `null`). A verification email is sent.
@@ -187,7 +253,7 @@ proxy with the default, every client shares one per-address counter, so set it t
 - "Works once": the link is a signed token, so it cannot be revoked, but it is idempotent. Once the user is verified, another click only
   redirects to `status=verified` again: no new session, nothing changes.
 - Resend: `POST /api/auth/send-verification-email`, at most `verificationResendMax` per `verificationResendWindowSeconds` per client
-  address (the socket address Express sees; see `TRUST_PROXY` below). On top of that, at most `verificationResendPerEmailMax` verification
+  address (the socket address Express sees; see `TRUST_PROXY` above). On top of that, at most `verificationResendPerEmailMax` verification
   emails go to one address per `verificationResendPerEmailWindowSeconds`, counted across sign-up, unverified sign-in and resend, from any number of
   clients. Over that limit the mail is dropped silently and the response is identical for every address, so a victim's inbox cannot be flooded and nothing
   can be enumerated. Over the limit: `429 { error: { code: "rate_limited" } }`.
@@ -320,9 +386,6 @@ from the rag-service (the document was already failed or deleted) is only logged
 `409 { "error": { "code": "project_mismatch", "message": "The active project changed. Reload the page." } }` and nothing is read or written.
 No header: unchanged. `/workspaces` and `/account` ignore it. The tenant is still the session's active project; the header never selects one.
 
-**`NODE_ENV`** is required: `development`, `test` or `production`. Only the first two get the dev shortcuts; any other value counts as production
-(SMTP required, no `/dev/*`, https model endpoints only), and an unset or empty value stops the API at startup with a message saying so.
-
 ## Running more than one API process
 
 Everything durable is in Postgres, but some state is per process, so know these before starting a second instance:
@@ -336,27 +399,3 @@ Everything durable is in Postgres, but some state is per process, so know these 
 - **The startup sweep is safe to run concurrently:** it takes a Postgres advisory lock (`pg_try_advisory_lock`, name `lumen:sweep-interrupted`); a process that
   does not get it skips the sweep and logs so.
 - The concurrent-ingest cap and the document limit are counted in Postgres, so they hold across processes.
-
-## Layout
-
-```text
-.env.example         every variable, empty; copy to .env
-config.json          tunable defaults (overridable by env vars)
-tsconfig.json        references only; tsconfig.app / test / scripts extend ../../tsconfig.base.json
-scripts/migrate.ts   `auth:migrate`, creates/updates Better Auth's tables
-src/
-  server.ts          entry: load .env and config, start listening, run the startup ingest sweep
-  app.ts             builds the Express app, mounts middleware and routes
-  modules/<feature>/ code used by one feature
-    auth/            auth.ts (Better Auth setup), mailer.ts, windowCounter.ts, keyedLock.ts
-    chat/ documents/ feedback/ models/ projects/ analytics/ requests/ usage/ dev/
-                     <feature>.routes.ts, plus documents/sweep.ts and models/provider.ts
-  shared/            code used by two or more features
-    config/          config.ts (env + config.json -> Config), env.ts (loads apps/api/.env)
-    db/              pool.ts
-    middleware/      rateLimit, requireApiKey, requireSession, tenantModels
-    lib/             errors (error shape), validate (uuid guard, invalid_request), range (7d/30d, UTC month), crypto (AES-256-GCM), endpointGuard (SSRF guard), logger (key redaction), uploads
-    services/        rag.ts (rag-service client), modelCalls.ts (attempts, cost), modelUsage.ts, projects.ts
-    types/           types.ts (Deps, Express request fields)
-test/                mirrors src: modules/<feature>/, shared/, dashboardCors.test.ts (app level); helpers/ and global-setup.ts
-```

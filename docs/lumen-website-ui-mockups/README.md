@@ -1,22 +1,27 @@
-# CODING AGENTS: READ THIS FIRST
+# Lumen website UI mockups
 
-This is a **handoff bundle** from Claude Design (claude.ai/design).
+The design handoff bundle the Lumen website was built from, exported from Claude Design (claude.ai/design). The files are HTML, CSS and JavaScript prototypes, not production code: the real implementation is `apps/web`. What each page and tab does, and the design system extracted from these mockups, is in [docs/WEBSITE.md](../WEBSITE.md).
 
-A user mocked up designs in HTML/CSS/JS using an AI design tool, then exported this bundle so a coding agent can implement the designs for real.
+## Use it
 
-## What you should do — IMPORTANT
+- Read `project/Lumen Website.dc.html` in full: it is the primary design (static high-fidelity screens). Then follow its imports, so you understand how the shared components, CSS and scripts fit together.
+- `project/Lumen Prototype.dc.html` is the interactive prototype.
+- Recreate the designs in the target technology (this repo uses React); match the visual output rather than copying the prototype's internal structure. Dimensions, colors and layout rules are spelled out in the source, so read the HTML and CSS directly. Rendering the files in a browser or taking screenshots is optional.
+- If anything is ambiguous, confirm scope before implementing.
+- Where a mockup differs from `docs/AI_BUILD_BRIEF.md` (see "Design source" under Phase 4), the brief wins. In particular the mockups show pricing and savings content that Lumen does not build.
 
-**Read `lumen-website-ui-mockups/project/Lumen Website.dc.html` in full.** The user had this file open when they triggered the handoff, so it's almost certainly the primary design they want built. Read it top to bottom — don't skim. Then **follow its imports**: open every file it pulls in (shared components, CSS, scripts) so you understand how the pieces fit together before you start implementing.
+## Configuration and tests
 
-**If anything is ambiguous, ask the user to confirm before you start implementing.** It's much cheaper to clarify scope up front than to build the wrong thing.
+None. The bundle has no build step and no tests.
 
-## About the design files
+## Layout
 
-The design medium is **HTML/CSS/JS** — these are prototypes, not production code. Your job is to **recreate them pixel-perfectly** in whatever technology makes sense for the target codebase (React, Vue, native, whatever fits). Match the visual output; don't copy the prototype's internal structure unless it happens to fit.
-
-**Don't render these files in a browser or take screenshots unless the user asks you to.** Everything you need — dimensions, colors, layout rules — is spelled out in the source. Read the HTML and CSS directly; a screenshot won't tell you anything they don't.
-
-## Bundle contents
-
-- `lumen-website-ui-mockups/README.md` — this file
-- `lumen-website-ui-mockups/project/` — the `Lumen website UI mockups` project files (HTML prototypes, assets, components)
+```text
+README.md                         this file
+project/
+  Lumen Website.dc.html           static hi-fi screens (the primary design)
+  Lumen Prototype.dc.html         interactive behaviour
+  support.js                      the design-canvas runtime only; it has no product content
+  .thumbnail                      preview image of the project
+  uploads/                        outdated copies of reference files (not tracked in git; ignore)
+```
