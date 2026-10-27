@@ -1,6 +1,6 @@
 # Lumen core
 
-Multi-tenant RAG gateway (upload docs, get a key, call `POST /v1/chat`). Source of truth: `docs/AI_BUILD_BRIEF.md` (wins over `docs/DESIGN.md`, `docs/PROJECT_WORKFLOW.md`, `docs/WEBSITE_GUIDE.md`, `AGENTS.md`). Schema: `docs/DATABASE.md` + `infra/sql/NNN_*.sql`.
+Multi-tenant RAG gateway (upload docs, get a key, call `POST /v1/chat`). Source of truth: `docs/AI_BUILD_BRIEF.md` (wins over `docs/WEBSITE.md`, `docs/PROJECT_WORKFLOW.md`, `AGENTS.md`). Schema: `docs/DATABASE.md` + `infra/sql/NNN_*.sql`.
 
 State (2026-10-25): Phases 0-5 done plus extra phases R2 (monorepo restructure), DB (normalized schema, applied to local DBs and Supabase project `lumen`), 4B/4C/4D/4E (accounts, projects, UI, fallback tier removed), rate-limit handling. Phase 5 evaluation finished but PRELIMINARY (drafted answers, see `mem:eval`). Phase 6 (classifier) only if the rule router misroutes; Phase 7 (Lumen pricing) on hold.
 

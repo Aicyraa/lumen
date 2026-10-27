@@ -1,6 +1,6 @@
 # apps/web
 
-React 19 + Vite + React Router + TanStack Query + Better Auth client. Dashboard and public pages (see `docs/DESIGN.md`).
+React 19 + Vite + React Router + TanStack Query + Better Auth client. Dashboard and public pages (see `docs/WEBSITE.md`).
 
 ## Run
 

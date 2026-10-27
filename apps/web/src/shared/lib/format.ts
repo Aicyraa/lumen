@@ -27,7 +27,7 @@ export const fmtDay = (isoDate: string) =>
     timeZone: "UTC",
   });
 
-// A usage meter turns amber above 80% of its limit (DESIGN.md).
+// A usage meter turns amber above 80% of its limit (docs/WEBSITE.md).
 export const isNearLimit = (used: number, max: number) => max > 0 && used / max > 0.8;
 
 export const RATE_LIMITED = "provider_rate_limited";

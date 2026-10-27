@@ -115,7 +115,7 @@ Use the development column to start. The production column is what you swap or a
 
 ## Models and hosting choices
 
-The table and notes below describe the dev/test default models Lumen itself uses. In the product, each tenant adds its own cheap and expensive models and keys in the Models tab (`docs/WEBSITE_GUIDE.md`); Lumen supplies only the embedding model.
+The table and notes below describe the dev/test default models Lumen itself uses. In the product, each tenant adds its own cheap and expensive models and keys in the Models tab (`docs/WEBSITE.md`); Lumen supplies only the embedding model.
 
 RAG uses two kinds of model. The embedding model turns text into vectors, for every chunk at upload and for every question at chat. It never writes answers. The chat models write the answers. You need one of the first and two of the second.
 
@@ -206,8 +206,8 @@ Each phase is one prompt in section 8 or 9 of the AI build brief.
 | 1 RAG core | Chunk, embed, store and search, with the tenant test | `pytest` passes and `ask.py` finds the right chunk |
 | 2 Python service | FastAPI endpoints, router, model calls | `curl` returns the full response shape and tests pass |
 | 3 Express and Better Auth | Login, organizations, keys, upload, chat, logs | Sign in, upload and chat work with an API key |
-| 3B Tenant models | Models table with encrypted provider keys, Models endpoints, backup models inside each tier in the Python service (from `docs/WEBSITE_GUIDE.md`) | A tenant's own key answers, a failing primary falls back, no key ever leaks |
-| 4 Dashboard | Home page (steps, demo, quickstart, security; FAQ postponed), /docs and /privacy pages, sign-in (Google, GitHub, email and password), keys, documents, analytics, requests, usage meters. Follows `docs/DESIGN.md` | A new account gets a working key in under 5 minutes |
+| 3B Tenant models | Models table with encrypted provider keys, Models endpoints, backup models inside each tier in the Python service (from `docs/WEBSITE.md`) | A tenant's own key answers, a failing primary falls back, no key ever leaks |
+| 4 Dashboard | Home page (steps, demo, quickstart, security; FAQ postponed), /docs and /privacy pages, sign-in (Google, GitHub, email and password), keys, documents, analytics, requests, usage meters. Follows `docs/WEBSITE.md` | A new account gets a working key in under 5 minutes |
 | 5 Proof | Isolation suite, three-way comparison (no test website) | Zero leaks and a `results.csv` |
 | 6 Classifier | Train from labeled questions, only if the rules fall short | Beats the rules on held-out questions |
 | 7 Pricing (reconsidering, not planned) | Prices in `config.yaml`, cost per request, cost and estimated savings in analytics and Requests, savings calculator, cost column in `results.csv`, provider spending caps, cost-spike alert | Costs match a hand calculation, and all earlier tests still pass |

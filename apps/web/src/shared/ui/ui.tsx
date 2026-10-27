@@ -14,7 +14,7 @@ export function PageHead({ title, children }: { title: string; children?: ReactN
   );
 }
 
-// Status dot + mono label in the status color (DESIGN.md). Color is paired with the word, never alone.
+// Status dot + mono label in the status color (docs/WEBSITE.md). Color is paired with the word, never alone.
 export function StatusDot({
   tone,
   children,

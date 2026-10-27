@@ -33,7 +33,7 @@ You can skip learning RAG in depth, but keep these five facts in mind so you can
 
 **Out of scope:** payments and billing, email or password login, teams, mobile apps, fine-tuning a language model, and a tenant-chosen retention period for logged queries (the dashboard and public copy must not promise one).
 
-**Design.** Every screen follows `docs/DESIGN.md` (colors, type, layout, components, copy rules). If a design file and this brief disagree, this brief wins, and the differences are listed in section 9 under "Design versus brief".
+**Design.** Every screen follows `docs/WEBSITE.md` (colors, type, layout, components, copy rules). If a design file and this brief disagree, this brief wins, and the differences are listed in section 9 under "Design versus brief".
 
 ## 2. Hard rules
 
@@ -71,7 +71,7 @@ lumen/                       # root: tooling and docs only, no application code
   docker-compose.yml         # db (the db scripts use podman or docker directly)
   scripts/                   # env.mjs (env:init, env:check), db.mjs (db:up, db:migrate, ...)
   infra/                     # sql/ numbered migrations, .env.example (database password, Supabase strings)
-  docs/                      # AI_BUILD_BRIEF.md, PROJECT_WORKFLOW.md, WEBSITE_GUIDE.md, DESIGN.md, NOTES.md, mockups
+  docs/                      # AI_BUILD_BRIEF.md, PROJECT_WORKFLOW.md, WEBSITE.md, NOTES.md, mockups
   tools/eval/                # questions.csv, run_eval.py, results.csv (scripts, not an app)
   apps/
     api/                     # Node/Express + Better Auth (TypeScript), own .env
@@ -245,7 +245,7 @@ CREATE TABLE request_logs (
 );
 CREATE INDEX request_logs_tenant_time_idx ON request_logs (tenant_id, created_at DESC);
 
--- Added 2026-10-23 from docs/WEBSITE_GUIDE.md (Models tab). Created by infra/sql/002_tenant_models.sql in Phase 3B.
+-- Added 2026-10-23 from docs/WEBSITE.md (Models tab). Created by infra/sql/002_tenant_models.sql in Phase 3B.
 CREATE TABLE tenant_models (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id         TEXT NOT NULL,
@@ -370,7 +370,7 @@ Ingest is synchronous in Python. Express calls it in the background after answer
 
 **Ingest** (`POST /internal/ingest`, updated 2026-10-25). The document row is locked (`FOR SHARE`) in the same transaction as the chunk insert, and its status is re-read between embedding batches (`ingest.status_check_every_batches`): a document Express already marked `failed` (ingest timeout) gets no chunks and the call returns `409 document_not_ingestable` (`404 not_found` when the row is missing). Other errors: `422 document_too_large` (pages or chunks over the limit, checked before embedding), `422 unreadable_document` (corrupt or encrypted PDF), `422 no_text_extracted`, `415 unsupported_type`, `503 busy` with `Retry-After` (upload slot not free within `concurrency.ingest_wait_seconds`; also when no database connection is free). `GET /internal/ready` (needs `X-Internal-Secret`, like every internal route except health) checks a database connection and that the models are loaded; `GET /internal/health` stays a plain liveness check. `NODE_ENV` must be `development` or `test` for the dev shortcuts (LLM_* default model, http://localhost endpoints); anything else, including unset, is production.
 
-**Tenant models** (from docs/WEBSITE_GUIDE.md, Models tab). Each tenant supplies its own provider keys; Lumen supplies only the embedding model. Express loads the tenant's `tenant_models`, decrypts the keys for this one request and passes them in `models`. Step 6 of the flow then works like this:
+**Tenant models** (from docs/WEBSITE.md, Models tab). Each tenant supplies its own provider keys; Lumen supplies only the embedding model. Express loads the tenant's `tenant_models`, decrypts the keys for this one request and passes them in `models`. Step 6 of the flow then works like this:
 
 - The router picks the tier (cheap or expensive) as before; models inside that tier are tried top to bottom (PRIMARY, then BACKUP 1, 2, ...). A model is skipped when it fails (after the one 429 retry) or times out, and the next one is tried.
 - If every model in the chosen tier fails, return `502 provider_error` (there is no fallback tier: removed by the human on 2026-10-24; the other tier is not tried either, except when the chosen tier has no models at all).
@@ -526,7 +526,7 @@ Report using the format in section 9.
 
 ## 9. Phases 4 to 7 and the report format
 
-### Phase 3B: tenant models (backend; added 2026-10-23 from docs/WEBSITE_GUIDE.md)
+### Phase 3B: tenant models (backend; added 2026-10-23 from docs/WEBSITE.md)
 
 > Superseded in part (2026-10-24): the fallback group and everything about it below no longer exists. A tenant has two tiers, cheap and expensive; see Phase 4E and section 7.
 
@@ -559,8 +559,8 @@ Report using the format in section 9.
 
 ```text
 Do Phase 4 only. Build the React dashboard in apps/web/ per sections 4 and 6.
-- Follow docs/DESIGN.md for every screen.
-- A public home page (no login), sections in the order of docs/DESIGN.md: hero with a Sign in button, how it works in three steps, a demo (easy, hard and no-answer example), Quickstart (cURL, Node and Python tabs with a Copy button, using the real `POST /v1/chat` contract), built-in features and Security. The FAQ section is postponed (decided 2026-10-23); leave it out for now. Leave out the savings calculator (pricing is being reconsidered, see Phase 7) and make no cost, savings or pricing claims in any copy. Security copy (and the FAQ when it returns) may only state what the product actually does. In particular, do not say tenants can choose a retention period.
+- Follow docs/WEBSITE.md for every screen.
+- A public home page (no login), sections in the order of docs/WEBSITE.md: hero with a Sign in button, how it works in three steps, a demo (easy, hard and no-answer example), Quickstart (cURL, Node and Python tabs with a Copy button, using the real `POST /v1/chat` contract), built-in features and Security. The FAQ section is postponed (decided 2026-10-23); leave it out for now. Leave out the savings calculator (pricing is being reconsidered, see Phase 7) and make no cost, savings or pricing claims in any copy. Security copy (and the FAQ when it returns) may only state what the product actually does. In particular, do not say tenants can choose a retention period.
 - A sign-in page with Continue with Google and Continue with GitHub (authClient.signIn.social) and an email and password form (authClient.signIn.email, plus sign-up), in the mockup's style. The mockup says "Google and GitHub only, no passwords"; that line is overridden (decided 2026-10-23).
 - A protected dashboard shell that redirects to sign-in when there is no session.
 - An API keys page using the API key plugin's client methods: create (show the key once), list, revoke.
@@ -570,7 +570,7 @@ Do Phase 4 only. Build the React dashboard in apps/web/ per sections 4 and 6.
 - A Requests page: the request log from GET /api/dashboard/requests with a tier filter, and a detail view per request from GET /api/dashboard/requests/:id showing route, usage and sources with filenames.
 - Usage meters in the sidebar (documents, requests per minute, requests this month) from GET /api/dashboard/usage. The limits come from config, never from the front end.
 - A public Docs page at /docs (quickstart, authentication with the x-api-key header, the POST /v1/chat and document endpoints with request and response examples, error codes) and a Privacy page at /privacy, both linked from the home page hero ("Read the docs") and footer, in the same design. Write them from the real contracts in section 6; the Privacy page may only state what the product does (queries are logged for analytics, full document text is never logged, provider keys are stored encrypted) and must not promise a retention period. A public Terms of service page at /terms (linked in the footer beside Privacy) states the rules of use in plain words: no pricing, no retention period, and no legal entity, jurisdiction or contact it does not have.
-- A Models page (Phase 3B endpoints; fallback removed 2026-10-24): Cheap and Expensive groups, models in order with provider, endpoint, masked key and status, reorder arrows, Remove, and an Add model form (provider, model id, endpoint URL, API key, tier) with Test & save. The key field is write-only. Each model row also shows its usage for the range (requests, tokens, failures, fallback use) and the provider-reported limits when known ("not reported" otherwise), from GET /api/dashboard/models/usage. Analytics gets a By model section (requests, tokens, failures, fallback use per model, fallback models included). Cost is shown as "estimated provider cost" from the tenant-entered prices (Models form has optional input and output price per 1M tokens): per model on the Models page, per request in the Requests list and detail and Try it usage, and cost per day plus total on Analytics (by model, fallback models included). Show "no price set" for unpriced models. No savings figure and no Lumen pricing. See docs/WEBSITE_GUIDE.md section 06.
+- A Models page (Phase 3B endpoints; fallback removed 2026-10-24): Cheap and Expensive groups, models in order with provider, endpoint, masked key and status, reorder arrows, Remove, and an Add model form (provider, model id, endpoint URL, API key, tier) with Test & save. The key field is write-only. Each model row also shows its usage for the range (requests, tokens, failures, fallback use) and the provider-reported limits when known ("not reported" otherwise), from GET /api/dashboard/models/usage. Analytics gets a By model section (requests, tokens, failures, fallback use per model, fallback models included). Cost is shown as "estimated provider cost" from the tenant-entered prices (Models form has optional input and output price per 1M tokens): per model on the Models page, per request in the Requests list and detail and Try it usage, and cost per day plus total on Analytics (by model, fallback models included). Show "no price set" for unpriced models. No savings figure and no Lumen pricing. See docs/WEBSITE.md section 06.
 Dashboard nav order: Documents, API keys, Try it, Analytics, Requests, Models.
 Add any missing dashboard endpoints from section 6 to apps/api/ (including the `sources` column on request_logs, written by the chat route), always filtered by tenant, with a supertest case that tenant A cannot read tenant B's request id (404).
 Use plain CSS or one small component library. Report using the format in section 9.
@@ -586,7 +586,7 @@ Use plain CSS or one small component library. Report using the format in section
 - [ ] The Models page shows usage, limits (or "not reported") and estimated cost per model, with price fields in the Add model form, and no key is ever shown after saving
 - [ ] Two different accounts never see each other's documents, keys, requests or analytics
 
-**Design source.** The mockups are in `docs/lumen-website-ui-mockups/project/` (`Lumen Website.dc.html` static screens, `Lumen Prototype.dc.html` interactive prototype; `support.js` is only the design-canvas runtime and `uploads/` holds outdated copies of old briefs, ignore both). Rebuild them as real React components; the `{{ ... }}` markers are the design runtime's templating, not product code. Layout, spacing, tokens and components come from the mockups and `docs/DESIGN.md`; behaviour and copy rules come from this brief. Where they differ, follow this brief:
+**Design source.** The mockups are in `docs/lumen-website-ui-mockups/project/` (`Lumen Website.dc.html` static screens, `Lumen Prototype.dc.html` interactive prototype; `support.js` is only the design-canvas runtime and `uploads/` holds outdated copies of old briefs, ignore both). Rebuild them as real React components; the `{{ ... }}` markers are the design runtime's templating, not product code. Layout, spacing, tokens and components come from the mockups and `docs/WEBSITE.md`; behaviour and copy rules come from this brief. Where they differ, follow this brief:
 
 - Sign-in: add email and password next to Google and GitHub (the mockup says no passwords).
 - Lumen pricing: skip the Savings section (05) and its example prices, the Pricing nav and footer links, the demo's `cost_usd` figure and the Analytics "EST. SAVINGS" tile. Keep the other sections' numbering as in the mockup (a gap at 05), so adding it later changes nothing.
@@ -724,9 +724,9 @@ Do this only when Phases 0 to 5 pass (and 6, if you did it). Before starting, th
 Do Phase 7 only. Add everything about money, following rule 9 of AGENTS.md.
 - rag-service: add models.price_per_1k_tokens to config.yaml (section 7) and compute cost_usd = tokens_in/1000 * input_price + tokens_out/1000 * output_price from the provider's token counts. At startup, refuse to run if either tier's input or output price is 0 or missing (tests may inject their own config). model_tier none costs 0.
 - api: store cost_usd in request_logs and return it in usage.
-- Analytics: add cost per day and estimated savings versus always using the expensive tier to GET /api/dashboard/analytics/summary and the Analytics page. Label savings as an estimate (docs/DESIGN.md).
+- Analytics: add cost per day and estimated savings versus always using the expensive tier to GET /api/dashboard/analytics/summary and the Analytics page. Label savings as an estimate (docs/WEBSITE.md).
 - Requests page: show cost in the list and in the detail Usage card.
-- Home page: add the savings calculator section (docs/DESIGN.md order). Its example cost per request comes from VITE_CALC_PRICE_CHEAP and VITE_CALC_PRICE_EXPENSIVE and it is labelled as an illustration, not a quote. Add any pricing or cost copy to the FAQ only if it is true.
+- Home page: add the savings calculator section (docs/WEBSITE.md order). Its example cost per request comes from VITE_CALC_PRICE_CHEAP and VITE_CALC_PRICE_EXPENSIVE and it is labelled as an illustration, not a quote. Add any pricing or cost copy to the FAQ only if it is true.
 - tools/eval/run_eval.py and the Phase 6 comparison table: add cost_per_query_usd.
 - Tests: cost arithmetic with a fake config, the startup refusal on a zero price, a request_logs row with cost_usd, and savings never negative-by-bug (savings equals the expensive-tier cost minus actual cost for the same tokens).
 Report using the format in section 9.

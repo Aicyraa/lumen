@@ -1,10 +1,12 @@
 # Lumen project instructions
 
-Read `docs/AI_BUILD_BRIEF.md` fully before application work. It is the authoritative
-product brief, including hard rules, stack, contracts, phase boundaries, and
-acceptance checks. Read `docs/PROJECT_WORKFLOW.md` for supporting workflow context
-`docs/WEBSITE_GUIDE.md` for what each page and tab does, and `docs/DESIGN.md` before building any screen; the build brief wins if they
-disagree. Do not start a build phase unless asked.
+Read the docs before application work. Do not start a build phase unless asked.
+
+| File | Read it for |
+| --- | --- |
+| `docs/AI_BUILD_BRIEF.md` | The authoritative product brief: hard rules, stack, contracts, phase boundaries and acceptance checks. Read it fully. It wins if the others disagree |
+| `docs/PROJECT_WORKFLOW.md` | Supporting workflow context |
+| `docs/WEBSITE.md` | What each page and tab does (part 1) and the design system, which you read before building any screen (part 2) |
 
 ## Money comes last
 

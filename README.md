@@ -11,7 +11,7 @@ apps/rag-service    FastAPI RAG service (Python): api, core, ingest, retrieval, 
 infra/sql           Numbered SQL migrations (applied with pnpm db:migrate)
 tools/eval          Evaluation scripts (Phase 5)
 scripts             Repo-level helpers: env.mjs (env:init, env:check) and db.mjs (db:*)
-docs                Brief, workflow, website guide, design guide, mockups, notes
+docs                Brief, workflow, website and design guide, mockups, notes
 ```
 
 ## First run
