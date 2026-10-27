@@ -73,7 +73,6 @@ over generic search or shell when they fit.
 
 ## Setup-only verification
 
-This repository initially contains descriptions, not application source.
 Disposable tool probes may be generated locally for setup verification and
 must be removed afterwards. They are not application implementation and must
 not be committed. An empty code graph is not proof of application navigation.
