@@ -55,4 +55,6 @@ function check() {
   process.exit(bad ? 1 : 0);
 }
 
-({ init, check })[process.argv[2]]?.() ?? (console.error("usage: env.mjs init|check"), process.exit(2));
+const command = { init, check }[process.argv[2]];
+if (!command) { console.error("usage: env.mjs init|check"); process.exit(2); }
+command();
