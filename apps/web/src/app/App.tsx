@@ -1,3 +1,4 @@
+import { Analytics as VercelAnalytics } from "@vercel/analytics/react";
 import { MotionConfig } from "motion/react";
 import { type ComponentType, lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router";
@@ -63,6 +64,7 @@ export function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
+        <VercelAnalytics />
       </MotionConfig>
     </ErrorBoundary>
   );
