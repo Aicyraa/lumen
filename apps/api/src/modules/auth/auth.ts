@@ -6,6 +6,7 @@ import { organization } from "better-auth/plugins";
 import type { Logger } from "pino";
 import type { Config } from "../../shared/config/config.js";
 import type { Pool } from "../../shared/db/pool.js";
+import { CLIENT_IP_HEADER } from "../../shared/middleware/clientIp.js";
 import { ownedProjectCount } from "../../shared/services/projects.js";
 import { KeyedLock } from "./keyedLock.js";
 import type { Mailer } from "./mailer.js";
@@ -91,6 +92,7 @@ export function createAuth({
     baseURL: config.authUrl,
     secret: config.authSecret,
     trustedOrigins: [config.dashboardOrigin],
+    advanced: { ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER] } }, // set by the clientIp middleware from Express's trust proxy result
     socialProviders: { ...socialProviders, ...social }, // `social` only exists so tests can plug in a fake provider
     account: {
       // Same-email sign-in with a second provider is refused (account_not_linked); a signed-in user links explicitly with linkSocial.

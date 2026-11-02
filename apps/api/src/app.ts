@@ -14,6 +14,7 @@ import { workspacesRouter } from "./modules/projects/projects.routes.js";
 import { requestsRouter } from "./modules/requests/requests.routes.js";
 import { usageHandler } from "./modules/usage/usage.routes.js";
 import { errorHandler, notFoundHandler, sendError } from "./shared/lib/errors.js";
+import { clientIp } from "./shared/middleware/clientIp.js";
 import { createLimiters } from "./shared/middleware/rateLimit.js";
 import { requireApiKey } from "./shared/middleware/requireApiKey.js";
 import {
@@ -53,7 +54,9 @@ export function createApp({
   app.use("/api/auth/api-key", requireProjectMatch(auth)); // API keys are managed through Better Auth, not /api/dashboard
   const authHandler = toNodeHandler(auth);
   // Express 5 syntax; must come before express.json() (rule 5). The scope lets the create hooks release only their own lock.
-  app.all("/api/auth/*splat", (req, res) => auth.projectLockScope(() => authHandler(req, res)));
+  app.all("/api/auth/*splat", clientIp, (req, res) =>
+    auth.projectLockScope(() => authHandler(req, res)),
+  );
   app.use(express.json());
   // Public API: every /v1 route needs a valid key, so unknown paths also answer 401 first.
   const deps = { pool, rag, config, log, pending, resolveHost };
