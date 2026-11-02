@@ -161,7 +161,7 @@ describe("what the client gets back", () => {
     expect(JSON.stringify(res.body)).not.toMatch(/attempts|rate_limit|api_key|tenant-a-key/);
   });
 
-  it("/v1/chat returns ids and scores only per source; Try it adds filename (tenant-scoped join) and a capped snippet", async () => {
+  it("/v1/chat returns ids, scores and the filename (tenant-scoped join) per source; Try it adds a capped snippet", async () => {
     const mine = (
       await ctx.pool.query(
         "INSERT INTO documents (tenant_id, filename, status) VALUES ($1, 'mine.md', 'ready') RETURNING id",
@@ -197,10 +197,12 @@ describe("what the client gets back", () => {
       });
     const v1 = await chat(a);
     expect(v1.body.sources).toEqual([
-      { document_id: mine, chunk_id: 1, score: 0.9 },
-      { document_id: theirs, chunk_id: 2, score: 0.8 },
-      { document_id: expect.any(String), chunk_id: 3, score: 0.7 },
+      { document_id: mine, chunk_id: 1, score: 0.9, filename: "mine.md" }, // the service's own "lie.txt" is ignored
+      { document_id: theirs, chunk_id: 2, score: 0.8, filename: null }, // tenant B's document is invisible to tenant A
+      { document_id: expect.any(String), chunk_id: 3, score: 0.7, filename: null },
     ]);
+    expect(JSON.stringify(v1.body)).not.toContain("theirs-secret");
+    expect(JSON.stringify(v1.body)).not.toContain("snippet");
     const t = await tryIt(a);
     expect(t.body.sources[0]).toEqual({
       document_id: mine,
