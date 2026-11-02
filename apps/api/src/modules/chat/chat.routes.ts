@@ -155,14 +155,14 @@ export function chatHandler(
     await book(result.request_id, attempts);
 
     // Public response is built field by field, so attempts, rate limits and keys can never leak through.
-    const names = tryIt ? await filenames(req.tenantId, result.sources) : new Map<string, string>();
+    const names = await filenames(req.tenantId, result.sources);
     const sources = result.sources.map((s: ChatSource) => ({
       document_id: s.document_id,
       chunk_id: s.chunk_id,
       score: s.score,
+      filename: names.get(s.document_id) ?? null,
       ...(tryIt
         ? {
-            filename: names.get(s.document_id) ?? null,
             snippet:
               typeof s.snippet === "string"
                 ? s.snippet.slice(0, config.snippetMaxChars)

@@ -42,7 +42,7 @@ const ERRORS = [
 const CHAT_RES = `{
   "request_id": "3f0c1a7b-5d2e-4c8a-9b61-0e7f4a2d9c13",
   "answer": "Enrollment closes on 15 March. [1]",
-  "sources": [{ "document_id": "c1a2…", "chunk_id": 12, "score": 0.78 }],
+  "sources": [{ "document_id": "c1a2…", "filename": "handbook.pdf", "chunk_id": 12, "score": 0.78 }],
   "route": { "model_tier": "cheap", "k": 3, "escalated": false, "difficulty": 0.0, "top_score": 0.78 },
   "usage": { "tokens_in": 812, "tokens_out": 64, "cost_usd": 0.0004, "latency_ms": 620 }
 }`;
