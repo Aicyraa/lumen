@@ -9,7 +9,7 @@
 ![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-cee654?logo=python&logoColor=0c0c0b)
 ![TypeScript](https://img.shields.io/badge/TypeScript-cee654?logo=typescript&logoColor=0c0c0b)
 ![Postgres + pgvector](https://img.shields.io/badge/Postgres-pgvector-cee654?logo=postgresql&logoColor=0c0c0b)
-![License: all rights reserved](https://img.shields.io/badge/license-all%20rights%20reserved-6e6e68)
+[![License: MIT](https://img.shields.io/badge/license-MIT-6e6e68)](LICENSE)
 
 [How it works](#how-it-works) · [Features](#key-features) · [Quick start](#quick-start) · [Commands](#commands) · [Deployment](#deployment)
 
@@ -241,4 +241,4 @@ See [apps/api/README.md](apps/api/README.md), [apps/rag-service/README.md](apps/
 
 ## License
 
-All rights reserved. No license is granted.
+Released under the [MIT License](LICENSE).
